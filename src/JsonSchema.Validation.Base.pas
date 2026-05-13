@@ -1,0 +1,1644 @@
+unit JsonSchema.Validation.Base;
+
+interface
+
+uses
+  System.JSON,
+  System.Generics.Collections,
+  JsonSchema.Translate.Types,
+  JsonSchema.Translate.Interfaces,
+  JsonSchema.Translate.Utils,
+  JsonSchema.Visitors.Interfaces,
+  JsonSchema.Visitors.Base,
+  JsonSchema.Visitors.Types,
+  JsonSchema.Common.Utils,
+  JsonSchema.Validation.Interfaces,
+  JsonSchema.Validation.Types,
+  JsonSchema.Registry.Base;
+
+type
+  TBaseCoreVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IBaseCoreVisitor<T>)
+    [VisitorKeyword('$schema')]
+    procedure VisitSchema(const AValue: TJSONString);
+    [VisitorKeyword('$id')]
+    procedure VisitId(const AValue: TJSONString);
+    [VisitorKeyword('$ref')]
+    procedure VisitRef(const AValue: TJSONString);
+    [VisitorKeyword('definitions')]
+    [VisitorKeyword('$defs')]
+    procedure VisitDefinitions(const AValue: TJSONObject);
+    procedure VisitBooleanSchema(const AValue: TJSONBool);
+  end;
+
+  TBaseApplicatorVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IBaseApplicatorVisitor<T>)
+    [VisitorKeyword('allOf')]
+    procedure VisitAllOf(const AValue: TJSONArray);
+    [VisitorKeyword('anyOf')]
+    procedure VisitAnyOf(const AValue: TJSONArray);
+    [VisitorKeyword('oneOf')]
+    procedure VisitOneOf(const AValue: TJSONArray);
+    [VisitorKeyword('not')]
+    procedure VisitNot(const AValue: TJSONValue);
+
+    // Condition
+    [VisitorKeyword('if')]
+    procedure VisitIf(const AValue: TJSONValue);
+    [VisitorKeyword('then')]
+    procedure VisitThen(const AValue: TJSONValue);
+    [VisitorKeyword('else')]
+    procedure VisitElse(const AValue: TJSONValue);
+
+    // Objects
+    [VisitorKeyword('properties')]
+    procedure VisitProperties(const AValue: TJSONObject);
+    [VisitorKeyword('patternProperties')]
+    procedure VisitPatternProperties(const AValue: TJSONObject);
+    [VisitorKeyword('additionalProperties')]
+    procedure VisitAdditionalProperties(const AValue: TJSONValue);
+
+    // Arrays
+    [VisitorKeyword('items')]
+    procedure VisitItems(const AValue: TJSONValue);
+    [VisitorKeyword('additionalItems')]
+    procedure VisitAdditionalItems(const AValue: TJSONValue);
+    [VisitorKeyword('prefixItems')]
+    procedure VisitPrefixItems(const AValue: TJSONArray);
+  end;
+
+  TBaseHyperSchemaVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IBaseHyperSchemaVisitor<T>)
+    [VisitorKeyword('base')]
+    procedure VisitBase(const AValue: TJSONString);
+    [VisitorKeyword('links')]
+    procedure VisitLinks(const AValue: TJSONArray);
+
+    [VisitorKeyword('href')]
+    procedure VisitHref(const AValue: TJSONString);
+    [VisitorKeyword('targetSchema')]
+    procedure VisitTargetSchema(const AValue: TJSONValue);
+    [VisitorKeyword('submissionSchema')]
+    procedure VisitSubmissionSchema(const AValue: TJSONValue);
+    [VisitorKeyword('hrefSchema')]
+    procedure VisitHrefSchema(const AValue: TJSONValue);
+  end;
+
+  TBaseValidationVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IBaseValidationVisitor<T>)
+    // Geral
+    [VisitorKeyword('type')]
+    procedure VisitType(const AValue: TJSONValue);
+    [VisitorKeyword('enum')]
+    procedure VisitEnum(const AValue: TJSONArray);
+    [VisitorKeyword('const')]
+    procedure VisitConst(const AValue: TJSONValue);
+
+    // Numérico
+    [VisitorKeyword('multipleOf')]
+    procedure VisitMultipleOf(const AValue: TJSONNumber);
+    [VisitorKeyword('maximum')]
+    procedure VisitMaximum(const AValue: TJSONNumber);
+    [VisitorKeyword('exclusiveMaximum')]
+    procedure VisitExclusiveMaximum(const AValue: TJSONNumber);
+    [VisitorKeyword('minimum')]
+    procedure VisitMinimum(const AValue: TJSONNumber);
+    [VisitorKeyword('exclusiveMinimum')]
+    procedure VisitExclusiveMinimum(const AValue: TJSONNumber);
+
+    // String
+    [VisitorKeyword('maxLength')]
+    procedure VisitMaxLength(const AValue: TJSONNumber);
+    [VisitorKeyword('minLength')]
+    procedure VisitMinLength(const AValue: TJSONNumber);
+    [VisitorKeyword('pattern')]
+    procedure VisitPattern(const AValue: TJSONString);
+    [VisitorKeyword('format')]
+    procedure VisitFormat(const AValue: TJSONString);
+
+    // Array
+    [VisitorKeyword('maxItems')]
+    procedure VisitMaxItems(const AValue: TJSONNumber);
+    [VisitorKeyword('minItems')]
+    procedure VisitMinItems(const AValue: TJSONNumber);
+    [VisitorKeyword('uniqueItems')]
+    procedure VisitUniqueItems(const AValue: TJSONBool);
+
+    // Objeto
+    [VisitorKeyword('maxProperties')]
+    procedure VisitMaxProperties(const AValue: TJSONNumber);
+    [VisitorKeyword('minProperties')]
+    procedure VisitMinProperties(const AValue: TJSONNumber);
+    [VisitorKeyword('required')]
+    procedure VisitRequired(const AValue: TJSONArray);
+  end;
+
+  TBaseRelativeJsonPointer<T: IValidationVisitor<T>> = class(TBase<T>, IBaseRelativeJsonPointer<T>)
+
+  end;
+
+  TValidationVisitor<T> = class(TBaseVisitor<T>, IValidationVisitor<T>)
+  protected
+    FResult: IValidationResult;
+    FRegistry: TRegistryVisitor;
+    FLanguage: TLanguage;
+    FCustomHint: TJSONValue;
+    FTranslateMethod: TDictionary<TErrorType, TTranslateFunc>;
+
+    function DispatchTranslate(const AErrorType: TErrorType): TErrorMessage;
+    procedure PopulateTranslateMethods;
+  public
+    constructor Create(const ASchema, AData: TJSONValue; const ABaseURI: string; const ACustomHint: TJSONValue = nil);
+    destructor Destroy; override;
+
+    function Registry: TRegistryVisitor;
+    function KeywordPrecedence: TArray<string>; override;
+    function Language: TLanguage; overload;
+    function Language(const ALanguage: TLanguage): IValidationVisitor<T>; overload;
+    procedure AddError(const AErrorType: TErrorType; AParams: array of const); overload;
+    procedure AddError(const AErrorType: TErrorType); overload;
+    function FindCustomHint(AErrorType: TErrorType): string;
+    function Result: IValidationResult;
+  end;
+
+implementation
+
+uses
+  System.Rtti,
+  System.Math,
+  System.TypInfo,
+  System.SysUtils,
+  System.StrUtils,
+  System.RegularExpressions,
+  JsonSchema.Walker,
+  JsonSchema.Registry.Uri,
+  JsonSchema.Registry.Resource;
+
+{ TValidationVisitor<T> }
+
+procedure TValidationVisitor<T>.AddError(const AErrorType: TErrorType);
+begin
+  AddError(AErrorType, []);
+end;
+
+procedure TValidationVisitor<T>.AddError(const AErrorType: TErrorType; AParams: array of const);
+var
+  LScope: TScope;
+  LMessage: TErrorMessage;
+  LCustomHint: string;
+  LParentNode: TJSONValue;
+begin
+  LScope := CurrentScope;
+  if FTranslateMethod.ContainsKey(AErrorType) then
+    LMessage := FTranslateMethod.Items[AErrorType];
+  LCustomHint := FindCustomHint(AErrorType);
+
+  if FScopeStack.Count > 2 then
+    LParentNode := CurrentScope(2).InstanceNode
+  else
+    LParentNode := LScope.InstanceNode;
+
+  Result.AddError(TError.Create
+    .RootNode(FData)
+    .ErrorType(AErrorType)
+    .ParentNode(LParentNode)
+    .SchemaNode(LScope.SchemaNode)
+    .SchemaPath(LScope.SchemaPath)
+    .InstanceNode(LScope.InstanceNode)
+    .InstancePath(LScope.InstancePath)
+    .ErrorMessage(Format(LMessage.Error, AParams))
+    .StandardHint(Format(LMessage.Hint, AParams))
+    .CustomHint(LCustomHint));
+end;
+
+constructor TValidationVisitor<T>.Create(const ASchema, AData: TJSONValue; const ABaseURI: string; const ACustomHint: TJSONValue);
+var
+  LWalker: IWalker;
+begin
+  inherited Create(ASchema, AData, ABaseURI);
+
+  FResult          := TValidationResult.Create;
+  FRegistry        := TRegistryVisitor.Create(ASchema, AData, ABaseURI);
+  FCustomHint      := ACustomHint;
+  FTranslateMethod := TDictionary<TErrorType, TTranslateFunc>.Create;
+
+  Language(TLanguage.lang_ptBR);
+
+  LWalker := TWalker<TRegistryVisitor>.Create(Aschema, FRegistry);
+  LWalker.Walk;
+end;
+
+destructor TValidationVisitor<T>.Destroy;
+begin
+  FTranslateMethod.Free;
+  FRegistry.Free;
+  inherited;
+end;
+
+function TValidationVisitor<T>.DispatchTranslate(const AErrorType: TErrorType): TErrorMessage;
+begin
+  if not FTranslateMethod.ContainsKey(AErrorType) then
+    Exit;
+
+  Result := FTranslateMethod.Items[AErrorType];
+end;
+
+function TValidationVisitor<T>.FindCustomHint(AErrorType: TErrorType): string;
+var
+  LScope: TScope;
+  LPathSegments: TArray<string>;
+  LCurrentNode: TJSONValue;
+  LSegment: string;
+  LHintValue: TJSONValue;
+  LErrorKeyword: string;
+begin
+  Result := '';
+  LScope := CurrentScope;
+  if not Assigned(FCustomHint) or LScope.InstancePath.IsEmpty then
+    Exit;
+
+  // Normaliza e quebra o caminho: '#.relacao_empregados[0].cbo' -> ['relacao_empregados', 'cbo']
+  // Precisamos de uma função robusta para isso.
+  LPathSegments := TUtils.ParseInstancePath(LScope.InstancePath);
+
+  LCurrentNode := FCustomHint;
+  for LSegment in LPathSegments do
+  begin
+    if not (LCurrentNode is TJSONObject) then
+      Exit; // Não podemos navegar mais fundo
+
+    if not (LCurrentNode as TJSONObject).TryGetValue(LSegment, LCurrentNode) then
+    begin
+      if (LCurrentNode as TJSONObject).TryGetValue(GetEnumName(TypeInfo(TErrorType), Ord(TErrorType.vetUnknown)), LCurrentNode) then
+        Break // Não encontra um erro específico, mas encontra um erro genérico
+      else
+        Exit; // Caminho não encontrado no JSON de dicas
+    end;
+  end;
+
+  // Chegamos ao nó final do caminho. Agora procuramos pelo tipo de erro.
+  if (LCurrentNode is TJSONObject) then
+  begin
+    LErrorKeyword := GetEnumName(TypeInfo(TErrorType), Ord(AErrorType)); // ex: vetPattern
+    if (LCurrentNode as TJSONObject).TryGetValue(LErrorKeyword, LHintValue) and (LHintValue is TJSONString) then
+      Result := (LHintValue as TJSONString).Value;
+  end
+  else if LCurrentNode is TJSONString then
+    Result := TJSONString(LCurrentNode).Value;
+end;
+
+function TValidationVisitor<T>.KeywordPrecedence: TArray<string>;
+begin
+  Result := [
+    '$schema',
+    '$id',
+    '$ref',
+    'properties',
+    'patternProperties',
+    'additionalProperties',
+    'prefixItems',
+    'items',
+    'additionalItems',
+    'if',
+    'allOf',
+    'anyOf',
+    'oneOf'
+  ];
+end;
+
+function TValidationVisitor<T>.Language: TLanguage;
+begin
+  Result := FLanguage;
+end;
+
+function TValidationVisitor<T>.Language(const ALanguage: TLanguage): IValidationVisitor<T>;
+begin
+  Result := Self;
+  FLanguage := ALanguage;
+  PopulateTranslateMethods;
+end;
+
+procedure TValidationVisitor<T>.PopulateTranslateMethods;
+var
+  LType: TRttiType;
+  LMethod: TRttiMethod;
+  LContext: TRttiContext;
+  LMethodPtr: TMethod;
+  LAttribute: TCustomAttribute;
+  LParameters: TArray<TRttiParameter>;
+  LTranslation: ITranslate;
+begin
+  FTranslateMethod.Clear;
+  LTranslation := TTranslateUtils.GetTranslation(FLanguage);
+  LContext     := TRttiContext.Create;
+  LType        := LContext.GetType(TObject(LTranslation).ClassType);
+  for LMethod in LType.GetMethods do
+  begin
+    for LAttribute in LMethod.GetAttributes do
+    begin
+      if not (LAttribute is TranslateErrorAttribute) then
+        Continue;
+
+      LParameters := LMethod.GetParameters;
+
+      if Length(LParameters) <> 0 then
+        Continue;
+
+      LMethodPtr := default(TMethod);
+      LMethodPtr.Code := LMethod.CodeAddress;
+      LMethodPtr.Data := TObject(LTranslation);
+
+      FTranslateMethod.AddOrSetValue(TranslateErrorAttribute(LAttribute).ErrorType, TTranslateFunc(LMethodPtr));
+    end;
+  end;
+end;
+
+function TValidationVisitor<T>.Registry: TRegistryVisitor;
+begin
+  Result := FRegistry;
+end;
+
+function TValidationVisitor<T>.Result: IValidationResult;
+begin
+  Result := FResult;
+end;
+
+{ TBaseCoreVisitor<T> }
+
+procedure TBaseCoreVisitor<T>.VisitBooleanSchema(const AValue: TJSONBool);
+begin
+  if not AValue.AsBoolean then
+    Visitor.AddError(TErrorType.vetSchemaIsFalse);
+end;
+
+procedure TBaseCoreVisitor<T>.VisitDefinitions(const AValue: TJSONObject);
+begin
+
+end;
+
+procedure TBaseCoreVisitor<T>.VisitId(const AValue: TJSONString);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+  LScope.BaseURI := AValue.Value;
+
+  Visitor.UpdateScope(LScope);
+end;
+
+procedure TBaseCoreVisitor<T>.VisitRef(const AValue: TJSONString);
+var
+  LScope: TScope;
+  LRefString: string;
+  LFinalURI: TURIReference;
+  LTargetResource: TResource;
+  LTargetSchema: TJSONValue;
+  LWalker: IWalker;
+  LNewScope: TScope;
+  LValidationVisitor: IValidationVisitor<T>;
+begin
+  if not Supports(Visitor, IValidationVisitor<T>, LValidationVisitor) then
+    Exit; // Sanity check
+
+  LScope := Visitor.CurrentScope;
+  LRefString := AValue.Value;
+
+  // 1. Resolve a URI da referência
+  LFinalURI := TURIReference.From(LRefString).ResolveWith(TURIReference.From(LScope.BaseURI));
+
+  // 2. Busca o recurso de schema no Registry
+  if not LValidationVisitor.Registry.TryFindResource(LFinalURI.Unsplit, LTargetResource) then
+  begin
+    Visitor.AddError(TErrorType.vetUnresolvedReference, [LFinalURI.Unsplit]);
+    Exit;
+  end;
+
+  // 3. Resolve o fragmento (#/... ou #anchor) dentro do recurso
+  LTargetSchema := LTargetResource.ResolveFragment(LFinalURI.Fragment);
+
+  if not Assigned(LTargetSchema) then
+  begin
+    Visitor.AddError(TErrorType.vetUnresolvedReference, [LFinalURI.Unsplit]);
+    Exit;
+  end;
+
+  // 4. Prepara e executa a validação recursiva
+  LNewScope := LScope;
+  with LNewScope do
+  begin
+    BaseURI      := LTargetResource.BaseURI.Unsplit;
+    SchemaNode   := LTargetSchema;
+    SchemaPath   := LFinalURI.Unsplit;
+    // A instância e seu caminho não mudam
+  end;
+
+  Visitor.UpdateScope(LNewScope);
+  try
+    LWalker := TWalker<T>.Create(LTargetSchema, Visitor);
+    LWalker.Walk;
+  finally
+    // A propagação de anotações é crucial
+    //LNewScope := Visitor.PopScope;
+    //LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
+    //LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+    //Visitor.UpdateScope(LScope);
+  end;
+end;
+
+procedure TBaseCoreVisitor<T>.VisitSchema(const AValue: TJSONString);
+begin
+
+end;
+
+{ TBaseHyperSchemaVisitor<T> }
+
+procedure TBaseHyperSchemaVisitor<T>.VisitBase(const AValue: TJSONString);
+begin
+
+end;
+
+procedure TBaseHyperSchemaVisitor<T>.VisitHref(const AValue: TJSONString);
+begin
+
+end;
+
+procedure TBaseHyperSchemaVisitor<T>.VisitHrefSchema(const AValue: TJSONValue);
+begin
+
+end;
+
+procedure TBaseHyperSchemaVisitor<T>.VisitLinks(const AValue: TJSONArray);
+begin
+
+end;
+
+procedure TBaseHyperSchemaVisitor<T>.VisitSubmissionSchema(const AValue: TJSONValue);
+begin
+
+end;
+
+procedure TBaseHyperSchemaVisitor<T>.VisitTargetSchema(const AValue: TJSONValue);
+begin
+
+end;
+
+{ TBaseValidationVisitor<T> }
+
+procedure TBaseValidationVisitor<T>.VisitConst(const AValue: TJSONValue);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'const']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if not TUtils.JsonEquals(LScope.InstanceNode, AValue) then
+      Visitor.AddError(TErrorType.vetConstValueMismatch, [AValue.ToString]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitEnum(const AValue: TJSONArray);
+var
+  LScope: TScope;
+  LIsValid: Boolean;
+  LEnumValue: TJSONValue;
+begin
+  LScope := Visitor.CurrentScope;
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'enum']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    LIsValid := False;
+    for LEnumValue in AValue do
+    begin
+      if TUtils.JsonEquals(LScope.InstanceNode, LEnumValue) then
+      begin
+        LIsValid := True;
+        Break;
+      end;
+    end;
+
+    if not LIsValid then
+      Visitor.AddError(TErrorType.vetEnumValueMismatch, [AValue.ToString]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitExclusiveMaximum(const AValue: TJSONNumber);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if not MatchStr(TUtils.JsonGetType(LScope.InstanceNode), ['number', 'integer']) then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'exclusiveMaximum']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if (TUtils.JsonGetFloat(LScope.InstanceNode) >= TUtils.JsonGetFloat(AValue)) then
+      Visitor.AddError(TErrorType.vetExclusiveMaximum, [TUtils.JsonGetFloat(AValue).ToString]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitExclusiveMinimum(const AValue: TJSONNumber);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if not MatchStr(TUtils.JsonGetType(LScope.InstanceNode), ['number', 'integer']) then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'exclusiveMinimum']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if (TUtils.JsonGetFloat(LScope.InstanceNode) <= TUtils.JsonGetFloat(AValue)) then
+      Visitor.AddError(TErrorType.vetExclusiveMinimum, [TUtils.JsonGetFloat(AValue).ToString]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitFormat(const AValue: TJSONString);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'string' then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'format']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+//    if (TUtils.JsonGetFloat(LScope.InstanceNode) <= TUtils.JsonGetFloat(AValue)) then
+//      Visitor.AddError(TErrorType.vetExclusiveMinimum, [TUtils.JsonGetFloat(AValue).ToString]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitMaximum(const AValue: TJSONNumber);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if not MatchStr(TUtils.JsonGetType(LScope.InstanceNode), ['number', 'integer']) then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'maximum']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if (TUtils.JsonGetFloat(LScope.InstanceNode) > TUtils.JsonGetFloat(AValue)) then
+      Visitor.AddError(TErrorType.vetMaximum, [TUtils.JsonGetFloat(AValue).ToString]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitMaxItems(const AValue: TJSONNumber);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'maxItems']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if (TJSONArray(LScope.InstanceNode).Count > TUtils.JsonGetInteger(AValue)) then
+      Visitor.AddError(TErrorType.vetMaxItems, [TUtils.JsonGetInteger(AValue)]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitMaxLength(const AValue: TJSONNumber);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'string' then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'maxLength']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if (Length(TUtils.Utf32Encode(TJSONString(LScope.InstanceNode).Value)) > TUtils.JsonGetInteger(AValue)) then
+      Visitor.AddError(TErrorType.vetMaxLength, [TUtils.JsonGetInteger(AValue)]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitMaxProperties(const AValue: TJSONNumber);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'maxProperties']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if (TJSONObject(LScope.InstanceNode).Count > TUtils.JsonGetInteger(AValue)) then
+      Visitor.AddError(TErrorType.vetMaxProperties, [TUtils.JsonGetInteger(AValue)]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitMinimum(const AValue: TJSONNumber);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if not MatchStr(TUtils.JsonGetType(LScope.InstanceNode), ['number', 'integer']) then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'minimum']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if (TUtils.JsonGetFloat(LScope.InstanceNode) < TUtils.JsonGetFloat(AValue)) then
+      Visitor.AddError(TErrorType.vetMinimum, [TUtils.JsonGetFloat(AValue).ToString]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitMinItems(const AValue: TJSONNumber);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'minItems']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if (TJSONArray(LScope.InstanceNode).Count < TUtils.JsonGetInteger(AValue)) then
+      Visitor.AddError(TErrorType.vetMinItems, [TUtils.JsonGetInteger(AValue)]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitMinLength(const AValue: TJSONNumber);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'string' then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'minLength']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if (Length(TUtils.Utf32Encode(TJSONString(LScope.InstanceNode).Value)) < TUtils.JsonGetInteger(AValue)) then
+      Visitor.AddError(TErrorType.vetMinLength, [TUtils.JsonGetInteger(AValue)]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitMinProperties(const AValue: TJSONNumber);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'minProperties']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if (TJSONObject(LScope.InstanceNode).Count < TUtils.JsonGetInteger(AValue)) then
+      Visitor.AddError(TErrorType.vetMinProperties, [TUtils.JsonGetInteger(AValue)]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitMultipleOf(const AValue: TJSONNumber);
+var
+  LScope: TScope;
+  LDivision: Extended;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if not MatchStr(TUtils.JsonGetType(LScope.InstanceNode), ['number', 'integer']) then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'multipleOf']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if TUtils.JsonGetFloat(AValue) = 0 then
+      Exit;
+
+    LDivision := TUtils.JsonGetFloat(LScope.InstanceNode) / TUtils.JsonGetFloat(AValue);
+    if Abs(LDivision - Round(LDivision)) > 1E-8 then
+      Visitor.AddError(TErrorType.vetMultipleOf, [AValue.Value]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitPattern(const AValue: TJSONString);
+var
+  LScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'string' then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'pattern']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    if not TRegEx.IsMatch(TJSONString(LScope.InstanceNode).Value, TUtils.RegexNormalizePattern(AValue.Value)) then
+      Visitor.AddError(TErrorType.vetPattern, [TUtils.RegexNormalizePattern(AValue.Value)]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitRequired(const AValue: TJSONArray);
+var
+  LScope: TScope;
+  LRequired: TJSONValue;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'required']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    for LRequired in AValue do
+      if TJSONObject(LScope.InstanceNode).FindValue(LRequired.Value) = nil then
+        Visitor.AddError(TErrorType.vetRequiredPropertyMissing, [LRequired.Value]);
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitType(const AValue: TJSONValue);
+var
+  LType: TJSONValue;
+  LScope: TScope;
+  LAllowedTypes: TList<string>;
+begin
+  LScope := Visitor.CurrentScope;
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'type']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  LAllowedTypes := TList<string>.Create;
+  try
+    if AValue is TJSONString then
+    begin
+      if TJSONString(AValue).Value = 'number' then
+        LAllowedTypes.AddRange(['integer', 'number'])
+      else
+        LAllowedTypes.Add(TJSONString(AValue).Value.ToLower);
+    end
+    else if AValue is TJSONArray then
+    begin
+      for LType in TJSONArray(AValue) do
+        if LType.Value = 'number' then
+          LAllowedTypes.AddRange(['integer', 'number'])
+        else
+          LAllowedTypes.Add(LType.Value.ToLower);
+    end;
+
+    if not MatchStr(TUtils.JsonGetType(LScope.InstanceNode), LAllowedTypes.ToArray) then
+      Visitor.AddError(TErrorType.vetInvalidType, [string.Join(', ', LAllowedTypes.ToArray), TUtils.JsonGetType(LScope.InstanceNode)]);
+  finally
+    LAllowedTypes.Free;
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitUniqueItems(const AValue: TJSONBool);
+var
+  LScope: TScope;
+  LArray: TJSONArray;
+  LCount1: Integer;
+  LCount2: Integer;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if not AValue.AsBoolean then
+    Exit;
+
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
+    Exit;
+
+  with LScope do
+  begin
+    SchemaPath        := Format('%s/%s', [SchemaPath, 'uniqueItems']);
+    SchemaNode        := SchemaNode;
+    InstanceNode      := InstanceNode;
+    InstancePath      := InstancePath;
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+  Visitor.PushScope(LScope);
+  try
+    LArray := TJSONArray(LScope.InstanceNode);
+    for LCount1 := 0 to LArray.Count - 2 do
+    begin
+      for LCount2 := LCount1 + 1 to LArray.Count - 1 do
+      begin
+        if TUtils.JsonEquals(LArray.Items[LCount1], LArray.Items[LCount2]) then
+        begin
+          Visitor.AddError(TErrorType.vetUniqueItems, [LArray.Items[LCount1].ToString]);
+          Exit;
+        end;
+      end;
+    end;
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+{ TBaseApplicatorVisitor<T> }
+
+procedure TBaseApplicatorVisitor<T>.VisitAdditionalItems(const AValue: TJSONValue);
+var
+  LCount: Integer;
+  LScope: TScope;
+  LItems: TJSONValue;
+  LWalker: IWalker;
+  LCovered: TList<Integer>;
+  LNewScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
+    Exit;
+    
+  if (not LScope.SchemaNode.TryGetValue('items', LItems)) or (TUtils.JsonGetType(LItems) <> 'array') then
+    Exit;
+
+  LCovered := TList<Integer>.Create(LScope.CoveredItems);
+  try
+    for LCount := 0 to TJSONArray(LScope.InstanceNode).Count - 1 do
+    begin
+      if LCovered.Contains(LCount) then
+        Continue;
+
+      LNewScope := LScope;
+      with LNewScope do
+      begin
+        SchemaPath        := Format('%s/additionalItems', [SchemaPath]);
+        SchemaNode        := AValue;
+        InstanceNode      := TJSONArray(LScope.InstanceNode)[LCount];
+        InstancePath      := Format('%s[%d]', [InstancePath, LCount]);
+        CoveredItems      := [];
+        ContainsCount     := 0;
+        VisitedKeywords   := [];
+        CoveredProperties := [];
+      end;
+
+      Visitor.PushScope(LNewScope);
+      try
+        LWalker := TWalker<T>.Create(AValue, Visitor);
+        LWalker.Walk;
+      finally
+        Visitor.PopScope;
+      end;
+
+      TUtils.AddArray<Integer>(LScope.CoveredItems, LCount);
+    end;
+  finally
+    LCovered.Free;
+  end;
+
+  Visitor.UpdateScope(LScope);
+end;
+
+procedure TBaseApplicatorVisitor<T>.VisitAdditionalProperties(const AValue: TJSONValue);
+var
+  LPair: TJSONPair;
+  LScope: TScope;
+  LWalker: IWalker;
+  LCovered: TList<string>;
+  LNewScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+    Exit;
+
+  LCovered := TList<string>.Create(LScope.CoveredProperties);
+  try
+    for LPair in TJSONObject(LScope.InstanceNode) do
+    begin
+      if LCovered.Contains(LPair.JsonString.Value) then
+        Continue;
+
+      LNewScope := LScope;
+      with LNewScope do
+      begin
+        SchemaPath        := Format('%s/additionalProperties', [SchemaPath]);
+        SchemaNode        := AValue;
+        InstanceNode      := LPair.JsonValue;
+        InstancePath      := Format('%s/%s', [InstancePath, LPair.JsonString.Value]);
+        CoveredItems      := [];
+        ContainsCount     := 0;
+        VisitedKeywords   := [];
+        CoveredProperties := [];
+      end;
+
+      Visitor.PushScope(LNewScope);
+      try
+        LWalker := TWalker<T>.Create(AValue, Visitor);
+        LWalker.Walk;
+      finally
+        Visitor.PopScope;
+      end;
+
+      TUtils.AddArray<string>(LScope.CoveredProperties, LPair.JsonString.Value);
+    end;
+  finally
+    LCovered.Free;
+  end;
+
+  Visitor.UpdateScope(LScope);
+end;
+
+procedure TBaseApplicatorVisitor<T>.VisitAllOf(const AValue: TJSONArray);
+var
+  LCount: Integer;
+  LScope: TScope;
+  LWalker: IWalker;
+  LNewScope: TScope;
+  LErrorCount: Integer;
+begin
+  LScope := Visitor.CurrentScope;
+
+  for LCount := 0 to AValue.Count - 1 do
+  begin
+    LNewScope := LScope;
+    with LNewScope do
+    begin
+      SchemaPath        := Format('%s/allOf/%d', [SchemaPath, LCount]);
+      SchemaNode        := AValue[LCount];
+      InstanceNode      := InstanceNode;
+      InstancePath      := Format('%s', [InstancePath]);
+      CoveredItems      := [];
+      ContainsCount     := 0;
+      VisitedKeywords   := [];
+      CoveredProperties := [];
+    end;
+
+    LErrorCount := Length(Visitor.Result.Errors);
+    Visitor.PushScope(LNewScope);
+    try
+      LWalker := TWalker<T>.Create(LNewScope.SchemaNode, Visitor);
+      LWalker.Walk;
+    finally
+      LNewScope := Visitor.PopScope;
+      LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
+      LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+    end;
+
+    Visitor.UpdateScope(LScope);
+
+    if Length(Visitor.Result.Errors) > LErrorCount then
+    begin
+      Visitor.AddError(vetAllOf, [LCount]);
+      Exit;
+    end;
+  end;
+end;
+
+procedure TBaseApplicatorVisitor<T>.VisitAnyOf(const AValue: TJSONArray);
+var
+  LCount: Integer;
+  LScope: TScope;
+  LWalker: IWalker;
+  LVisitor: T;
+  LNewScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  for LCount := 0 to AValue.Count - 1 do
+  begin
+    LNewScope := LScope;
+    with LNewScope do
+    begin
+      SchemaPath        := Format('%s/anyOf/%d', [SchemaPath, LCount]);
+      SchemaNode        := AValue[LCount];
+      InstanceNode      := InstanceNode;
+      InstancePath      := Format('%s', [InstancePath]);
+      CoveredItems      := [];
+      ContainsCount     := 0;
+      VisitedKeywords   := [];
+      CoveredProperties := [];
+    end;                        
+                                     
+    LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
+    LVisitor.PushScope(LNewScope);
+    try
+      LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
+      LWalker.Walk;
+    finally
+      LNewScope := LVisitor.PopScope;                                          
+      LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
+      LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+    end;
+
+    Visitor.UpdateScope(LScope);
+
+    if LVisitor.Result.IsValid then
+      Exit;
+  end;
+
+  Visitor.AddError(vetAnyOf);
+end;
+
+procedure TBaseApplicatorVisitor<T>.VisitElse(const AValue: TJSONValue);
+var
+  LScope: TScope;
+  LWalker: IWalker;
+  LNewScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+  if LScope.SchemaNode.FindValue('if') = nil then
+    Exit;
+
+  LNewScope := LScope;
+  with LNewScope do
+  begin
+    SchemaPath        := Format('%s/else', [SchemaPath]);
+    SchemaNode        := AValue;
+    InstanceNode      := InstanceNode;
+    InstancePath      := Format('%s', [InstancePath]);
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+
+  Visitor.PushScope(LNewScope);
+  try
+    LWalker := TWalker<T>.Create(LNewScope.SchemaNode, Visitor);
+    LWalker.Walk;
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseApplicatorVisitor<T>.VisitIf(const AValue: TJSONValue);
+var
+  LScope: TScope;
+  LWalker: IWalker;
+  LSchema: TJSONValue;
+  LVisitor: T;
+  LNewScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  LNewScope := LScope;
+  with LNewScope do
+  begin
+    SchemaPath        := Format('%s/if', [SchemaPath]);
+    SchemaNode        := AValue;
+    InstanceNode      := InstanceNode;
+    InstancePath      := Format('%s', [InstancePath]);
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+                           
+                                     
+  LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
+  LVisitor.PushScope(LNewScope);
+  try
+    LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
+    LWalker.Walk;
+  finally
+    LNewScope := LVisitor.PopScope;                                          
+    LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
+    LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+  end;
+
+  Visitor.UpdateScope(LScope);
+
+  if LVisitor.Result.IsValid and LScope.SchemaNode.TryGetValue('then', LSchema) then
+    VisitThen(LSchema)
+  else if (not LVisitor.Result.IsValid) and LScope.SchemaNode.TryGetValue('else', LSchema) then
+    VisitElse(LSchema);
+
+  Visitor
+    .AddVisitedKeyword('then')
+    .AddVisitedKeyword('else');
+end;
+
+procedure TBaseApplicatorVisitor<T>.VisitItems(const AValue: TJSONValue);
+var
+  LCount: Integer;
+  LScope: TScope;
+  LWalker: IWalker;
+  LCovered: TList<Integer>;
+  LNewScope: TScope;
+  LInstance: TJSONArray;
+  LSchema: TJSONValue;
+  LMaxCount: Integer;
+begin
+  LScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
+    Exit;
+
+  LCovered := TList<Integer>.Create(LScope.CoveredItems);
+  try
+    LInstance := TJSONArray(LScope.InstanceNode);
+    
+    if TUtils.JsonGetType(AValue) = 'array' then
+    begin
+      LMaxCount := Min(LInstance.Count, TJSONArray(AValue).Count);
+      LSchema   := nil;
+    end
+    else
+    begin
+      LMaxCount := LInstance.Count;
+      LSchema   := AValue;
+    end;
+
+    for LCount := 1 to LMaxCount do
+    begin
+      if LCovered.Contains(LCount - 1) then
+        Continue;
+
+      if TUtils.JsonGetType(AValue) = 'array' then
+        LSchema := TJSONArray(AValue)[LCount - 1];
+
+      LNewScope := LScope;
+      with LNewScope do
+      begin
+        SchemaPath        := Format('%s/items/%d', [SchemaPath, LCount - 1]);
+        SchemaNode        := LSchema;
+        InstanceNode      := LInstance[LCount - 1];
+        InstancePath      := Format('%s[%d]', [InstancePath, LCount - 1]);
+        CoveredItems      := [];
+        ContainsCount     := 0;
+        VisitedKeywords   := [];
+        CoveredProperties := [];
+      end;
+
+      Visitor.PushScope(LNewScope);
+      try
+        LWalker := TWalker<T>.Create(LNewScope.SchemaNode, Visitor);
+        LWalker.Walk;
+      finally
+        Visitor.PopScope;
+      end;
+
+      TUtils.AddArray<Integer>(LScope.CoveredItems, LCount - 1);
+    end;
+  finally
+    LCovered.Free;
+  end;
+
+  Visitor.UpdateScope(LScope);
+end;
+
+procedure TBaseApplicatorVisitor<T>.VisitNot(const AValue: TJSONValue);
+var
+  LScope: TScope;
+  LWalker: IWalker;
+  LVisitor: T;
+  LNewScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  LNewScope := LScope;
+  with LNewScope do
+  begin
+    SchemaPath        := Format('%s/not', [SchemaPath]);
+    SchemaNode        := AValue;
+    InstanceNode      := InstanceNode;
+    InstancePath      := Format('%s', [InstancePath]);
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+
+  Visitor.PushScope(LNewScope);
+  LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
+  try
+    LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
+    LWalker.Walk;
+  finally
+    Visitor.PopScope;
+  end;
+
+  if LVisitor.Result.IsValid then
+    Visitor.AddError(vetNot);
+end;
+
+procedure TBaseApplicatorVisitor<T>.VisitOneOf(const AValue: TJSONArray);
+var
+  LCount: Integer;
+  LScope: TScope;
+  LWalker: IWalker;
+  LVisitor: T;
+  LMatches: Integer;
+  LNewScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+
+  LMatches := 0;
+  for LCount := 0 to AValue.Count - 1 do
+  begin
+    LNewScope := LScope;
+    with LNewScope do
+    begin
+      SchemaPath        := Format('%s/oneOf/%d', [SchemaPath, LCount]);
+      SchemaNode        := AValue[LCount];
+      InstanceNode      := InstanceNode;
+      InstancePath      := Format('%s', [InstancePath]);
+      CoveredItems      := [];
+      ContainsCount     := 0;
+      VisitedKeywords   := [];
+      CoveredProperties := [];
+    end;
+                                     
+    LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
+    LVisitor.PushScope(LNewScope);
+    try
+      LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
+      LWalker.Walk;
+    finally
+      LNewScope := LVisitor.PopScope;                                          
+      LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
+      LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+    end;
+
+    Visitor.UpdateScope(LScope);
+
+    if LVisitor.Result.IsValid then
+      Inc(LMatches);
+  end;
+
+  if LMatches = 0 then
+    Visitor.AddError(vetOneOf_NoMatch)
+  else if LMatches > 1 then
+    Visitor.AddError(vetOneOf_MultipleMatches);
+end;
+
+procedure TBaseApplicatorVisitor<T>.VisitPatternProperties(const AValue: TJSONObject);
+var
+  LPair: TJSONPair;
+  LRegex: string;
+  LScope: TScope;
+  LWalker: IWalker;
+  LPropName: string;
+  LNewScope: TScope;
+  LPatternPair: TJSONPair;
+begin
+  LScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+    Exit;
+
+  for LPair in TJSONObject(LScope.InstanceNode) do
+  begin
+    LPropName := LPair.JsonString.Value;
+
+    for LPatternPair in AValue do
+    begin
+      LRegex := TUtils.RegexNormalizePattern(LPatternPair.JsonString.Value);
+      if not TRegEx.IsMatch(LPropName, LRegex) then
+        Continue;
+
+      LNewScope := LScope;
+      with LNewScope do
+      begin
+        SchemaPath        := Format('%s/patternProperties/{%s}', [SchemaPath, LRegex]);
+        SchemaNode        := LPatternPair.JsonValue;
+        InstanceNode      := LPair.JsonValue;
+        InstancePath      := Format('%s/properties/%s', [InstancePath, LPropName]);
+        CoveredItems      := [];
+        ContainsCount     := 0;
+        VisitedKeywords   := [];
+        CoveredProperties := [];
+      end;
+
+      Visitor.PushScope(LNewScope);
+      try
+        LWalker := TWalker<T>.Create(LNewScope.SchemaNode, Visitor);
+        LWalker.Walk;
+      finally
+        Visitor.PopScope;
+      end;
+
+      TUtils.AddArray<string>(LScope.CoveredProperties, LPair.JsonString.Value);
+    end;
+  end;
+
+  Visitor.UpdateScope(LScope);
+end;
+
+procedure TBaseApplicatorVisitor<T>.VisitPrefixItems(const AValue: TJSONArray);
+var
+  LScope: TScope;
+  LCount: Integer;
+  LWalker: IWalker;
+  LNewScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
+    Exit;
+
+  for LCount := 0 to Min(TJSONArray(LScope.InstanceNode).Count - 1, AValue.Count - 1) do
+  begin
+    LNewScope := LScope;
+    with LNewScope do
+    begin
+      SchemaPath        := Format('%s/items/%d', [SchemaPath, LCount]);
+      SchemaNode        := AValue[LCount];
+      InstanceNode      := TJSONArray(LScope.InstanceNode)[LCount];
+      InstancePath      := Format('%s[%d]', [InstancePath, LCount]);
+      CoveredItems      := [];
+      ContainsCount     := 0;
+      VisitedKeywords   := [];
+      CoveredProperties := [];
+    end;
+
+    Visitor.PushScope(LNewScope);
+    try
+      LWalker := TWalker<T>.Create(LNewScope.SchemaNode, Visitor);
+      LWalker.Walk;
+    finally
+      Visitor.PopScope;
+    end;
+
+    TUtils.AddArray<Integer>(LScope.CoveredItems, LCount);
+  end;
+
+  Visitor.UpdateScope(LScope);
+end;
+
+procedure TBaseApplicatorVisitor<T>.VisitProperties(const AValue: TJSONObject);
+var
+  LPair: TJSONPair;
+  LScope: TScope;
+  LWalker: IWalker;
+  LNewScope: TScope;
+  LSubInstance: TJSONValue;
+begin
+  LScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+    Exit;
+
+  for LPair in AValue do
+  begin
+    if not TJSONObject(LScope.InstanceNode).TryGetValue(LPair.JsonString.Value, LSubInstance) then
+      Continue;
+
+    LNewScope := LScope;
+    with LNewScope do
+    begin
+      SchemaPath        := Format('%s/properties/%s', [SchemaPath, LPair.JsonString.Value]);
+      SchemaNode        := LPair.JsonValue;
+      InstanceNode      := LSubInstance;
+      InstancePath      := Format('%s.%s', [InstancePath, LPair.JsonString.Value]);
+      CoveredItems      := [];
+      ContainsCount     := 0;
+      VisitedKeywords   := [];
+      CoveredProperties := [];
+    end;
+
+    Visitor.PushScope(LNewScope);
+    try
+      LWalker := TWalker<T>.Create(LNewScope.SchemaNode, Visitor);
+      LWalker.Walk;
+    finally
+      Visitor.PopScope;
+    end;
+
+    TUtils.AddArray<string>(LScope.CoveredProperties, LPair.JsonString.Value);
+    Visitor.UpdateScope(LScope);
+  end;
+end;
+
+procedure TBaseApplicatorVisitor<T>.VisitThen(const AValue: TJSONValue);
+var
+  LScope: TScope;
+  LWalker: IWalker;
+  LNewScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+  if LScope.SchemaNode.FindValue('if') = nil then
+    Exit;
+
+  LNewScope := LScope;
+  with LNewScope do
+  begin
+    SchemaPath        := Format('%s/then', [SchemaPath]);
+    SchemaNode        := AValue;
+    InstanceNode      := InstanceNode;
+    InstancePath      := Format('%s', [InstancePath]);
+    CoveredItems      := [];
+    ContainsCount     := 0;
+    VisitedKeywords   := [];
+    CoveredProperties := [];
+  end;
+
+  Visitor.PushScope(LNewScope);
+  try
+    LWalker := TWalker<T>.Create(LNewScope.SchemaNode, Visitor);
+    LWalker.Walk;
+  finally
+    Visitor.PopScope;
+  end;
+end;
+
+end.
