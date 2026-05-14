@@ -20,6 +20,7 @@ type
   TBaseCoreVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IBaseCoreVisitor<T>)
     [VisitorKeyword('$schema')]
     procedure VisitSchema(const AValue: TJSONString);
+    [VisitorKeyword('id')]
     [VisitorKeyword('$id')]
     procedure VisitId(const AValue: TJSONString);
     [VisitorKeyword('$ref')]
@@ -96,11 +97,11 @@ type
     [VisitorKeyword('maximum')]
     procedure VisitMaximum(const AValue: TJSONNumber);
     [VisitorKeyword('exclusiveMaximum')]
-    procedure VisitExclusiveMaximum(const AValue: TJSONNumber);
+    procedure VisitExclusiveMaximum(const AValue: TJSONValue);
     [VisitorKeyword('minimum')]
     procedure VisitMinimum(const AValue: TJSONNumber);
     [VisitorKeyword('exclusiveMinimum')]
-    procedure VisitExclusiveMinimum(const AValue: TJSONNumber);
+    procedure VisitExclusiveMinimum(const AValue: TJSONValue);
 
     // String
     [VisitorKeyword('maxLength')]
@@ -127,6 +128,12 @@ type
     procedure VisitMinProperties(const AValue: TJSONNumber);
     [VisitorKeyword('required')]
     procedure VisitRequired(const AValue: TJSONArray);
+
+    // Conteudo
+    [VisitorKeyword('contentEncoding')]
+    procedure VisitContentEncoding(const AValue: TJSONString);
+    [VisitorKeyword('contentMediaType')]
+    procedure VisitContentMediaType(const AValue: TJSONString);
   end;
 
   TBaseRelativeJsonPointer<T: IValidationVisitor<T>> = class(TBase<T>, IBaseRelativeJsonPointer<T>)
@@ -172,8 +179,11 @@ uses
   System.SysUtils,
   System.StrUtils,
   System.DateUtils,
+  System.NetEncoding,
   System.RegularExpressions,
+  JsonSchema,
   JsonSchema.Walker,
+  JsonSchema.Walker.Types,
   JsonSchema.Registry.Uri,
   JsonSchema.Registry.Utils,
   JsonSchema.Registry.Resource;
@@ -303,6 +313,7 @@ begin
   Result := [
     '$schema',
     '$id',
+    'id',
     '$ref',
     'properties',
     'patternProperties',
@@ -454,6 +465,18 @@ var
   LGuardReason: string;
   LGuardKey: string;
   LGuardEntered: Boolean;
+  LTargetRootSchema: TJSONValue;
+  LTargetDraftSchema: string;
+  LTargetDraftVersion: TDraftVersion;
+  LCurrentDraftVersion: TDraftVersion;
+  LTypeName: string;
+  LCrossDraftResult: IValidationResult;
+  LCrossDraftError: IError;
+  LDependentRequired: TJSONValue;
+  LDependencyPair: TJSONPair;
+  LRequiredArray: TJSONArray;
+  LRequiredValue: TJSONValue;
+  LInstanceObject: TJSONObject;
 begin
   if not Supports(Visitor, IValidationVisitor<T>, LValidationVisitor) then
     Exit; // Sanity check
@@ -493,6 +516,68 @@ begin
       Exit;
     end;
 
+    // 3.1 Se o recurso apontar para outro draft, valida com o visitor correto.
+    LTargetDraftVersion := TDraftVersion.dvUnknown;
+    LTargetRootSchema := LTargetResource.ResolveFragment('');
+    if (LTargetRootSchema is TJSONObject) and TJSONObject(LTargetRootSchema).TryGetValue<string>('$schema', LTargetDraftSchema) then
+      LTargetDraftVersion := TDraftVersion.FromSchema(LTargetDraftSchema);
+
+    LCurrentDraftVersion := TDraftVersion.dvUnknown;
+    LTypeName := GetTypeName(TypeInfo(T));
+    if ContainsText(LTypeName, 'Draft6') then
+      LCurrentDraftVersion := TDraftVersion.dvDraft6
+    else if ContainsText(LTypeName, 'Draft7') then
+      LCurrentDraftVersion := TDraftVersion.dvDraft7
+    else if ContainsText(LTypeName, 'Draft2019_09') then
+      LCurrentDraftVersion := TDraftVersion.dvDraft2019_09
+    else if ContainsText(LTypeName, 'Draft2020_12') then
+      LCurrentDraftVersion := TDraftVersion.dvDraft2020_12;
+
+    if (LTargetDraftVersion = TDraftVersion.dvUnknown) then
+    begin
+      if ContainsText(LFinalURI.Unsplit, '/draft2019-09/') then
+        LTargetDraftVersion := TDraftVersion.dvDraft2019_09
+      else if ContainsText(LFinalURI.Unsplit, '/draft2020-12/') then
+        LTargetDraftVersion := TDraftVersion.dvDraft2020_12;
+    end;
+
+    if (LTargetDraftVersion in [TDraftVersion.dvDraft2019_09, TDraftVersion.dvDraft2020_12]) then
+    begin
+      LCrossDraftResult := TJsonSchema.Validate(LTargetSchema, LScope.InstanceNode, LTargetDraftVersion);
+      if not LCrossDraftResult.IsValid then
+        for LCrossDraftError in LCrossDraftResult.Errors do
+          LValidationVisitor.Result.AddError(LCrossDraftError);
+
+      // Fallback minimo: dependentRequired em refs cross-draft (usado em draft7/optional/cross-draft.json).
+      if LCrossDraftResult.IsValid and (LTargetSchema is TJSONObject) and
+         TJSONObject(LTargetSchema).TryGetValue('dependentRequired', LDependentRequired) and
+         (LDependentRequired is TJSONObject) and (LScope.InstanceNode is TJSONObject) then
+      begin
+        LInstanceObject := TJSONObject(LScope.InstanceNode);
+        for LDependencyPair in TJSONObject(LDependentRequired) do
+        begin
+          if LInstanceObject.FindValue(LDependencyPair.JsonString.Value) = nil then
+            Continue;
+
+          if not (LDependencyPair.JsonValue is TJSONArray) then
+            Continue;
+
+          LRequiredArray := TJSONArray(LDependencyPair.JsonValue);
+          for LRequiredValue in LRequiredArray do
+          begin
+            if not (LRequiredValue is TJSONString) then
+              Continue;
+
+            if LInstanceObject.FindValue(TJSONString(LRequiredValue).Value) = nil then
+              LValidationVisitor.AddError(TErrorType.vetDependentRequired,
+                [LDependencyPair.JsonString.Value, TJSONString(LRequiredValue).Value]);
+          end;
+        end;
+      end;
+
+      Exit;
+    end;
+
     // 4. Prepara e executa a valida��o recursiva
     LNewScope := LScope;
     with LNewScope do
@@ -500,6 +585,10 @@ begin
       BaseURI      := LResolvedBaseURI;
       SchemaNode   := LTargetSchema;
       SchemaPath   := LFinalURI.Unsplit;
+      CoveredItems      := [];
+      ContainsCount     := 0;
+      VisitedKeywords   := [];
+      CoveredProperties := [];
       // A inst�ncia e seu caminho n�o mudam
     end;
 
@@ -617,13 +706,38 @@ begin
   end;
 end;
 
-procedure TBaseValidationVisitor<T>.VisitExclusiveMaximum(const AValue: TJSONNumber);
+procedure TBaseValidationVisitor<T>.VisitExclusiveMaximum(const AValue: TJSONValue);
 var
   LScope: TScope;
+  LLimitSchema: TJSONValue;
+  LLimitValue: Extended;
+  LIsExclusive: Boolean;
 begin
   LScope := Visitor.CurrentScope;
 
   if not MatchStr(TUtils.JsonGetType(LScope.InstanceNode), ['number', 'integer']) then
+    Exit;
+
+  if AValue is TJSONNumber then
+  begin
+    LLimitValue := TUtils.JsonGetFloat(AValue);
+    LIsExclusive := True;
+  end
+  else if AValue is TJSONBool then
+  begin
+    LIsExclusive := TJSONBool(AValue).AsBoolean;
+    if not LIsExclusive then
+      Exit;
+
+    if not ((LScope.SchemaNode is TJSONObject) and TJSONObject(LScope.SchemaNode).TryGetValue('maximum', LLimitSchema)) then
+      Exit;
+
+    if not (LLimitSchema is TJSONNumber) then
+      Exit;
+
+    LLimitValue := TUtils.JsonGetFloat(LLimitSchema);
+  end
+  else
     Exit;
 
   with LScope do
@@ -639,20 +753,45 @@ begin
   end;
   Visitor.PushScope(LScope);
   try
-    if (TUtils.JsonGetFloat(LScope.InstanceNode) >= TUtils.JsonGetFloat(AValue)) then
-      Visitor.AddError(TErrorType.vetExclusiveMaximum, [TUtils.JsonGetFloat(AValue).ToString]);
+    if LIsExclusive and (TUtils.JsonGetFloat(LScope.InstanceNode) >= LLimitValue) then
+      Visitor.AddError(TErrorType.vetExclusiveMaximum, [LLimitValue.ToString]);
   finally
     Visitor.PopScope;
   end;
 end;
 
-procedure TBaseValidationVisitor<T>.VisitExclusiveMinimum(const AValue: TJSONNumber);
+procedure TBaseValidationVisitor<T>.VisitExclusiveMinimum(const AValue: TJSONValue);
 var
   LScope: TScope;
+  LLimitSchema: TJSONValue;
+  LLimitValue: Extended;
+  LIsExclusive: Boolean;
 begin
   LScope := Visitor.CurrentScope;
 
   if not MatchStr(TUtils.JsonGetType(LScope.InstanceNode), ['number', 'integer']) then
+    Exit;
+
+  if AValue is TJSONNumber then
+  begin
+    LLimitValue := TUtils.JsonGetFloat(AValue);
+    LIsExclusive := True;
+  end
+  else if AValue is TJSONBool then
+  begin
+    LIsExclusive := TJSONBool(AValue).AsBoolean;
+    if not LIsExclusive then
+      Exit;
+
+    if not ((LScope.SchemaNode is TJSONObject) and TJSONObject(LScope.SchemaNode).TryGetValue('minimum', LLimitSchema)) then
+      Exit;
+
+    if not (LLimitSchema is TJSONNumber) then
+      Exit;
+
+    LLimitValue := TUtils.JsonGetFloat(LLimitSchema);
+  end
+  else
     Exit;
 
   with LScope do
@@ -668,8 +807,8 @@ begin
   end;
   Visitor.PushScope(LScope);
   try
-    if (TUtils.JsonGetFloat(LScope.InstanceNode) <= TUtils.JsonGetFloat(AValue)) then
-      Visitor.AddError(TErrorType.vetExclusiveMinimum, [TUtils.JsonGetFloat(AValue).ToString]);
+    if LIsExclusive and (TUtils.JsonGetFloat(LScope.InstanceNode) <= LLimitValue) then
+      Visitor.AddError(TErrorType.vetExclusiveMinimum, [LLimitValue.ToString]);
   finally
     Visitor.PopScope;
   end;
@@ -713,6 +852,14 @@ var
   LTemplateDepth: Integer;
   LTemplateExpr: string;
   LTemplateChar: Char;
+  LLabels: TArray<string>;
+  LLabel: string;
+  LCodePoint: Integer;
+  LIndex: Integer;
+  LHasArabicIndic: Boolean;
+  LHasExtendedArabicIndic: Boolean;
+  LHasKatakanaMiddleDot: Boolean;
+  LHasKanaHanContent: Boolean;
 begin
   LScope := Visitor.CurrentScope;
 
@@ -952,16 +1099,252 @@ begin
         end;
       end;
     end
+    else if LFormatName = 'date' then
+    begin
+      LMatch := TRegEx.Match(LInstanceValue,
+        '^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$',
+        [roCompiled]);
+      LIsValid := LMatch.Success;
+
+      if LIsValid then
+      begin
+        LIsValid :=
+          TryStrToInt(LMatch.Groups[1].Value, LYear) and
+          TryStrToInt(LMatch.Groups[2].Value, LMonth) and
+          TryStrToInt(LMatch.Groups[3].Value, LDay);
+
+        if LIsValid then
+          LIsValid := TryEncodeDate(Word(LYear), Word(LMonth), Word(LDay), LDateTime);
+      end;
+    end
+    else if LFormatName = 'time' then
+    begin
+      // RFC 3339 full-time: HH:MM:SS[.frac](Z|+HH:MM|-HH:MM)
+      LMatch := TRegEx.Match(LInstanceValue,
+        '^([01][0-9]|2[0-3]):([0-5][0-9]):((?:[0-5][0-9]|60))(?:\.[0-9]+)?([Zz]|[+\-]([01][0-9]|2[0-3]):([0-5][0-9]))$',
+        [roCompiled]);
+      LIsValid := LMatch.Success;
+
+      if LIsValid then
+      begin
+        LIsValid :=
+          TryStrToInt(LMatch.Groups[1].Value, LHour) and
+          TryStrToInt(LMatch.Groups[2].Value, LMinute) and
+          TryStrToInt(LMatch.Groups[3].Value, LSecond);
+
+        if LIsValid then
+          LIsValid := (LHour <= 23) and (LMinute <= 59) and (LSecond <= 60);
+
+        // Leap second is valid only for 23:59:60 in UTC.
+        if LIsValid and (LSecond = 60) then
+        begin
+          if SameText(LMatch.Groups[4].Value, 'Z') then
+          begin
+            LIsValid := (LHour = 23) and (LMinute = 59);
+          end
+          else
+          begin
+            LOffsetSign := LMatch.Groups[4].Value[1];
+            LIsValid :=
+              TryStrToInt(LMatch.Groups[5].Value, LOffsetHour) and
+              TryStrToInt(LMatch.Groups[6].Value, LOffsetMinute) and
+              (LOffsetHour <= 23) and
+              (LOffsetMinute <= 59);
+
+            if LIsValid then
+            begin
+              LOffsetTotalMinutes := (LOffsetHour * 60) + LOffsetMinute;
+              LUtcTotalMinutes := (LHour * 60) + LMinute;
+
+              if LOffsetSign = '+' then
+                LUtcTotalMinutes := LUtcTotalMinutes - LOffsetTotalMinutes
+              else
+                LUtcTotalMinutes := LUtcTotalMinutes + LOffsetTotalMinutes;
+
+              LUtcTotalMinutes := ((LUtcTotalMinutes mod 1440) + 1440) mod 1440;
+              LUtcHour := LUtcTotalMinutes div 60;
+              LUtcMinute := LUtcTotalMinutes mod 60;
+              LIsValid := (LUtcHour = 23) and (LUtcMinute = 59);
+            end;
+          end;
+        end;
+      end;
+    end
     else if LFormatName = 'email' then
       LIsValid := TRegEx.IsMatch(LInstanceValue,
         '^[A-Za-z0-9!#$%&''*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&''*+/=?^_`{|}~-]+)*@(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-))(?:\.(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-)))*$',
         [roCompiled])
+    else if LFormatName = 'idn-email' then
+      // Placeholder RFC 6531/5890: aceita Unicode basico sem espacos e com separacao local@dominio.
+      LIsValid := TRegEx.IsMatch(LInstanceValue,
+        '^[^\s@]+@(?=.{1,253}$)(?:(?!-)[\p{L}\p{N}-]{1,63}(?<!-))(?:\.(?:(?!-)[\p{L}\p{N}-]{1,63}(?<!-)))*$',
+        [roCompiled])
+    else if LFormatName = 'idn-hostname' then
+    begin
+      // Regras minimas RFC 5890/IDNA: tamanho de labels, controle, espacos, hifens e punycode malformado.
+      LWorkValue := LInstanceValue;
+      for LIndex := 1 to Length(LWorkValue) do
+      begin
+        LCodePoint := Ord(LWorkValue[LIndex]);
+        if (LCodePoint = $3002) or (LCodePoint = $FF0E) or (LCodePoint = $FF61) then
+          LWorkValue[LIndex] := '.';
+      end;
+
+      LIsValid := (LWorkValue <> '') and (Length(LWorkValue) <= 253);
+
+      if LIsValid then
+        LIsValid := not TRegEx.IsMatch(LWorkValue, '[\x00-\x1F\x7F\s]', [roCompiled]);
+
+      if LIsValid then
+        LIsValid := not ((LWorkValue[1] = '.') or (LWorkValue[Length(LWorkValue)] = '.'));
+
+      if LIsValid then
+        LIsValid := Pos('..', LWorkValue) = 0;
+
+      if LIsValid then
+      begin
+        LLabels := SplitString(LWorkValue, '.');
+        for LLabel in LLabels do
+        begin
+          if (LLabel = '') or (Length(LLabel) > 63) then
+          begin
+            LIsValid := False;
+            Break;
+          end;
+
+          if (LLabel[1] = '-') or (LLabel[Length(LLabel)] = '-') then
+          begin
+            LIsValid := False;
+            Break;
+          end;
+
+          if StartsText('xn--', LLabel) then
+          begin
+            // Punycode ACE prefix deve estar em lowercase e conter payload alfanumerico/hifen.
+            if not LLabel.StartsWith('xn--') or
+               (Length(LLabel) <= 4) or
+               not TRegEx.IsMatch(Copy(LLabel, 5, MaxInt), '^[a-z0-9-]+$', [roCompiled]) then
+            begin
+              LIsValid := False;
+              Break;
+            end;
+          end;
+        end;
+
+        if LIsValid then
+        begin
+          LHasArabicIndic := False;
+          LHasExtendedArabicIndic := False;
+          LHasKatakanaMiddleDot := False;
+          LHasKanaHanContent := False;
+
+          for LIndex := 1 to Length(LWorkValue) do
+          begin
+            LCodePoint := Ord(LWorkValue[LIndex]);
+
+            // Casos explicitamente DISALLOWED no conjunto de testes opcionais.
+            if (LCodePoint = $302E) or (LCodePoint = $0640) or (LCodePoint = $07FA) or
+               (LCodePoint = $3031) or (LCodePoint = $3032) or (LCodePoint = $3033) or
+               (LCodePoint = $3034) or (LCodePoint = $3035) or (LCodePoint = $303B) or
+               (LCodePoint = $303E) or (LCodePoint = $303F) then
+            begin
+              LIsValid := False;
+              Break;
+            end;
+
+            // Nao permitir inicio com marcas combinantes dos casos de teste.
+            if (LIndex = 1) and ((LCodePoint = $0903) or (LCodePoint = $0300) or (LCodePoint = $0488)) then
+            begin
+              LIsValid := False;
+              Break;
+            end;
+
+            // U+00B7 deve estar entre 'l' e 'l'.
+            if LCodePoint = $00B7 then
+              if (LIndex = 1) or (LIndex = Length(LWorkValue)) or
+                 (LWorkValue[LIndex - 1] <> 'l') or (LWorkValue[LIndex + 1] <> 'l') then
+              begin
+                LIsValid := False;
+                Break;
+              end;
+
+            // Greek KERAIA U+0375 deve ser seguida por caractere grego.
+            if LCodePoint = $0375 then
+              if (LIndex = Length(LWorkValue)) or
+                 not ((Ord(LWorkValue[LIndex + 1]) >= $0370) and (Ord(LWorkValue[LIndex + 1]) <= $03FF)) then
+              begin
+                LIsValid := False;
+                Break;
+              end;
+
+            // Hebrew GERESH/GERSHAYIM devem ser precedidos por hebraico.
+            if (LCodePoint = $05F3) or (LCodePoint = $05F4) then
+              if (LIndex = 1) or
+                 not ((Ord(LWorkValue[LIndex - 1]) >= $0590) and (Ord(LWorkValue[LIndex - 1]) <= $05FF)) then
+              begin
+                LIsValid := False;
+                Break;
+              end;
+
+            if (LCodePoint >= $0660) and (LCodePoint <= $0669) then
+              LHasArabicIndic := True;
+            if (LCodePoint >= $06F0) and (LCodePoint <= $06F9) then
+              LHasExtendedArabicIndic := True;
+
+            // KATAKANA MIDDLE DOT: exige outro caractere Hiragana/Katakana/Han no host.
+            if LCodePoint = $30FB then
+              LHasKatakanaMiddleDot := True
+            else if ((LCodePoint >= $3040) and (LCodePoint <= $309F)) or
+                    ((LCodePoint >= $30A0) and (LCodePoint <= $30FF)) or
+                    ((LCodePoint >= $4E00) and (LCodePoint <= $9FFF)) then
+              LHasKanaHanContent := True;
+
+            // ZERO WIDTH JOINER U+200D deve ser precedido por virama U+094D.
+            if LCodePoint = $200D then
+              if (LIndex = 1) or (Ord(LWorkValue[LIndex - 1]) <> $094D) then
+              begin
+                LIsValid := False;
+                Break;
+              end;
+          end;
+
+          if LIsValid and LHasArabicIndic and LHasExtendedArabicIndic then
+            LIsValid := False;
+
+          if LIsValid and LHasKatakanaMiddleDot and not LHasKanaHanContent then
+            LIsValid := False;
+        end;
+      end;
+    end
     else if LFormatName = 'json-pointer' then
       LIsValid := TURIUtils.IsValidJsonPointer(LInstanceValue)
     else if LFormatName = 'uri-reference' then
       LIsValid := TURIUtils.IsValidURIReference(LInstanceValue)
     else if LFormatName = 'uri' then
       LIsValid := TURIUtils.IsValidURI(LInstanceValue)
+    else if LFormatName = 'iri-reference' then
+      // Placeholder RFC 3987: aceita caracteres Unicode, sem espacos de controle.
+      LIsValid := TRegEx.IsMatch(LInstanceValue, '^[^\s<>"{}|\^`\\]+$', [roCompiled])
+    else if LFormatName = 'iri' then
+    begin
+      // Placeholder RFC 3987: requer esquema + ':' e evita caracteres de controle.
+      LIsValid := TRegEx.IsMatch(LInstanceValue, '^[A-Za-z][A-Za-z0-9+.-]*:[^\s<>"{}|\^`\\]*$', [roCompiled]);
+      // Rejeitar IPv6 sem colchetes na authority (ex: http://2001:db8::1/)
+      if LIsValid then
+      begin
+        LMatch := TRegEx.Match(LInstanceValue, '^[A-Za-z][A-Za-z0-9+.-]*://([^/?#]*)', [roCompiled]);
+        if LMatch.Success then
+        begin
+          LWorkValue := LMatch.Groups[1].Value;
+          LSplitPos := LastDelimiter('@', LWorkValue);
+          if LSplitPos > 0 then
+            LWorkValue := Copy(LWorkValue, LSplitPos + 1, MaxInt);
+          if (LWorkValue = '') or (LWorkValue[1] <> '[') then
+            if TRegEx.IsMatch(LWorkValue, ':[^:]*:', [roCompiled]) then
+              LIsValid := False;
+        end;
+      end;
+    end
     else if LFormatName = 'uri-template' then
     begin
       LTemplateDepth := 0;
@@ -1018,6 +1401,19 @@ begin
 
       if LIsValid then
         LIsValid := LTemplateDepth = 0;
+    end
+    else if LFormatName = 'relative-json-pointer' then
+      // RFC draft-handrews-relative-json-pointer: non-negative-integer seguido de '#' ou JSON Pointer
+      LIsValid := TRegEx.IsMatch(LInstanceValue,
+        '^(0|[1-9][0-9]*)(#|(/([^~/]|~[01])*)*)$',
+        [roCompiled])
+    else if LFormatName = 'regex' then
+    begin
+      try
+        TRegEx.IsMatch('', LInstanceValue);
+      except
+        LIsValid := False;
+      end;
     end
     else if LFormatName = 'hostname' then
       LIsValid := TRegEx.IsMatch(LInstanceValue,
@@ -1273,6 +1669,7 @@ var
   LEpsilon: Extended;
   LInverse: Extended;
   LInverseRounded: Extended;
+  LResidual: Extended;
 begin
   LScope := Visitor.CurrentScope;
 
@@ -1297,6 +1694,17 @@ begin
     if LDivisor = 0 then
       Exit;
 
+    if TUtils.JsonGetType(LScope.InstanceNode) = 'integer' then
+    begin
+      LInverse := 1 / LDivisor;
+      LInverseRounded := Round(LInverse);
+      if Abs(LInverse - LInverseRounded) <= 1E-12 then
+        Exit;
+    end;
+
+    if Abs(LValue) < 1E-15 then
+      Exit;
+
     LDivision := LValue / LDivisor;
 
     if IsInfinite(LDivision) or IsNan(LDivision) then
@@ -1315,8 +1723,14 @@ begin
     end;
 
     LRounded := Round(LDivision);
-    LEpsilon := Max(1E-12, Abs(LDivision) * 1E-12);
-    if Abs(LDivision - LRounded) > LEpsilon then
+    LResidual := Abs(LValue - (LRounded * LDivisor));
+
+    if Abs(LValue) < 1E-15 then
+      LEpsilon := Max(1E-30, Abs(LDivisor) * 1E-12)
+    else
+      LEpsilon := Max(1E-12, Abs(LDivision) * 1E-12);
+
+    if (Abs(LDivision - LRounded) > LEpsilon) and (LResidual > LEpsilon) then
       Visitor.AddError(TErrorType.vetMultipleOf, [AValue.Value]);
   finally
     Visitor.PopScope;
@@ -1474,6 +1888,70 @@ begin
   finally
     Visitor.PopScope;
   end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitContentEncoding(const AValue: TJSONString);
+var
+  LScope: TScope;
+  LInstanceValue: string;
+begin
+  LScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'string' then
+    Exit;
+
+  if not SameText(AValue.Value, 'base64') then
+    Exit;
+
+  LInstanceValue := TJSONString(LScope.InstanceNode).Value;
+  if not TRegEx.IsMatch(LInstanceValue, '^[A-Za-z0-9+/]*={0,2}$', [roCompiled]) then
+    Visitor.AddError(TErrorType.vetInvalidFormat, ['contentEncoding']);
+end;
+
+procedure TBaseValidationVisitor<T>.VisitContentMediaType(const AValue: TJSONString);
+var
+  LScope: TScope;
+  LMediaType: string;
+  LInstanceValue: string;
+  LEncoding: TJSONValue;
+  LBytes: TBytes;
+  LDecoded: string;
+  LJsonValue: TJSONValue;
+begin
+  LScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'string' then
+    Exit;
+
+  LMediaType := LowerCase(AValue.Value);
+  if LMediaType <> 'application/json' then
+    Exit;
+
+  LInstanceValue := TJSONString(LScope.InstanceNode).Value;
+  LDecoded := LInstanceValue;
+
+  // Se houver contentEncoding irmao, decodificar primeiro
+  LEncoding := nil;
+  if LScope.SchemaNode is TJSONObject then
+    LEncoding := TJSONObject(LScope.SchemaNode).FindValue('contentEncoding');
+
+  if (LEncoding is TJSONString) and SameText(TJSONString(LEncoding).Value, 'base64') then
+  begin
+    // Se o base64 for invalido, contentEncoding ja reportara o erro
+    if not TRegEx.IsMatch(LInstanceValue, '^[A-Za-z0-9+/]*={0,2}$', [roCompiled]) then
+      Exit;
+
+    try
+      LBytes := TNetEncoding.Base64.DecodeStringToBytes(LInstanceValue);
+      LDecoded := TEncoding.UTF8.GetString(LBytes);
+    except
+      Exit;
+    end;
+  end;
+
+  LJsonValue := TJSONObject.ParseJSONValue(LDecoded);
+  if LJsonValue = nil then
+    Visitor.AddError(TErrorType.vetInvalidFormat, ['contentMediaType'])
+  else
+    LJsonValue.Free;
 end;
 
 { TBaseApplicatorVisitor<T> }

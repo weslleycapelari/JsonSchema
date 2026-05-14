@@ -38,6 +38,7 @@ type
   TBaseRegistryCoreVisitor = class(TBase<TRegistryVisitor>, IBaseCoreVisitor<TRegistryVisitor>)
     [VisitorKeyword('$schema')]
     procedure VisitSchema(const AValue: TJSONString);
+    [VisitorKeyword('id')]
     [VisitorKeyword('$id')]
     procedure VisitId(const AValue: TJSONString);
     [VisitorKeyword('$ref')]
@@ -95,9 +96,9 @@ type
     procedure VisitConst(const AValue: TJSONValue);
     procedure VisitMultipleOf(const AValue: TJSONNumber);
     procedure VisitMaximum(const AValue: TJSONNumber);
-    procedure VisitExclusiveMaximum(const AValue: TJSONNumber);
+    procedure VisitExclusiveMaximum(const AValue: TJSONValue);
     procedure VisitMinimum(const AValue: TJSONNumber);
-    procedure VisitExclusiveMinimum(const AValue: TJSONNumber);
+    procedure VisitExclusiveMinimum(const AValue: TJSONValue);
     procedure VisitMaxLength(const AValue: TJSONNumber);
     procedure VisitMinLength(const AValue: TJSONNumber);
     procedure VisitPattern(const AValue: TJSONString);
@@ -205,17 +206,22 @@ begin
   AMappedFilePath := '';
   LCanonicalURI := LowerCase(ARemoteURI);
 
-  if not ((LCanonicalURI = 'http://json-schema.org/draft-06/schema') or
-          (LCanonicalURI = 'https://json-schema.org/draft-06/schema')) then
-    Exit(False);
-
   LRepoRootPath := TPath.GetFullPath(
     TPath.Combine(
       TPath.Combine(
         TPath.Combine(ExtractFilePath(ParamStr(0)), '..'),
         '..'),
       '..'));
-  LCandidatePath := TPath.Combine(LRepoRootPath, 'test\schemas\remotes\draft6\schema.json');
+
+  if (LCanonicalURI = 'http://json-schema.org/draft-06/schema') or
+     (LCanonicalURI = 'https://json-schema.org/draft-06/schema') then
+    LCandidatePath := TPath.Combine(LRepoRootPath, 'test\schemas\remotes\draft6\schema.json')
+  else if (LCanonicalURI = 'http://json-schema.org/draft-07/schema') or
+          (LCanonicalURI = 'https://json-schema.org/draft-07/schema') then
+    LCandidatePath := TPath.Combine(LRepoRootPath, 'test\schemas\remotes\draft7\schema.json')
+  else
+    Exit(False);
+
   if not FileExists(LCandidatePath) then
     Exit(False);
 
@@ -349,6 +355,7 @@ begin
   Result := [
     '$schema',
     '$id',
+    'id',
     '$ref',
     'properties',
     'items'
@@ -488,6 +495,7 @@ begin
   // Marca a palavra-chave como visitada para que o Walker n�o a processe duas vezes
   // se a preced�ncia for usada.
   Visitor.AddVisitedKeyword('$id');
+  Visitor.AddVisitedKeyword('id');
 end;
 
 procedure TBaseRegistryCoreVisitor.VisitRef(const AValue: TJSONString);
@@ -527,12 +535,12 @@ begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitExclusiveMaximum(const AValue: TJSONNumber);
+procedure TBaseRegistryValidationVisitor.VisitExclusiveMaximum(const AValue: TJSONValue);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitExclusiveMinimum(const AValue: TJSONNumber);
+procedure TBaseRegistryValidationVisitor.VisitExclusiveMinimum(const AValue: TJSONValue);
 begin
 
 end;

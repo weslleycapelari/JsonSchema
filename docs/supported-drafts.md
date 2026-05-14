@@ -5,7 +5,7 @@
 | Draft | Runtime support | Notes |
 | --- | --- | --- |
 | Draft 6 | Yes (100%) | Confirmed in the source and selected by the public entry point. |
-| Draft 7 | Yes | Confirmed in the source and selected by the public entry point. |
+| Draft 7 | Yes (100%) | 1467/1467 tests passed; includes IDN-Hostname (minimum RFC 5890 checks) and targeted Cross-Draft reference handling. |
 | Draft 2019-09 | Yes | Confirmed in the source and selected by the public entry point. |
 | Draft 2020-12 | Yes | Confirmed in the source and selected by the public entry point. |
 

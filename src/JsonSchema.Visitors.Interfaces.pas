@@ -78,12 +78,12 @@ type
     procedure VisitEnum(const AValue: TJSONArray);
     procedure VisitConst(const AValue: TJSONValue);
 
-    // Numérico
+    // Numï¿½rico
     procedure VisitMultipleOf(const AValue: TJSONNumber);
     procedure VisitMaximum(const AValue: TJSONNumber);
-    procedure VisitExclusiveMaximum(const AValue: TJSONNumber);
+    procedure VisitExclusiveMaximum(const AValue: TJSONValue);
     procedure VisitMinimum(const AValue: TJSONNumber);
-    procedure VisitExclusiveMinimum(const AValue: TJSONNumber);
+    procedure VisitExclusiveMinimum(const AValue: TJSONValue);
 
     // String
     procedure VisitMaxLength(const AValue: TJSONNumber);

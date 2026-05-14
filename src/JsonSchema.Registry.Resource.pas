@@ -68,6 +68,7 @@ var
   LCurrentNode: TJSONValue;
   LIndex: Integer;
   LDecodedId: string;
+  LLegacyId: string;
   LCount: Integer;
   LPointerPath: string;
 begin
@@ -82,8 +83,11 @@ begin
   // Decodifica a string do fragmento antes de interpret�-la
   LPointerPath := TNetEncoding.URL.Decode(LPointerPath);
 
+  if LPointerPath.StartsWith('#') then
+    LPointerPath := LPointerPath.Substring(1);
+
   // Caso 2: Fragmento � um JSON Pointer.
-  if AFragment.StartsWith('/') then
+  if LPointerPath.StartsWith('/') then
   begin
     LCurrentNode := FRootSchema;
     LSegments := LPointerPath.Substring(1).Split(['/']);
@@ -98,6 +102,13 @@ begin
          (LDecodedId <> '') then
       begin
         AResolvedBaseURI := TURIReference.From(LDecodedId).ResolveWith(TURIReference.From(AResolvedBaseURI)).Unsplit;
+      end;
+
+      if (LCurrentNode is TJSONObject) and
+         TJSONObject(LCurrentNode).TryGetValue<string>('id', LLegacyId) and
+         (LLegacyId <> '') then
+      begin
+        AResolvedBaseURI := TURIReference.From(LLegacyId).ResolveWith(TURIReference.From(AResolvedBaseURI)).Unsplit;
       end;
 
       LDecodedSegment := '';
@@ -145,7 +156,6 @@ begin
   // Caso 3: Fragmento � uma �ncora de nome simples.
   else
   begin
-    // Remove o '#' inicial e busca no dicion�rio de �ncoras.
     FAnchors.TryGetValue(LPointerPath, Result);
     // Se n�o encontrou em �ncoras normais, tente as din�micas (para o caso de $ref as usar)
     if not Assigned(Result) then
