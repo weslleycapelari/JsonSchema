@@ -13,6 +13,7 @@ Delphi library for JSON Schema validation with confirmed runtime support for Dra
 ## Confirmed scope
 
 - Runtime confirmed: Draft 6, Draft 7, Draft 2019-09, and Draft 2020-12.
+- Draft 6: 100% Compliant (1151/1151 tests passed).
 - Historical test fixtures: Draft 3, Draft 4, and draft-next appear in the test fixtures, but they are not confirmed runtime support.
 
 ## Quick start and validation

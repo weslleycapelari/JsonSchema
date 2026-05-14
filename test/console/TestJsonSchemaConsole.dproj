@@ -63,6 +63,9 @@
         <VerInfo_Locale>1046</VerInfo_Locale>
         <VerInfo_Keys>CompanyName=;FileDescription=;FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=;ProductVersion=1.0.0.0;Comments=;CFBundleName=</VerInfo_Keys>
         <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;DUnitX;$(DCC_Namespace)</DCC_Namespace>
+        <DCC_UnitSearchPath>;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_IncludePath>;$(DCC_IncludePath)</DCC_IncludePath>
+        <DCC_LibraryPath>;$(DCC_LibraryPath)</DCC_LibraryPath>
         <Icon_MainIcon>$(BDS)\bin\delphi_PROJECTICON.ico</Icon_MainIcon>
         <Icns_MainIcns>$(BDS)\bin\delphi_PROJECTICNS.icns</Icns_MainIcns>
         <DCC_DcpOutput>.\.trash\.dcp</DCC_DcpOutput>

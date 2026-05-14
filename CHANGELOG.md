@@ -4,7 +4,7 @@ This file records relevant project changes.
 
 ## [Unreleased]
 
-### Added
+### Highlights
 
 - Governance baseline documentation for the README, contributing guide, templates, and agent guidance.
 - Quality continuity docs for the pull request checklist and weekly audit routine.
@@ -25,6 +25,7 @@ Initial public stable release of the project.
 
 - Delphi library for JSON Schema validation.
 - Runtime support confirmed for Draft 6, Draft 7, Draft 2019-09, and Draft 2020-12.
+- Full compliance for JSON Schema Draft 6 achieved (1151/1151 tests passed).
 - enUS and ptBR translations.
 - Architecture based on walkers, visitors, and a registry for schema processing.
 - DUnit test project.

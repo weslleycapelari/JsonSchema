@@ -90,7 +90,7 @@ type
     [VisitorKeyword('const')]
     procedure VisitConst(const AValue: TJSONValue);
 
-    // Numérico
+    // Numï¿½rico
     [VisitorKeyword('multipleOf')]
     procedure VisitMultipleOf(const AValue: TJSONNumber);
     [VisitorKeyword('maximum')]
@@ -133,13 +133,17 @@ type
 
   end;
 
-  TValidationVisitor<T> = class(TBaseVisitor<T>, IValidationVisitor<T>)
+  TValidationVisitor<T> = class(TBaseVisitor<T>, IValidationVisitor<T>, IRefResolutionGuard)
   protected
     FResult: IValidationResult;
     FRegistry: TRegistryVisitor;
+    FOwnsRegistry: Boolean;
     FLanguage: TLanguage;
     FCustomHint: TJSONValue;
     FTranslateMethod: TDictionary<TErrorType, TTranslateFunc>;
+    FRefResolutionStack: TStack<string>;
+    FRefResolutionSet: TDictionary<string, Byte>;
+    FMaxRefResolutionDepth: Integer;
 
     function DispatchTranslate(const AErrorType: TErrorType): TErrorMessage;
     procedure PopulateTranslateMethods;
@@ -155,6 +159,8 @@ type
     procedure AddError(const AErrorType: TErrorType); overload;
     function FindCustomHint(AErrorType: TErrorType): string;
     function Result: IValidationResult;
+    function TryEnterRefResolution(const AResolvedRef: string; out AReason: string): Boolean;
+    procedure LeaveRefResolution(const AResolvedRef: string);
   end;
 
 implementation
@@ -165,9 +171,11 @@ uses
   System.TypInfo,
   System.SysUtils,
   System.StrUtils,
+  System.DateUtils,
   System.RegularExpressions,
   JsonSchema.Walker,
   JsonSchema.Registry.Uri,
+  JsonSchema.Registry.Utils,
   JsonSchema.Registry.Resource;
 
 { TValidationVisitor<T> }
@@ -215,8 +223,12 @@ begin
 
   FResult          := TValidationResult.Create;
   FRegistry        := TRegistryVisitor.Create(ASchema, AData, ABaseURI);
+  FOwnsRegistry    := True;
   FCustomHint      := ACustomHint;
   FTranslateMethod := TDictionary<TErrorType, TTranslateFunc>.Create;
+  FRefResolutionStack := TStack<string>.Create;
+  FRefResolutionSet := TDictionary<string, Byte>.Create;
+  FMaxRefResolutionDepth := 100;
 
   Language(TLanguage.lang_ptBR);
 
@@ -226,8 +238,11 @@ end;
 
 destructor TValidationVisitor<T>.Destroy;
 begin
+  FRefResolutionSet.Free;
+  FRefResolutionStack.Free;
   FTranslateMethod.Free;
-  FRegistry.Free;
+  if FOwnsRegistry then
+    FRegistry.Free;
   inherited;
 end;
 
@@ -254,25 +269,25 @@ begin
     Exit;
 
   // Normaliza e quebra o caminho: '#.relacao_empregados[0].cbo' -> ['relacao_empregados', 'cbo']
-  // Precisamos de uma função robusta para isso.
+  // Precisamos de uma funï¿½ï¿½o robusta para isso.
   LPathSegments := TUtils.ParseInstancePath(LScope.InstancePath);
 
   LCurrentNode := FCustomHint;
   for LSegment in LPathSegments do
   begin
     if not (LCurrentNode is TJSONObject) then
-      Exit; // Não podemos navegar mais fundo
+      Exit; // Nï¿½o podemos navegar mais fundo
 
     if not (LCurrentNode as TJSONObject).TryGetValue(LSegment, LCurrentNode) then
     begin
       if (LCurrentNode as TJSONObject).TryGetValue(GetEnumName(TypeInfo(TErrorType), Ord(TErrorType.vetUnknown)), LCurrentNode) then
-        Break // Não encontra um erro específico, mas encontra um erro genérico
+        Break // Nï¿½o encontra um erro especï¿½fico, mas encontra um erro genï¿½rico
       else
-        Exit; // Caminho não encontrado no JSON de dicas
+        Exit; // Caminho nï¿½o encontrado no JSON de dicas
     end;
   end;
 
-  // Chegamos ao nó final do caminho. Agora procuramos pelo tipo de erro.
+  // Chegamos ao nï¿½ final do caminho. Agora procuramos pelo tipo de erro.
   if (LCurrentNode is TJSONObject) then
   begin
     LErrorKeyword := GetEnumName(TypeInfo(TErrorType), Ord(AErrorType)); // ex: vetPattern
@@ -354,9 +369,49 @@ begin
   Result := FRegistry;
 end;
 
+procedure TValidationVisitor<T>.LeaveRefResolution(const AResolvedRef: string);
+var
+  LTopRef: string;
+begin
+  if FRefResolutionStack.Count = 0 then
+  begin
+    FRefResolutionSet.Remove(AResolvedRef);
+    Exit;
+  end;
+
+  LTopRef := FRefResolutionStack.Peek;
+  if SameText(LTopRef, AResolvedRef) then
+    FRefResolutionStack.Pop
+  else
+    FRefResolutionSet.Remove(AResolvedRef);
+
+  FRefResolutionSet.Remove(AResolvedRef);
+end;
+
 function TValidationVisitor<T>.Result: IValidationResult;
 begin
   Result := FResult;
+end;
+
+function TValidationVisitor<T>.TryEnterRefResolution(const AResolvedRef: string; out AReason: string): Boolean;
+begin
+  AReason := '';
+
+  if FRefResolutionStack.Count >= FMaxRefResolutionDepth then
+  begin
+    AReason := Format('Maximum call stack size exceeded while resolving reference "%s".', [AResolvedRef]);
+    Exit(False);
+  end;
+
+  if FRefResolutionSet.ContainsKey(AResolvedRef) then
+  begin
+    AReason := Format('Maximum call stack size exceeded while resolving cyclic reference "%s".', [AResolvedRef]);
+    Exit(False);
+  end;
+
+  FRefResolutionSet.Add(AResolvedRef, 1);
+  FRefResolutionStack.Push(AResolvedRef);
+  Result := True;
 end;
 
 { TBaseCoreVisitor<T> }
@@ -375,9 +430,11 @@ end;
 procedure TBaseCoreVisitor<T>.VisitId(const AValue: TJSONString);
 var
   LScope: TScope;
+  LResolvedURI: TURIReference;
 begin
   LScope := Visitor.CurrentScope;
-  LScope.BaseURI := AValue.Value;
+  LResolvedURI := TURIReference.From(AValue.Value).ResolveWith(TURIReference.From(LScope.BaseURI));
+  LScope.BaseURI := LResolvedURI.Unsplit;
 
   Visitor.UpdateScope(LScope);
 end;
@@ -392,6 +449,11 @@ var
   LWalker: IWalker;
   LNewScope: TScope;
   LValidationVisitor: IValidationVisitor<T>;
+  LResolvedBaseURI: string;
+  LRefGuard: IRefResolutionGuard;
+  LGuardReason: string;
+  LGuardKey: string;
+  LGuardEntered: Boolean;
 begin
   if not Supports(Visitor, IValidationVisitor<T>, LValidationVisitor) then
     Exit; // Sanity check
@@ -399,45 +461,58 @@ begin
   LScope := Visitor.CurrentScope;
   LRefString := AValue.Value;
 
-  // 1. Resolve a URI da referência
+  // 1. Resolve a URI da referï¿½ncia
   LFinalURI := TURIReference.From(LRefString).ResolveWith(TURIReference.From(LScope.BaseURI));
+  LGuardKey := LFinalURI.Unsplit + '|' + LScope.InstancePath;
+  LGuardEntered := False;
 
-  // 2. Busca o recurso de schema no Registry
-  if not LValidationVisitor.Registry.TryFindResource(LFinalURI.Unsplit, LTargetResource) then
+  if Supports(Visitor, IRefResolutionGuard, LRefGuard) then
   begin
-    Visitor.AddError(TErrorType.vetUnresolvedReference, [LFinalURI.Unsplit]);
-    Exit;
+    if not LRefGuard.TryEnterRefResolution(LGuardKey, LGuardReason) then
+    begin
+      Visitor.AddError(TErrorType.vetUnresolvedReference, [LGuardReason]);
+      Exit;
+    end;
+    LGuardEntered := True;
   end;
 
-  // 3. Resolve o fragmento (#/... ou #anchor) dentro do recurso
-  LTargetSchema := LTargetResource.ResolveFragment(LFinalURI.Fragment);
-
-  if not Assigned(LTargetSchema) then
-  begin
-    Visitor.AddError(TErrorType.vetUnresolvedReference, [LFinalURI.Unsplit]);
-    Exit;
-  end;
-
-  // 4. Prepara e executa a validação recursiva
-  LNewScope := LScope;
-  with LNewScope do
-  begin
-    BaseURI      := LTargetResource.BaseURI.Unsplit;
-    SchemaNode   := LTargetSchema;
-    SchemaPath   := LFinalURI.Unsplit;
-    // A instância e seu caminho não mudam
-  end;
-
-  Visitor.UpdateScope(LNewScope);
   try
-    LWalker := TWalker<T>.Create(LTargetSchema, Visitor);
-    LWalker.Walk;
+    // 2. Busca o recurso de schema no Registry
+    if not LValidationVisitor.Registry.TryFindResource(LFinalURI.Unsplit, LTargetResource) then
+    begin
+      Visitor.AddError(TErrorType.vetUnresolvedReference, [LFinalURI.Unsplit]);
+      Exit;
+    end;
+
+    // 3. Resolve o fragmento (#/... ou #anchor) dentro do recurso
+    LTargetSchema := LTargetResource.ResolveFragment(LFinalURI.Fragment, LResolvedBaseURI);
+
+    if not Assigned(LTargetSchema) then
+    begin
+      Visitor.AddError(TErrorType.vetUnresolvedReference, [LFinalURI.Unsplit]);
+      Exit;
+    end;
+
+    // 4. Prepara e executa a validaï¿½ï¿½o recursiva
+    LNewScope := LScope;
+    with LNewScope do
+    begin
+      BaseURI      := LResolvedBaseURI;
+      SchemaNode   := LTargetSchema;
+      SchemaPath   := LFinalURI.Unsplit;
+      // A instï¿½ncia e seu caminho nï¿½o mudam
+    end;
+
+    Visitor.PushScope(LNewScope);
+    try
+      LWalker := TWalker<T>.Create(LTargetSchema, Visitor);
+      LWalker.Walk;
+    finally
+      Visitor.PopScope;
+    end;
   finally
-    // A propagação de anotações é crucial
-    //LNewScope := Visitor.PopScope;
-    //LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
-    //LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
-    //Visitor.UpdateScope(LScope);
+    if LGuardEntered then
+      LRefGuard.LeaveRefResolution(LGuardKey);
   end;
 end;
 
@@ -603,6 +678,41 @@ end;
 procedure TBaseValidationVisitor<T>.VisitFormat(const AValue: TJSONString);
 var
   LScope: TScope;
+  LFormatName: string;
+  LInstanceValue: string;
+  LIsValid: Boolean;
+  LParts: TArray<string>;
+  LLeftParts: TArray<string>;
+  LRightParts: TArray<string>;
+  LPart: string;
+  LWorkValue: string;
+  LLeftValue: string;
+  LRightValue: string;
+  LNumber: Integer;
+  LSplitPos: Integer;
+  LLastColon: Integer;
+  LIPv4Tail: string;
+  LHextetCount: Integer;
+  LExpectedHextets: Integer;
+  LHasCompression: Boolean;
+  LDateTime: TDateTime;
+  LMatch: TMatch;
+  LYear: Integer;
+  LMonth: Integer;
+  LDay: Integer;
+  LHour: Integer;
+  LMinute: Integer;
+  LSecond: Integer;
+  LOffsetHour: Integer;
+  LOffsetMinute: Integer;
+  LUtcTotalMinutes: Integer;
+  LOffsetTotalMinutes: Integer;
+  LUtcHour: Integer;
+  LUtcMinute: Integer;
+  LOffsetSign: Char;
+  LTemplateDepth: Integer;
+  LTemplateExpr: string;
+  LTemplateChar: Char;
 begin
   LScope := Visitor.CurrentScope;
 
@@ -622,8 +732,300 @@ begin
   end;
   Visitor.PushScope(LScope);
   try
-//    if (TUtils.JsonGetFloat(LScope.InstanceNode) <= TUtils.JsonGetFloat(AValue)) then
-//      Visitor.AddError(TErrorType.vetExclusiveMinimum, [TUtils.JsonGetFloat(AValue).ToString]);
+    LFormatName := LowerCase(AValue.Value);
+    LInstanceValue := TJSONString(LScope.InstanceNode).Value;
+    LIsValid := True;
+
+    if LFormatName = 'ipv4' then
+    begin
+      LParts := SplitString(LInstanceValue, '.');
+      LIsValid := Length(LParts) = 4;
+
+      if LIsValid then
+        for LPart in LParts do
+        begin
+          if (LPart = '') or not TRegEx.IsMatch(LPart, '^\d+$') then
+          begin
+            LIsValid := False;
+            Break;
+          end;
+
+          if (Length(LPart) > 1) and (LPart[1] = '0') then
+          begin
+            LIsValid := False;
+            Break;
+          end;
+
+          if not TryStrToInt(LPart, LNumber) or (LNumber < 0) or (LNumber > 255) then
+          begin
+            LIsValid := False;
+            Break;
+          end;
+        end;
+    end
+    else if LFormatName = 'ipv6' then
+    begin
+      LWorkValue := LInstanceValue;
+      LExpectedHextets := 8;
+      LIsValid := LWorkValue <> '';
+
+      if LIsValid and (Pos('.', LWorkValue) > 0) then
+      begin
+        LLastColon := LastDelimiter(':', LWorkValue);
+        if LLastColon = 0 then
+          LIsValid := False
+        else
+        begin
+          LIPv4Tail := Copy(LWorkValue, LLastColon + 1, MaxInt);
+          LParts := SplitString(LIPv4Tail, '.');
+          LIsValid := Length(LParts) = 4;
+
+          if LIsValid then
+            for LPart in LParts do
+            begin
+              if (LPart = '') or not TRegEx.IsMatch(LPart, '^\d+$') then
+              begin
+                LIsValid := False;
+                Break;
+              end;
+
+              if (Length(LPart) > 1) and (LPart[1] = '0') then
+              begin
+                LIsValid := False;
+                Break;
+              end;
+
+              if not TryStrToInt(LPart, LNumber) or (LNumber < 0) or (LNumber > 255) then
+              begin
+                LIsValid := False;
+                Break;
+              end;
+            end;
+
+          if LIsValid then
+          begin
+            LExpectedHextets := 6;
+            if (LLastColon > 1) and (LWorkValue[LLastColon - 1] = ':') then
+              LWorkValue := Copy(LWorkValue, 1, LLastColon)
+            else
+              LWorkValue := Copy(LWorkValue, 1, LLastColon - 1);
+          end;
+        end;
+      end;
+
+      if LIsValid then
+      begin
+        if Pos(':::', LWorkValue) > 0 then
+          LIsValid := False
+        else
+        begin
+          LHasCompression := Pos('::', LWorkValue) > 0;
+
+          if LHasCompression then
+          begin
+            LSplitPos := Pos('::', LWorkValue);
+            if PosEx('::', LWorkValue, LSplitPos + 2) > 0 then
+              LIsValid := False
+            else
+            begin
+              LHextetCount := 0;
+              LLeftValue := Copy(LWorkValue, 1, LSplitPos - 1);
+              LRightValue := Copy(LWorkValue, LSplitPos + 2, MaxInt);
+
+              if LLeftValue <> '' then
+              begin
+                LLeftParts := SplitString(LLeftValue, ':');
+                for LPart in LLeftParts do
+                begin
+                  if (LPart = '') or not TRegEx.IsMatch(LPart, '^[0-9A-Fa-f]{1,4}$') then
+                  begin
+                    LIsValid := False;
+                    Break;
+                  end;
+                  Inc(LHextetCount);
+                end;
+              end;
+
+              if LIsValid and (LRightValue <> '') then
+              begin
+                LRightParts := SplitString(LRightValue, ':');
+                for LPart in LRightParts do
+                begin
+                  if (LPart = '') or not TRegEx.IsMatch(LPart, '^[0-9A-Fa-f]{1,4}$') then
+                  begin
+                    LIsValid := False;
+                    Break;
+                  end;
+                  Inc(LHextetCount);
+                end;
+              end;
+
+              if LIsValid then
+                LIsValid := LHextetCount < LExpectedHextets;
+            end;
+          end
+          else
+          begin
+            LParts := SplitString(LWorkValue, ':');
+            if Length(LParts) <> LExpectedHextets then
+              LIsValid := False
+            else
+              for LPart in LParts do
+                if (LPart = '') or not TRegEx.IsMatch(LPart, '^[0-9A-Fa-f]{1,4}$') then
+                begin
+                  LIsValid := False;
+                  Break;
+                end;
+          end;
+        end;
+      end;
+    end
+    else if LFormatName = 'date-time' then
+    begin
+      LMatch := TRegEx.Match(LInstanceValue,
+        '^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?([Zz]|[+\-]\d{2}:\d{2})$',
+        [roCompiled]);
+      LIsValid := LMatch.Success;
+
+      if LIsValid then
+      begin
+        LIsValid :=
+          TryStrToInt(LMatch.Groups[1].Value, LYear) and
+          TryStrToInt(LMatch.Groups[2].Value, LMonth) and
+          TryStrToInt(LMatch.Groups[3].Value, LDay) and
+          TryStrToInt(LMatch.Groups[4].Value, LHour) and
+          TryStrToInt(LMatch.Groups[5].Value, LMinute) and
+          TryStrToInt(LMatch.Groups[6].Value, LSecond);
+
+        if LIsValid then
+          LIsValid :=
+            (LYear >= 1) and
+            (LMonth >= 1) and (LMonth <= 12) and
+            (LDay >= 1) and (LDay <= 31) and
+            TryEncodeDate(Word(LYear), Word(LMonth), Word(LDay), LDateTime);
+
+        if LIsValid then
+          LIsValid := (LHour <= 23) and (LMinute <= 59) and (LSecond <= 60);
+
+        // Leap second is valid only for 23:59:60 in UTC.
+        if LIsValid and (LSecond = 60) then
+        begin
+          if SameText(LMatch.Groups[7].Value, 'Z') then
+          begin
+            LIsValid := (LHour = 23) and (LMinute = 59);
+          end
+          else
+          begin
+            LOffsetSign := LMatch.Groups[7].Value[1];
+            LIsValid :=
+              TryStrToInt(Copy(LMatch.Groups[7].Value, 2, 2), LOffsetHour) and
+              TryStrToInt(Copy(LMatch.Groups[7].Value, 5, 2), LOffsetMinute) and
+              (LOffsetHour <= 23) and
+              (LOffsetMinute <= 59);
+
+            if LIsValid then
+            begin
+              LOffsetTotalMinutes := (LOffsetHour * 60) + LOffsetMinute;
+              LUtcTotalMinutes := (LHour * 60) + LMinute;
+
+              if LOffsetSign = '+' then
+                LUtcTotalMinutes := LUtcTotalMinutes - LOffsetTotalMinutes
+              else
+                LUtcTotalMinutes := LUtcTotalMinutes + LOffsetTotalMinutes;
+
+              LUtcTotalMinutes := ((LUtcTotalMinutes mod 1440) + 1440) mod 1440;
+              LUtcHour := LUtcTotalMinutes div 60;
+              LUtcMinute := LUtcTotalMinutes mod 60;
+              LIsValid := (LUtcHour = 23) and (LUtcMinute = 59);
+            end;
+          end;
+        end;
+
+        if LIsValid and (LMatch.Groups[7].Value <> '') and
+           (not SameText(LMatch.Groups[7].Value, 'Z')) then
+        begin
+          LIsValid :=
+            TryStrToInt(Copy(LMatch.Groups[7].Value, 2, 2), LOffsetHour) and
+            TryStrToInt(Copy(LMatch.Groups[7].Value, 5, 2), LOffsetMinute) and
+            (LOffsetHour <= 23) and
+            (LOffsetMinute <= 59);
+        end;
+      end;
+    end
+    else if LFormatName = 'email' then
+      LIsValid := TRegEx.IsMatch(LInstanceValue,
+        '^[A-Za-z0-9!#$%&''*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&''*+/=?^_`{|}~-]+)*@(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-))(?:\.(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-)))*$',
+        [roCompiled])
+    else if LFormatName = 'json-pointer' then
+      LIsValid := TURIUtils.IsValidJsonPointer(LInstanceValue)
+    else if LFormatName = 'uri-reference' then
+      LIsValid := TURIUtils.IsValidURIReference(LInstanceValue)
+    else if LFormatName = 'uri' then
+      LIsValid := TURIUtils.IsValidURI(LInstanceValue)
+    else if LFormatName = 'uri-template' then
+    begin
+      LTemplateDepth := 0;
+      LTemplateExpr := '';
+
+      for LTemplateChar in LInstanceValue do
+      begin
+        if LTemplateChar = '{' then
+        begin
+          if LTemplateDepth <> 0 then
+          begin
+            LIsValid := False;
+            Break;
+          end;
+
+          LTemplateDepth := 1;
+          LTemplateExpr := '';
+          Continue;
+        end;
+
+        if LTemplateChar = '}' then
+        begin
+          if LTemplateDepth = 0 then
+          begin
+            LIsValid := False;
+            Break;
+          end;
+
+          LIsValid := LTemplateExpr <> '';
+          if LIsValid then
+            LIsValid := TRegEx.IsMatch(
+              LTemplateExpr,
+              '^[+#./;?&]?[A-Za-z0-9_%.][A-Za-z0-9_%.]*(?::\d+|\*)?(?:,[A-Za-z0-9_%.][A-Za-z0-9_%.]*(?::\d+|\*)?)*$',
+              [roCompiled]);
+
+          if not LIsValid then
+            Break;
+
+          LTemplateDepth := 0;
+          Continue;
+        end;
+
+        if LTemplateDepth = 1 then
+        begin
+          if (LTemplateChar <= ' ') or (LTemplateChar = '{') or (LTemplateChar = '}') then
+          begin
+            LIsValid := False;
+            Break;
+          end;
+
+          LTemplateExpr := LTemplateExpr + LTemplateChar;
+        end;
+      end;
+
+      if LIsValid then
+        LIsValid := LTemplateDepth = 0;
+    end
+    else if LFormatName = 'hostname' then
+      LIsValid := TRegEx.IsMatch(LInstanceValue,
+        '^(?=.{1,253}$)(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-))(?:\.(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-)))*$',
+        [roCompiled]);
+
+    if not LIsValid then
+      Visitor.AddError(TErrorType.vetInvalidFormat, [AValue.Value]);
   finally
     Visitor.PopScope;
   end;
@@ -864,7 +1266,13 @@ end;
 procedure TBaseValidationVisitor<T>.VisitMultipleOf(const AValue: TJSONNumber);
 var
   LScope: TScope;
+  LValue: Extended;
+  LDivisor: Extended;
   LDivision: Extended;
+  LRounded: Extended;
+  LEpsilon: Extended;
+  LInverse: Extended;
+  LInverseRounded: Extended;
 begin
   LScope := Visitor.CurrentScope;
 
@@ -884,11 +1292,31 @@ begin
   end;
   Visitor.PushScope(LScope);
   try
-    if TUtils.JsonGetFloat(AValue) = 0 then
+    LValue := TUtils.JsonGetFloat(LScope.InstanceNode);
+    LDivisor := TUtils.JsonGetFloat(AValue);
+    if LDivisor = 0 then
       Exit;
 
-    LDivision := TUtils.JsonGetFloat(LScope.InstanceNode) / TUtils.JsonGetFloat(AValue);
-    if Abs(LDivision - Round(LDivision)) > 1E-8 then
+    LDivision := LValue / LDivisor;
+
+    if IsInfinite(LDivision) or IsNan(LDivision) then
+    begin
+      // Optional overflow handling: every integer is multiple of divisors like 1/n.
+      if TUtils.JsonGetType(LScope.InstanceNode) = 'integer' then
+      begin
+        LInverse := 1 / LDivisor;
+        LInverseRounded := Round(LInverse);
+        if Abs(LInverse - LInverseRounded) <= 1E-12 then
+          Exit;
+      end;
+
+      Visitor.AddError(TErrorType.vetMultipleOf, [AValue.Value]);
+      Exit;
+    end;
+
+    LRounded := Round(LDivision);
+    LEpsilon := Max(1E-12, Abs(LDivision) * 1E-12);
+    if Abs(LDivision - LRounded) > LEpsilon then
       Visitor.AddError(TErrorType.vetMultipleOf, [AValue.Value]);
   finally
     Visitor.PopScope;
@@ -917,7 +1345,10 @@ begin
   end;
   Visitor.PushScope(LScope);
   try
-    if not TRegEx.IsMatch(TJSONString(LScope.InstanceNode).Value, TUtils.RegexNormalizePattern(AValue.Value)) then
+    if not TRegEx.IsMatch(
+      TJSONString(LScope.InstanceNode).Value,
+      TUtils.RegexNormalizePattern(AValue.Value),
+      [roCompiled]) then
       Visitor.AddError(TErrorType.vetPattern, [TUtils.RegexNormalizePattern(AValue.Value)]);
   finally
     Visitor.PopScope;
@@ -1060,7 +1491,7 @@ begin
 
   if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
     Exit;
-    
+
   if (not LScope.SchemaNode.TryGetValue('items', LItems)) or (TUtils.JsonGetType(LItems) <> 'array') then
     Exit;
 
@@ -1220,15 +1651,15 @@ begin
       ContainsCount     := 0;
       VisitedKeywords   := [];
       CoveredProperties := [];
-    end;                        
-                                     
+    end;
+
     LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
     LVisitor.PushScope(LNewScope);
     try
       LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
       LWalker.Walk;
     finally
-      LNewScope := LVisitor.PopScope;                                          
+      LNewScope := LVisitor.PopScope;
       LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
       LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
     end;
@@ -1296,15 +1727,15 @@ begin
     VisitedKeywords   := [];
     CoveredProperties := [];
   end;
-                           
-                                     
+
+
   LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
   LVisitor.PushScope(LNewScope);
   try
     LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
     LWalker.Walk;
   finally
-    LNewScope := LVisitor.PopScope;                                          
+    LNewScope := LVisitor.PopScope;
     LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
     LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
   end;
@@ -1339,7 +1770,7 @@ begin
   LCovered := TList<Integer>.Create(LScope.CoveredItems);
   try
     LInstance := TJSONArray(LScope.InstanceNode);
-    
+
     if TUtils.JsonGetType(AValue) = 'array' then
     begin
       LMaxCount := Min(LInstance.Count, TJSONArray(AValue).Count);
@@ -1450,14 +1881,14 @@ begin
       VisitedKeywords   := [];
       CoveredProperties := [];
     end;
-                                     
+
     LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
     LVisitor.PushScope(LNewScope);
     try
       LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
       LWalker.Walk;
     finally
-      LNewScope := LVisitor.PopScope;                                          
+      LNewScope := LVisitor.PopScope;
       LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
       LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
     end;
@@ -1495,7 +1926,7 @@ begin
     for LPatternPair in AValue do
     begin
       LRegex := TUtils.RegexNormalizePattern(LPatternPair.JsonString.Value);
-      if not TRegEx.IsMatch(LPropName, LRegex) then
+      if not TRegEx.IsMatch(LPropName, LRegex, [roCompiled]) then
         Continue;
 
       LNewScope := LScope;

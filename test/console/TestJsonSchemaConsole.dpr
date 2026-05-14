@@ -70,6 +70,46 @@ begin
   end;
 end;
 
+function GetSwitchValues(const AShortSwitch, ALongSwitch: string): TArray<string>;
+var
+  LIndex: Integer;
+  LParam: string;
+  LPrefixShort: string;
+  LPrefixLong: string;
+  LValues: TList<string>;
+begin
+  LValues := TList<string>.Create;
+  try
+    LPrefixShort := '-' + AShortSwitch + '=';
+    LPrefixLong := '--' + ALongSwitch + '=';
+
+    for LIndex := 1 to ParamCount do
+    begin
+      LParam := ParamStr(LIndex);
+
+      if SameText(LParam, '-' + AShortSwitch) or SameText(LParam, '--' + ALongSwitch) then
+      begin
+        if LIndex < ParamCount then
+          LValues.Add(ParamStr(LIndex + 1));
+        Continue;
+      end;
+
+      if StartsText(LPrefixShort, LParam) then
+      begin
+        LValues.Add(Copy(LParam, Length(LPrefixShort) + 1, MaxInt));
+        Continue;
+      end;
+
+      if StartsText(LPrefixLong, LParam) then
+        LValues.Add(Copy(LParam, Length(LPrefixLong) + 1, MaxInt));
+    end;
+
+    Result := LValues.ToArray;
+  finally
+    LValues.Free;
+  end;
+end;
+
 function HasSwitch(const ASwitchName: string): Boolean;
 var
   LIndex: Integer;
@@ -215,17 +255,36 @@ begin
   Result := StringReplace(Result, #13, '\n', [rfReplaceAll]);
 end;
 
+function ResolveReportPath(const AReportPath: string): string;
+var
+  LTrimmedPath: string;
+  LRepoRootPath: string;
+begin
+  LTrimmedPath := Trim(AReportPath);
+  if LTrimmedPath = '' then
+    Exit('');
+
+  if TPath.IsPathRooted(LTrimmedPath) then
+    Exit(TPath.GetFullPath(LTrimmedPath));
+
+  LRepoRootPath := TPath.GetFullPath(TPath.Combine(GetTestRootPath, '..'));
+  Result := TPath.GetFullPath(TPath.Combine(LRepoRootPath, LTrimmedPath));
+end;
+
 procedure SaveFailureReport(const AFilePath: string; const AFailures: TList<TJsonSchemaFailure>);
 var
   LLines: TStringList;
   LFailure: TJsonSchemaFailure;
   LIsJson: Boolean;
   LIndex: Integer;
+  LDirectory: string;
 begin
   if Trim(AFilePath) = '' then
     Exit;
 
-  ForceDirectories(ExtractFilePath(AFilePath));
+  LDirectory := ExtractFilePath(AFilePath);
+  if (LDirectory <> '') and not TDirectory.Exists(LDirectory) then
+    TDirectory.CreateDirectory(LDirectory);
 
   LIsJson := SameText(ExtractFileExt(AFilePath), '.json');
   LLines := TStringList.Create;
@@ -277,14 +336,20 @@ end;
 
 var
   LDraftValue: string;
+  LFileFilters: TArray<string>;
   LFileFilter: string;
   LReportFile: string;
   LQuiet: Boolean;
   LFailFast: Boolean;
+  LResolvedReportFile: string;
   LServer: TFileServer;
   LTotal: Integer;
   LPassed: Integer;
   LFailed: Integer;
+  LRunTotal: Integer;
+  LRunPassed: Integer;
+  LRunFailed: Integer;
+  LFilterIndex: Integer;
   LFailures: TList<TJsonSchemaFailure>;
 
 begin
@@ -298,9 +363,9 @@ begin
     if LDraftValue = '' then
       LDraftValue := GetSwitchValue('draft');
 
-    LFileFilter := GetSwitchValue('f');
-    if LFileFilter = '' then
-      LFileFilter := GetSwitchValue('file');
+    LFileFilters := GetSwitchValues('f', 'file');
+    if Length(LFileFilters) = 0 then
+      LFileFilters := TArray<string>.Create('');
 
     LReportFile := GetSwitchValue('r');
     if LReportFile = '' then
@@ -315,27 +380,45 @@ begin
     try
       LServer.StartFileServer(1234);
 
-      TJsonSchemaValidationTest.ExecuteForConsole(
-        ResolveDraftFolderName(LDraftValue),
-        LFileFilter,
-        ResolveDraftVersion(LDraftValue),
-        procedure(const AProcessed, ATotal, APassed, AFailed: Integer)
-        begin
-          if not LQuiet then
-            RenderBars(AProcessed, ATotal, APassed, AFailed);
-        end,
-        procedure(const AFailure: TJsonSchemaFailure)
-        begin
-          LFailures.Add(AFailure);
-          if not LQuiet then
-            PrintFailure(AFailure);
-        end,
-        LTotal,
-        LPassed,
-        LFailed,
-        LFailFast);
+      LTotal := 0;
+      LPassed := 0;
+      LFailed := 0;
 
-      if not LQuiet then
+      for LFilterIndex := 0 to High(LFileFilters) do
+      begin
+        LFileFilter := LFileFilters[LFilterIndex];
+        if (Length(LFileFilters) > 1) and (not LQuiet) then
+          Writeln(Format('Executando filtro --file=%s', [LFileFilter]));
+
+        TJsonSchemaValidationTest.ExecuteForConsole(
+          ResolveDraftFolderName(LDraftValue),
+          LFileFilter,
+          ResolveDraftVersion(LDraftValue),
+          procedure(const AProcessed, ATotal, APassed, AFailed: Integer)
+          begin
+            if not LQuiet then
+              RenderBars(AProcessed, ATotal, APassed, AFailed);
+          end,
+          procedure(const AFailure: TJsonSchemaFailure)
+          begin
+            LFailures.Add(AFailure);
+            if not LQuiet then
+              PrintFailure(AFailure);
+          end,
+          LRunTotal,
+          LRunPassed,
+          LRunFailed,
+          LFailFast);
+
+        Inc(LTotal, LRunTotal);
+        Inc(LPassed, LRunPassed);
+        Inc(LFailed, LRunFailed);
+
+        if LFailFast and (LRunFailed > 0) then
+          Break;
+      end;
+
+      if not LQuiet and (LTotal > 0) then
         RenderBars(LTotal, LTotal, LPassed, LFailed);
 
       Writeln;
@@ -344,11 +427,13 @@ begin
 
       if LReportFile <> '' then
       begin
-        SaveFailureReport(LReportFile, LFailures);
-        Writeln(Format('Relatorio salvo em: %s', [LReportFile]));
+        LResolvedReportFile := ResolveReportPath(LReportFile);
+        SaveFailureReport(LResolvedReportFile, LFailures);
+        Writeln(Format('Relatorio salvo em: %s', [LResolvedReportFile]));
       end;
 
-      Readln;
+//      WriteLn('Pressione qualquer tecla para continuar...');
+//      Readln;
     finally
       LServer.StopFileServer;
       LServer.Free;

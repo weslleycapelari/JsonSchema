@@ -8,51 +8,53 @@ uses
 type
   TURIUtils = class
     /// <summary>
-    ///   Função de conveniência para parsear uma string em uma TURIReference.
+    ///   Funï¿½ï¿½o de conveniï¿½ncia para parsear uma string em uma TURIReference.
     /// </summary>
     //function URIReference(const AURIString: string): TURIReference;
 
-    /// <summary>Função de conveniência para normalizar uma URI.</summary>
+    /// <summary>Funï¿½ï¿½o de conveniï¿½ncia para normalizar uma URI.</summary>
     /// <returns>A string da URI normalizada.</returns>
     class function NormalizeURI(const AURIString: string): string; static;
 
-    /// <summary>Função de conveniência para validar uma URI de forma rápida.</summary>
-    /// <remarks>Realiza uma validação genérica de sintaxe. Para regras customizadas, utilize a classe TValidator.</remarks>
+    /// <summary>Funï¿½ï¿½o de conveniï¿½ncia para validar uma URI de forma rï¿½pida.</summary>
+    /// <remarks>Realiza uma validaï¿½ï¿½o genï¿½rica de sintaxe. Para regras customizadas, utilize a classe TValidator.</remarks>
     class function IsValidURI(const AURIString: string): Boolean; static;
 
     /// <summary>
-    ///   Função de conveniência para parsear uma URI no formato TParseResult.
+    ///   Funï¿½ï¿½o de conveniï¿½ncia para parsear uma URI no formato TParseResult.
     /// </summary>
     /// <remarks>
-    ///   Análoga à função 'urlparse' da biblioteca padrão do Python.
+    ///   Anï¿½loga ï¿½ funï¿½ï¿½o 'urlparse' da biblioteca padrï¿½o do Python.
     /// </remarks>
     //function URIParse(const AURIString: string): TParseResult;
 
-    /// <summary>Junta o path de uma URI base com um path relativo. RFC 3986, Seção 5.2.3.</summary>
+    /// <summary>Junta o path de uma URI base com um path relativo. RFC 3986, Seï¿½ï¿½o 5.2.3.</summary>
     class function MergePaths(const ABasePath, ARelativePath: string): string; static;
 
     class procedure ParseAuthority(const AAuthority: string; out AUserInfo, AHost, APort: string); static;
 
     class procedure ParseUserInfo(const AUserInfo: string; out AUsername, APassword: string); static;
 
-    /// <summary>Remove os segmentos '.' e '..'. RFC 3986, Seção 5.2.4.</summary>
+    /// <summary>Remove os segmentos '.' e '..'. RFC 3986, Seï¿½ï¿½o 5.2.4.</summary>
     class function RemoveDotSegments(const APath: string): string; static;
 
-    /// <summary>Normaliza os caracteres de percent-encoding para uppercase. RFC 3986, Seção 6.2.2.2.</summary>
+    /// <summary>Normaliza os caracteres de percent-encoding para uppercase. RFC 3986, Seï¿½ï¿½o 6.2.2.2.</summary>
     class function NormalizePercentEncoding(const AValue: string): string; static;
 
-    /// <summary>Normaliza o scheme para lowercase. RFC 3986, Seção 6.2.2.1.</summary>
+    /// <summary>Normaliza o scheme para lowercase. RFC 3986, Seï¿½ï¿½o 6.2.2.1.</summary>
     class function NormalizeScheme(const AScheme: string): string; static;
 
     class function Encoding(const AValue, ACustomUnreserved: string): string; static;
 
     /// <summary>
-    ///   Codifica uma string para ser usada no userinfo (username ou password), seguindo as regras da RFC 3986, Seção 3.2.1.
+    ///   Codifica uma string para ser usada no userinfo (username ou password), seguindo as regras da RFC 3986, Seï¿½ï¿½o 3.2.1.
     /// </summary>
-    /// <remarks>Caracteres permitidos são: unreserved / sub-delims / ":" Todos os outros, incluindo '@', devem ser codificados.</remarks>
+    /// <remarks>Caracteres permitidos sï¿½o: unreserved / sub-delims / ":" Todos os outros, incluindo '@', devem ser codificados.</remarks>
     class function EncodingUserInfo(const AValue: string): string; static;
 
     class function EvaluateJsonPointer(const ARootNode: TJSONValue; const APointer: string): TJSONValue; static;
+    class function IsValidJsonPointer(const APointer: string): Boolean; static;
+    class function IsValidURIReference(const AURIString: string): Boolean; static;
   end;
 
 implementation
@@ -96,22 +98,22 @@ begin
         LHex := AValue.Substring(LCount, 2);
         if TryStrToInt('$' + LHex, LByte) then
         begin
-          // É um percent-encoding válido
+          // ï¿½ um percent-encoding vï¿½lido
           if not IsReserved(Char(LByte)) then
           begin
-            // Decodifica se for um caractere não reservado
+            // Decodifica se for um caractere nï¿½o reservado
             LBuilder.Append(Char(LByte));
           end
           else
           begin
-            // Mantém codificado, mas com hex em maiúsculo
+            // Mantï¿½m codificado, mas com hex em maiï¿½sculo
             LBuilder.Append('%' + LHex.ToUpper);
           end;
           Inc(LCount, 3);
         end
         else
         begin
-          // Sequência inválida, apenas anexa
+          // Sequï¿½ncia invï¿½lida, apenas anexa
           LBuilder.Append(AValue[LCount]);
           Inc(LCount);
         end;
@@ -145,6 +147,8 @@ var
   LSegmentStr: string;
   LCurrentNode: TJSONValue;
   LIndex: Integer;
+  LCount: Integer;
+  LDecoded: TStringBuilder;
 begin
   if not Assigned(ARootNode) then
     Exit(nil);
@@ -153,9 +157,9 @@ begin
   if APointer.IsEmpty then
     Exit(ARootNode);
 
-  // Um ponteiro JSON deve começar com '/'.
+  // Um ponteiro JSON deve comeï¿½ar com '/'.
   if not APointer.StartsWith('/') then
-    Exit(nil); // Ou raise uma exceção, dependendo da sua estratégia de erro.
+    Exit(nil); // Ou raise uma exceï¿½ï¿½o, dependendo da sua estratï¿½gia de erro.
 
   LCurrentNode := ARootNode;
   LSegments := APointer.Substring(1).Split(['/']); // Pula o primeiro '/'
@@ -163,32 +167,60 @@ begin
   for LSegment in LSegments do
   begin
     if not Assigned(LCurrentNode) then
-      Exit(nil); // Não é possível navegar mais fundo.
+      Exit(nil); // Nï¿½o ï¿½ possï¿½vel navegar mais fundo.
 
-    // Decodifica os caracteres de escape '~1' -> '/' e '~0' -> '~' (RFC 6901, Seção 3)
-    LSegmentStr := LSegment.Replace('~1', '/', [rfReplaceAll]).Replace('~0', '~', [rfReplaceAll]);
+    // Decodifica estritamente '~1' -> '/' e '~0' -> '~' (RFC 6901, Seï¿½ï¿½o 3).
+    // Qualquer '~' nï¿½o seguido de '0' ou '1' invalida o ponteiro.
+    LDecoded := TStringBuilder.Create;
+    try
+      LCount := 1;
+      while LCount <= Length(LSegment) do
+      begin
+        if LSegment[LCount] = '~' then
+        begin
+          if LCount = Length(LSegment) then
+            Exit(nil);
+
+          case LSegment[LCount + 1] of
+            '0': LDecoded.Append('~');
+            '1': LDecoded.Append('/');
+          else
+            Exit(nil);
+          end;
+          Inc(LCount, 2);
+        end
+        else
+        begin
+          LDecoded.Append(LSegment[LCount]);
+          Inc(LCount);
+        end;
+      end;
+      LSegmentStr := LDecoded.ToString;
+    finally
+      LDecoded.Free;
+    end;
 
     if LCurrentNode is TJSONObject then
     begin
-      // Tenta obter o valor da propriedade. GetValue retorna nil se não encontrar.
+      // Tenta obter o valor da propriedade. GetValue retorna nil se nï¿½o encontrar.
       LCurrentNode := (LCurrentNode as TJSONObject).GetValue(LSegmentStr);
     end
     else if LCurrentNode is TJSONArray then
     begin
-      // Tenta converter o segmento para um índice de array.
+      // Tenta converter o segmento para um ï¿½ndice de array.
       if TryStrToInt(LSegmentStr, LIndex) and (LIndex >= 0) and (LIndex < (LCurrentNode as TJSONArray).Count) then
       begin
         LCurrentNode := (LCurrentNode as TJSONArray).Items[LIndex];
       end
       else
       begin
-        // Índice inválido ou fora do intervalo.
+        // ï¿½ndice invï¿½lido ou fora do intervalo.
         Exit(nil);
       end;
     end
     else
     begin
-      // Não é possível navegar dentro de tipos primitivos (string, number, etc.).
+      // Nï¿½o ï¿½ possï¿½vel navegar dentro de tipos primitivos (string, number, etc.).
       Exit(nil);
     end;
   end;
@@ -196,16 +228,72 @@ begin
   Result := LCurrentNode;
 end;
 
-class function TURIUtils.IsValidURI(const AURIString: string): Boolean;
+class function TURIUtils.IsValidJsonPointer(const APointer: string): Boolean;
+var
+  LSegments: TArray<string>;
+  LSegment: string;
+  LCount: Integer;
 begin
+  if APointer = '' then
+    Exit(True);
+
+  if not APointer.StartsWith('/') then
+    Exit(False);
+
+  LSegments := APointer.Substring(1).Split(['/']);
+  for LSegment in LSegments do
+  begin
+    LCount := 1;
+    while LCount <= Length(LSegment) do
+    begin
+      if LSegment[LCount] = '~' then
+      begin
+        if (LCount = Length(LSegment)) or
+           ((LSegment[LCount + 1] <> '0') and (LSegment[LCount + 1] <> '1')) then
+          Exit(False);
+
+        Inc(LCount, 2);
+      end
+      else
+        Inc(LCount);
+    end;
+  end;
+
+  Result := True;
+end;
+
+class function TURIUtils.IsValidURIReference(const AURIString: string): Boolean;
+var
+  LURI: TURIReference;
+  LChar: Char;
+begin
+  // Espaï¿½os e controles nï¿½o sï¿½o permitidos em URI/URI-reference sem percent-encoding.
+  for LChar in AURIString do
+    if (Ord(LChar) <= 32) or (Ord(LChar) = 127) then
+      Exit(False);
+
   try
-    // A forma mais simples de validar a sintaxe é tentar parsear.
-    // O método 'From' já lança uma exceção se a string não corresponder
-    // ao padrão RegEx da RFC 3986.
-    TURIValidator.Create.Validate(TURIReference.From(AURIString));
+    LURI := TURIReference.From(AURIString);
+    LURI := LURI.Normalize;
     Result := True;
   except
-    on E: ERFC3986Exception do
+    on ERFC3986Exception do
+      Result := False;
+  end;
+end;
+
+class function TURIUtils.IsValidURI(const AURIString: string): Boolean;
+var
+  LURI: TURIReference;
+begin
+  if not IsValidURIReference(AURIString) then
+    Exit(False);
+
+  try
+    LURI := TURIReference.From(AURIString);
+    Result := LURI.Scheme <> '';
+  except
+    on ERFC3986Exception do
       Result := False;
   end;
 end;
@@ -246,22 +334,22 @@ begin
         LHex := AValue.Substring(LCount, 2);
         if TryStrToInt('$' + LHex, LByte) then
         begin
-          // É um percent-encoding válido
+          // ï¿½ um percent-encoding vï¿½lido
           if Pos(Char(LByte), UNRESERVED_CHARS) > 0 then
           begin
-            // Decodifica se for um caractere não reservado
+            // Decodifica se for um caractere nï¿½o reservado
             LBuilder.Append(Char(LByte));
           end
           else
           begin
-            // Mantém codificado, mas com hex em maiúsculo
+            // Mantï¿½m codificado, mas com hex em maiï¿½sculo
             LBuilder.Append('%' + LHex.ToUpper);
           end;
           Inc(LCount, 3);
         end
         else
         begin
-          // Sequência inválida, apenas anexa
+          // Sequï¿½ncia invï¿½lida, apenas anexa
           LBuilder.Append(AValue[LCount]);
           Inc(LCount);
         end;
@@ -289,9 +377,9 @@ var
 begin
   // 1. Parseia a string para obter a estrutura TURIReference.
   LURI := TURIReference.From(AURIString);
-  // 2. Chama o método de normalização, que retorna uma nova instância.
+  // 2. Chama o mï¿½todo de normalizaï¿½ï¿½o, que retorna uma nova instï¿½ncia.
   LNormalizedURI := LURI.Normalize;
-  // 3. Recompõe a URI normalizada de volta para uma string.
+  // 3. Recompï¿½e a URI normalizada de volta para uma string.
   Result := LNormalizedURI.Unsplit;
 end;
 

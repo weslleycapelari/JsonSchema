@@ -11,6 +11,7 @@ uses
 type
   IError = interface;
   IValidationResult = interface;
+  IRefResolutionGuard = interface;
 
   IValidationVisitor<T> = interface(IVisitor<T>)
     ['{D694C0D9-EFB4-49D7-A620-D469E849263A}']
@@ -53,6 +54,12 @@ type
     function StandardHint: string; overload;
     function StandardHint(const AValue: string): IError; overload;
     function EffectiveHint: string;
+  end;
+
+  IRefResolutionGuard = interface(IInterface)
+    ['{B25249A6-7EE6-4D1D-ABDE-6D564D970D00}']
+    function TryEnterRefResolution(const AResolvedRef: string; out AReason: string): Boolean;
+    procedure LeaveRefResolution(const AResolvedRef: string);
   end;
 
 implementation

@@ -20,7 +20,8 @@ type
     procedure AddAnchor(const AAnchor: string; const ASchemaNode: TJSONValue);
     procedure AddDynamicAnchor(const AAnchor: string; const ASchemaNode: TJSONValue);
 
-    function ResolveFragment(const AFragment: string): TJSONValue;
+    function ResolveFragment(const AFragment: string): TJSONValue; overload;
+    function ResolveFragment(const AFragment: string; out AResolvedBaseURI: string): TJSONValue; overload;
 
     property BaseURI: TURIReference read FBaseURI;
   end;
@@ -54,36 +55,105 @@ end;
 
 function TResource.ResolveFragment(const AFragment: string): TJSONValue;
 var
+  LResolvedBaseURI: string;
+begin
+  Result := ResolveFragment(AFragment, LResolvedBaseURI);
+end;
+
+function TResource.ResolveFragment(const AFragment: string; out AResolvedBaseURI: string): TJSONValue;
+var
+  LSegments: TArray<string>;
+  LSegment: string;
+  LDecodedSegment: string;
+  LCurrentNode: TJSONValue;
+  LIndex: Integer;
+  LDecodedId: string;
+  LCount: Integer;
   LPointerPath: string;
 begin
+  AResolvedBaseURI := FBaseURI.Unsplit;
+
   // Caso 1: Fragmento vazio ou raiz, retorna o schema inteiro do recurso.
   if AFragment.IsEmpty then
     Exit(FRootSchema);
 
   LPointerPath := AFragment;
 
-  // Decodifica a string do fragmento antes de interpretá-la
+  // Decodifica a string do fragmento antes de interpretï¿½-la
   LPointerPath := TNetEncoding.URL.Decode(LPointerPath);
 
-  // Caso 2: Fragmento é um JSON Pointer.
+  // Caso 2: Fragmento ï¿½ um JSON Pointer.
   if AFragment.StartsWith('/') then
   begin
-    // Delega a avaliação para a nossa função utilitária.
-    Result := TURIUtils.EvaluateJsonPointer(FRootSchema, LPointerPath);
+    LCurrentNode := FRootSchema;
+    LSegments := LPointerPath.Substring(1).Split(['/']);
+
+    for LSegment in LSegments do
+    begin
+      if not Assigned(LCurrentNode) then
+        Exit(nil);
+
+      if (LCurrentNode is TJSONObject) and
+         TJSONObject(LCurrentNode).TryGetValue<string>('$id', LDecodedId) and
+         (LDecodedId <> '') then
+      begin
+        AResolvedBaseURI := TURIReference.From(LDecodedId).ResolveWith(TURIReference.From(AResolvedBaseURI)).Unsplit;
+      end;
+
+      LDecodedSegment := '';
+      LCount := 1;
+      while LCount <= Length(LSegment) do
+      begin
+        if LSegment[LCount] = '~' then
+        begin
+          if LCount = Length(LSegment) then
+            Exit(nil);
+
+          case LSegment[LCount + 1] of
+            '0': LDecodedSegment := LDecodedSegment + '~';
+            '1': LDecodedSegment := LDecodedSegment + '/';
+          else
+            Exit(nil);
+          end;
+          Inc(LCount, 2);
+        end
+        else
+        begin
+          LDecodedSegment := LDecodedSegment + LSegment[LCount];
+          Inc(LCount);
+        end;
+      end;
+
+      if LCurrentNode is TJSONObject then
+        LCurrentNode := TJSONObject(LCurrentNode).GetValue(LDecodedSegment)
+      else if LCurrentNode is TJSONArray then
+      begin
+        if TryStrToInt(LDecodedSegment, LIndex) and
+           (LIndex >= 0) and
+           (LIndex < TJSONArray(LCurrentNode).Count) then
+          LCurrentNode := TJSONArray(LCurrentNode).Items[LIndex]
+        else
+          Exit(nil);
+      end
+      else
+        Exit(nil);
+    end;
+
+    Result := LCurrentNode;
     Exit;
   end
-  // Caso 3: Fragmento é uma âncora de nome simples.
+  // Caso 3: Fragmento ï¿½ uma ï¿½ncora de nome simples.
   else
   begin
-    // Remove o '#' inicial e busca no dicionário de âncoras.
+    // Remove o '#' inicial e busca no dicionï¿½rio de ï¿½ncoras.
     FAnchors.TryGetValue(LPointerPath, Result);
-    // Se não encontrou em âncoras normais, tente as dinâmicas (para o caso de $ref as usar)
+    // Se nï¿½o encontrou em ï¿½ncoras normais, tente as dinï¿½micas (para o caso de $ref as usar)
     if not Assigned(Result) then
       FDynamicAnchors.TryGetValue(LPointerPath, Result);
     Exit;
   end;
 
-  // Se o fragmento não começar com '#', é inválido neste contexto.
+  // Se o fragmento nï¿½o comeï¿½ar com '#', ï¿½ invï¿½lido neste contexto.
   Result := nil;
 end;
 

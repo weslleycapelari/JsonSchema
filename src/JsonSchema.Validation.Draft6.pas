@@ -127,6 +127,8 @@ end;
 function TDraft6Visitor.New(const ASchema, AData: TJSONValue; const ABaseURI: string): TDraft6Visitor;
 begin
   Result := TDraft6Visitor.Create(ASchema, AData, ABaseURI, FCustomHint);
+  Result.FRegistry := FRegistry;
+  Result.FOwnsRegistry := False;
 end;
 
 { TDraft6HyperSchemaVisitor }
@@ -223,8 +225,75 @@ begin
 end;
 
 procedure TDraft6ValidationVisitor.VisitDependencies(const AValue: TJSONObject);
+var
+  LScope: TScope;
+  LInstance: TJSONObject;
+  LDependencyPair: TJSONPair;
+  LDependencyValue: TJSONValue;
+  LRequiredList: TJSONArray;
+  LRequiredValue: TJSONValue;
+  LRequiredName: string;
+  LNewScope: TScope;
+  LWalker: IWalker;
+  LVisitor: TDraft6Visitor;
+  LError: IError;
 begin
+  LScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+    Exit;
 
+  LInstance := TJSONObject(LScope.InstanceNode);
+  for LDependencyPair in AValue do
+  begin
+    if LInstance.FindValue(LDependencyPair.JsonString.Value) = nil then
+      Continue;
+
+    LDependencyValue := LDependencyPair.JsonValue;
+
+    if LDependencyValue is TJSONArray then
+    begin
+      LRequiredList := TJSONArray(LDependencyValue);
+      for LRequiredValue in LRequiredList do
+      begin
+        if not (LRequiredValue is TJSONString) then
+          Continue;
+
+        LRequiredName := TJSONString(LRequiredValue).Value;
+        if LInstance.FindValue(LRequiredName) = nil then
+          Visitor.AddError(vetDependentRequired, [LDependencyPair.JsonString.Value, LRequiredName]);
+      end;
+      Continue;
+    end;
+
+    if (LDependencyValue is TJSONObject) or (LDependencyValue is TJSONBool) then
+    begin
+      LNewScope := LScope;
+      with LNewScope do
+      begin
+        SchemaPath        := Format('%s/dependencies/%s', [LScope.SchemaPath, LDependencyPair.JsonString.Value]);
+        SchemaNode        := LDependencyValue;
+        InstanceNode      := LScope.InstanceNode;
+        InstancePath      := LScope.InstancePath;
+        CoveredItems      := [];
+        ContainsCount     := 0;
+        VisitedKeywords   := [];
+        CoveredProperties := [];
+      end;
+
+      LVisitor := Visitor.New(LDependencyValue, LScope.InstanceNode, LScope.BaseURI);
+      LVisitor.PushScope(LNewScope);
+      try
+        LWalker := TWalker<TDraft6Visitor>.Create(LDependencyValue, LVisitor);
+        LWalker.Walk;
+      finally
+        LVisitor.PopScope;
+      end;
+
+      if not LVisitor.Result.IsValid then
+        for LError in LVisitor.Result.Errors do
+          Visitor.Result.AddError(LError);
+    end;
+  end;
 end;
 
 procedure TDraft6ValidationVisitor.VisitPropertyNames(const AValue: TJSONValue);

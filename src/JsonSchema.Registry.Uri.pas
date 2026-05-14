@@ -3,10 +3,10 @@ unit JsonSchema.Registry.Uri;
 interface
 
 type
-  /// <summary>Representa de forma imutável os cinco componentes principais de uma URI, conforme a RFC 3986.</summary>
+  /// <summary>Representa de forma imutï¿½vel os cinco componentes principais de uma URI, conforme a RFC 3986.</summary>
   /// <remarks>
-  ///   Esta é a estrutura central da biblioteca. Uma vez criada, uma instância de TURIReference não pode ser alterada.
-  ///   Métodos como Normalize e ResolveWith retornam novas instâncias. Referência RFC 3986: Seção 3.
+  ///   Esta ï¿½ a estrutura central da biblioteca. Uma vez criada, uma instï¿½ncia de TURIReference nï¿½o pode ser alterada.
+  ///   Mï¿½todos como Normalize e ResolveWith retornam novas instï¿½ncias. Referï¿½ncia RFC 3986: Seï¿½ï¿½o 3.
   /// </remarks>
   TURIReference = record
   private
@@ -18,34 +18,34 @@ type
     FEncoding: string;
 
   public
-    /// <summary>Cria uma nova instância de TURIReference a partir de uma string.</summary>
+    /// <summary>Cria uma nova instï¿½ncia de TURIReference a partir de uma string.</summary>
     /// <param name="AURIString">A string da URI a ser parseada.</param>
-    /// <param name="AEncoding">A codificação da string (padrão 'utf-8').</param>
-    /// <returns>Uma instância de TURIReference preenchida.</returns>
+    /// <param name="AEncoding">A codificaï¿½ï¿½o da string (padrï¿½o 'utf-8').</param>
+    /// <returns>Uma instï¿½ncia de TURIReference preenchida.</returns>
     class function From(const AURIString: string; const AEncoding: string = 'utf-8'): TURIReference; static;
 
-    /// <summary>Recompõe os componentes da URI em uma única string.</summary>
+    /// <summary>Recompï¿½e os componentes da URI em uma ï¿½nica string.</summary>
     /// <returns>A string completa da URI.</returns>
-    /// <remarks>Referência RFC 3986: Seção 5.3.</remarks>
+    /// <remarks>Referï¿½ncia RFC 3986: Seï¿½ï¿½o 5.3.</remarks>
     function Unsplit: string;
 
-    /// <summary>Verifica se a referência é uma URI absoluta.</summary>
-    /// <returns>True se a URI possui um scheme e não possui fragmento.</returns>
-    /// <remarks>Referência RFC 3986: Seção 4.3.</remarks>
+    /// <summary>Verifica se a referï¿½ncia ï¿½ uma URI absoluta.</summary>
+    /// <returns>True se a URI possui um scheme e nï¿½o possui fragmento.</returns>
+    /// <remarks>Referï¿½ncia RFC 3986: Seï¿½ï¿½o 4.3.</remarks>
     function IsAbsolute: Boolean;
 
-    /// <summary>Aplica o algoritmo de normalização na URI.</summary>
-    /// <returns>Uma nova instância de TURIReference normalizada.</returns>
-    /// <remarks>Referência RFC 3986: Seção 6.</remarks>
+    /// <summary>Aplica o algoritmo de normalizaï¿½ï¿½o na URI.</summary>
+    /// <returns>Uma nova instï¿½ncia de TURIReference normalizada.</returns>
+    /// <remarks>Referï¿½ncia RFC 3986: Seï¿½ï¿½o 6.</remarks>
     function Normalize: TURIReference;
 
     /// <summary>Resolve esta URI (potencialmente relativa) contra uma URI base.</summary>
-    /// <param name="ABaseURI">A URI base absoluta para a resolução.</param>
-    /// <returns>Uma nova instância de TURIReference representando a URI resolvida.</returns>
-    /// <remarks>Referência RFC 3986: Seção 5.2.</remarks>
+    /// <param name="ABaseURI">A URI base absoluta para a resoluï¿½ï¿½o.</param>
+    /// <returns>Uma nova instï¿½ncia de TURIReference representando a URI resolvida.</returns>
+    /// <remarks>Referï¿½ncia RFC 3986: Seï¿½ï¿½o 5.2.</remarks>
     function ResolveWith(const ABaseURI: TURIReference): TURIReference;
 
-    /// <summary>Cria uma cópia desta referência, substituindo os componentes especificados.</summary>
+    /// <summary>Cria uma cï¿½pia desta referï¿½ncia, substituindo os componentes especificados.</summary>
     function CopyWith(const AScheme, AAuthority, APath, AQuery, AFragment: string): TURIReference;
 
     /// <summary>Indica se esta URI e a parametrizada possui a mesma origem</summary>
@@ -101,7 +101,7 @@ class operator TURIReference.Equal(const A, B: TURIReference): Boolean;
 var
   NormA, NormB: TURIReference;
 begin
-  // Comparação simples
+  // Comparaï¿½ï¿½o simples
   Result := (A.FScheme = B.FScheme) and
             (A.FAuthority = B.FAuthority) and
             (A.FPath = B.FPath) and
@@ -111,7 +111,7 @@ begin
   if Result then
     Exit;
 
-  // Comparação normalizada (RFC 6.2.2)
+  // Comparaï¿½ï¿½o normalizada (RFC 6.2.2)
   NormA := A.Normalize;
   NormB := B.Normalize;
   Result := (NormA.FScheme = NormB.FScheme) and
@@ -159,7 +159,7 @@ end;
 
 function TURIReference.IsAbsolute: Boolean;
 begin
-  // Conforme RFC 3986, Seção 4.3, uma URI absoluta tem um 'scheme' e não tem 'fragment'.
+  // Conforme RFC 3986, Seï¿½ï¿½o 4.3, uma URI absoluta tem um 'scheme' e nï¿½o tem 'fragment'.
   Result := (FScheme <> '') and (FFragment = '');
 end;
 
@@ -167,7 +167,7 @@ function TURIReference.IsSameOrigin(const AURI: TURIReference): Boolean;
 var
   NormA, NormB: TURIReference;
 begin
-  // Comparação simples
+  // Comparaï¿½ï¿½o simples
   Result := (Self.FScheme = AURI.FScheme) and
             (Self.FAuthority = AURI.FAuthority){ and
             (Self.FPath = AURI.FPath)};
@@ -175,7 +175,7 @@ begin
   if Result then
     Exit;
 
-  // Comparação normalizada (RFC 6.2.2)
+  // Comparaï¿½ï¿½o normalizada (RFC 6.2.2)
   NormA := Self.Normalize;
   NormB := AURI.Normalize;
   Result := (NormA.FScheme = NormB.FScheme) and
@@ -185,7 +185,7 @@ end;
 
 class function TURIReference.New(const AURIString: string): TURIReference;
 begin
-  // Delega a chamada diretamente para o método 'From' do record TURIReference.
+  // Delega a chamada diretamente para o mï¿½todo 'From' do record TURIReference.
   Result := TURIReference.From(AURIString);
 end;
 
@@ -197,18 +197,18 @@ begin
   // 1. Normaliza o Scheme (lowercase)
   Result.FScheme := TURIUtils.NormalizeScheme(Self.FScheme);
 
-  // 2. Decompõe, normaliza e reconstrói a Authority
+  // 2. Decompï¿½e, normaliza e reconstrï¿½i a Authority
   if Self.FAuthority <> '' then
   begin
-    // 2a. Decompõe a autoridade em suas partes
+    // 2a. Decompï¿½e a autoridade em suas partes
     TURIUtils.ParseAuthority(Self.FAuthority, LUserInfo, LHost, LPort);
     TURIUtils.ParseUserInfo(LUserInfo, LUsername, LPassword);
 
     // 2b. Normaliza cada subcomponente individualmente
     LHost := LHost.ToLower;
-    // A porta (LPort) não possui normalização de sintaxe (apenas de esquema, como remover a porta 80 para http)
+    // A porta (LPort) nï¿½o possui normalizaï¿½ï¿½o de sintaxe (apenas de esquema, como remover a porta 80 para http)
 
-    // 2c. Reconstrói a string da autoridade a partir das partes normalizadas
+    // 2c. Reconstrï¿½i a string da autoridade a partir das partes normalizadas
     LAuthorityBuilder := TStringBuilder.Create;
     try
       if not LUserInfo.IsEmpty then
@@ -247,7 +247,7 @@ begin
   Result.FQuery    := TURIUtils.NormalizePercentEncoding(Self.FQuery);
   Result.FFragment := TURIUtils.NormalizePercentEncoding(Self.FFragment);
 
-  // 4. Mantém a codificação
+  // 4. Mantï¿½m a codificaï¿½ï¿½o
   Result.FEncoding := Self.FEncoding;
 end;
 
@@ -266,7 +266,7 @@ end;
 
 function TURIReference.ResolveWith(const ABaseURI: TURIReference): TURIReference;
 begin
-  // Implementação do algoritmo da RFC 3986, Seção 5.2.2.
+  // Implementaï¿½ï¿½o do algoritmo da RFC 3986, Seï¿½ï¿½o 5.2.2.
   //if not ABaseURI.IsAbsolute then
   //  raise EResolutionError.Create('Base URI must be an absolute URI.');
 
@@ -302,7 +302,11 @@ begin
           Result.FPath := TURIUtils.RemoveDotSegments(Self.FPath)
         else
         begin
-          var LMergedPath := TURIUtils.MergePaths(ABaseURI.FPath, Self.FPath);
+          var LMergedPath: string;
+          if (ABaseURI.FAuthority <> '') and (ABaseURI.FPath = '') then
+            LMergedPath := '/' + Self.FPath
+          else
+            LMergedPath := TURIUtils.MergePaths(ABaseURI.FPath, Self.FPath);
           Result.FPath := TURIUtils.RemoveDotSegments(LMergedPath);
         end;
         Result.FQuery := Self.FQuery;
@@ -336,9 +340,9 @@ begin
 
     LBuilder.Append(FPath);
 
-    // Nota: Esta implementação simplificada não distingue um componente
-    // ausente de um componente vazio (ex: a diferença entre "a.com" e "a.com?").
-    // O parser (From) já armazena '' para ambos os casos.
+    // Nota: Esta implementaï¿½ï¿½o simplificada nï¿½o distingue um componente
+    // ausente de um componente vazio (ex: a diferenï¿½a entre "a.com" e "a.com?").
+    // O parser (From) jï¿½ armazena '' para ambos os casos.
     if FQuery <> '' then
     begin
       LBuilder.Append('?');

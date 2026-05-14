@@ -167,7 +167,7 @@ var
   LSegments: TArray<string>;
   LSegment: string;
 begin
-  // Remove o início '#.' ou '#'
+  // Remove o inï¿½cio '#.' ou '#'
   if APath.StartsWith('#.') then
     LSegments := APath.Substring(2).Split(['.'])
   else if APath.StartsWith('#') then
@@ -175,7 +175,7 @@ begin
   else
     LSegments := APath.Split(['.']);
 
-  // Remove os índices de array, pois nosso JSON de dicas não os terá
+  // Remove os ï¿½ndices de array, pois nosso JSON de dicas nï¿½o os terï¿½
   for LSegment in LSegments do
   begin
     var LCleanSegment := TRegEx.Replace(LSegment, '\[\d+\]', '');
@@ -185,8 +185,15 @@ begin
 end;
 
 class function TUtils.RegexNormalizePattern(const APattern: string): string;
+const
+  // ECMA-262 whitespace set used by JSON Schema test suite for \s / \S.
+  CECMAWhitespaceClass = '[\x09\x0A\x0B\x0C\x0D\x20\xA0\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}]';
 begin
-  Result := APattern.Replace('\p{Letter}', '\p{L}', [rfReplaceAll]).Replace('\p{digit}', '\p{N}', [rfReplaceAll]);
+  Result := APattern
+    .Replace('\p{Letter}', '\p{L}', [rfReplaceAll])
+    .Replace('\p{digit}', '\p{N}', [rfReplaceAll])
+    .Replace('\s', CECMAWhitespaceClass, [rfReplaceAll])
+    .Replace('\S', '[^' + CECMAWhitespaceClass.Substring(1, CECMAWhitespaceClass.Length - 2) + ']', [rfReplaceAll]);
 end;
 
 class function TUtils.UriGenerateRandom: string;

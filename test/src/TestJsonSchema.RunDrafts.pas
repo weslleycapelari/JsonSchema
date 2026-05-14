@@ -313,6 +313,8 @@ var
   LValid, LStop: Boolean;
   LResult: IValidationResult;
   LFailure: TJsonSchemaFailure;
+  LError: IError;
+  LMessage: string;
 begin
   ATotal := 0;
   APassed := 0;
@@ -428,15 +430,34 @@ begin
                     LFailure.TestDescription := LDescription;
                     LFailure.ExpectedValid := LValid;
                     LFailure.ActualValid := LResult.IsValid;
+                    LFailure.SchemaPath := '#';
+                    LFailure.InstancePath := '#';
+                    LFailure.ErrorMessage := '';
 
                     if Length(LResult.Errors) > 0 then
                     begin
-                      LFailure.SchemaPath := LResult.Errors[0].SchemaPath;
-                      LFailure.InstancePath := LResult.Errors[0].InstancePath;
-                      LFailure.ErrorMessage := LResult.Errors[0].ErrorMessage;
-                    end
-                    else
-                      LFailure.ErrorMessage := 'No details';
+                      for LError in LResult.Errors do
+                      begin
+                        if (LFailure.SchemaPath = '#') and (Trim(LError.SchemaPath) <> '') then
+                          LFailure.SchemaPath := LError.SchemaPath;
+
+                        if (LFailure.InstancePath = '#') and (Trim(LError.InstancePath) <> '') then
+                          LFailure.InstancePath := LError.InstancePath;
+
+                        LMessage := Trim(LError.ErrorMessage);
+                        if LMessage = '' then
+                          Continue;
+
+                        if LFailure.ErrorMessage <> '' then
+                          LFailure.ErrorMessage := LFailure.ErrorMessage + ' | ';
+                        LFailure.ErrorMessage := LFailure.ErrorMessage + LMessage;
+                      end;
+                    end;
+
+                    if LFailure.ErrorMessage = '' then
+                      LFailure.ErrorMessage := Format(
+                        'Validation mismatch without explicit error details (expected=%s, actual=%s).',
+                        [IfThen(LValid, 'True', 'False'), IfThen(LResult.IsValid, 'True', 'False')]);
 
                     AOnFailure(LFailure);
                   end;
