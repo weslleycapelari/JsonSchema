@@ -2,7 +2,16 @@ unit TestJsonSchema.RemoteFiles;
 
 interface
 
-uses IdHTTPServer, IdCustomHTTPServer, IdContext, IdGlobal, IdSocketHandle, System.SysUtils, System.Classes, System.IOUtils;
+uses
+  IdHTTPServer,
+  IdCustomHTTPServer,
+  IdContext,
+  IdGlobal,
+  IdSocketHandle,
+  System.SysUtils,
+  System.Classes,
+  System.IOUtils,
+  TestJsonSchema.Paths;
 
 type
   TFileServer = class
@@ -21,8 +30,6 @@ type
 
 implementation
 
-{ TFileServer }
-
 constructor TFileServer.Create;
 begin
   FServer := TIdHTTPServer.Create(nil);
@@ -36,17 +43,15 @@ end;
 
 function TFileServer.GetFolderPath: string;
 begin
-  Result := TPath.GetFullPath(TPath.Combine(ExtractFilePath(ParamStr(0)), '..', 'schemas/remotes'));
+  Result := GetSchemasRemotesRootPath;
 end;
 
 procedure TFileServer.OnCommandGet(AContext: TIdContext; ARequestInfo: TIdHTTPRequestInfo; AResponseInfo: TIdHTTPResponseInfo);
 var
   LFilePath: string;
 begin
-  // Monta o caminho completo do arquivo solicitado
   LFilePath := IncludeTrailingPathDelimiter(GetFolderPath) + ARequestInfo.Document;
 
-  // Se for uma pasta, serve um index.html padrão
   if DirectoryExists(LFilePath) then
     LFilePath := IncludeTrailingPathDelimiter(LFilePath) + 'index.html';
 
@@ -54,13 +59,13 @@ begin
   begin
     AResponseInfo.ContentStream := TFileStream.Create(LFilePath, fmOpenRead or fmShareDenyWrite);
     AResponseInfo.ContentType := 'application/json';
-    AResponseInfo.FreeContentStream := True; // o servidor libera o stream
+    AResponseInfo.FreeContentStream := True;
     AResponseInfo.ResponseNo := 200;
   end
   else
   begin
     AResponseInfo.ResponseNo := 404;
-    AResponseInfo.ContentText := 'Arquivo não encontrado';
+    AResponseInfo.ContentText := 'Arquivo nao encontrado';
   end;
 end;
 
@@ -75,16 +80,5 @@ procedure TFileServer.StopFileServer;
 begin
   FServer.Active := False;
 end;
-
-var
-  LServer: TFileServer;
-
-initialization
-  LServer := TFileServer.Create;
-  LServer.StartFileServer(1234);
-
-finalization
-  LServer.StopFileServer;
-  LServer.Free;
 
 end.

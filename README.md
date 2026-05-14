@@ -56,7 +56,7 @@ Validation draft selection follows these rules:
 - If no draft is passed and the schema does not declare `$schema`, validation falls back to Draft 2020-12.
 - If the schema declares `$schema`, that value drives draft selection.
 
-If you are validating a draft-specific change, update or add a draft-specific test before opening a PR. The DUnit project lives in [test/TestJsonSchema.dproj](test/TestJsonSchema.dproj).
+If you are validating a draft-specific change, update or add a draft-specific test before opening a PR. The DUnit GUI project lives in [test/gui/TestJsonSchema.dproj](test/gui/TestJsonSchema.dproj).
 
 ## Repository layout
 
@@ -64,6 +64,10 @@ If you are validating a draft-specific change, update or add a draft-specific te
 - `test`: DUnit project and schema fixtures.
 - `tools`: auxiliary tools, including Schema2Delphi.
 - `docs`: architecture and draft support documentation.
+
+## Testing documentation
+
+- [Testing Guide](docs/testing.md): test harness architecture, CLI options, progress/failure output, report formats, and examples.
 
 ## How to contribute
 
