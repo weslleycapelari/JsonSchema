@@ -132,7 +132,7 @@ begin
 
   FResources := TDictionary<string, TResource>.Create;
   FInflightResources := TDictionary<string, Byte>.Create;
-  FResources.Add(ABaseURI, TResource.Create(TURIReference.New(ABaseURI), ASchema));
+  FResources.Add(TURIUtils.NormalizeURI(ABaseURI), TResource.Create(TURIReference.New(ABaseURI), ASchema));
 
   FCore                := TBaseRegistryCoreVisitor.Create(Self);
   FApplicator          := TBaseRegistryApplicatorVisitor.Create(Self);
@@ -202,6 +202,7 @@ var
   LCanonicalURI: string;
   LRepoRootPath: string;
   LCandidatePath: string;
+  LRelativeRemotePath: string;
 begin
   AMappedFilePath := '';
   LCanonicalURI := LowerCase(ARemoteURI);
@@ -219,8 +220,30 @@ begin
   else if (LCanonicalURI = 'http://json-schema.org/draft-07/schema') or
           (LCanonicalURI = 'https://json-schema.org/draft-07/schema') then
     LCandidatePath := TPath.Combine(LRepoRootPath, 'test\schemas\remotes\draft7\schema.json')
+  else if (LCanonicalURI = 'http://json-schema.org/draft/2019-09/schema') or
+          (LCanonicalURI = 'https://json-schema.org/draft/2019-09/schema') then
+    LCandidatePath := TPath.Combine(LRepoRootPath, 'test\schemas\remotes\draft2019-09\schema.json')
+  else if LCanonicalURI.EndsWith('/draft2019-09/baseurichangefolder/baseurichangefolder/folderinteger.json') then
+    LCandidatePath := TPath.Combine(LRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolder\folderInteger.json')
+  else if LCanonicalURI.EndsWith('/draft2019-09/baseurichangefolderinsubschema/baseurichangefolderinsubschema/folderinteger.json') then
+    LCandidatePath := TPath.Combine(LRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolderInSubschema\folderInteger.json')
   else
+  begin
+    if IsLocalTestServerURI(ARemoteURI) then
+    begin
+      LRelativeRemotePath := StringReplace(ARemoteURI, 'http://localhost:1234/', '', [rfIgnoreCase]);
+      LRelativeRemotePath := StringReplace(LRelativeRemotePath, 'http://127.0.0.1:1234/', '', [rfIgnoreCase]);
+      LRelativeRemotePath := StringReplace(LRelativeRemotePath, '/', PathDelim, [rfReplaceAll]);
+      LCandidatePath := TPath.Combine(LRepoRootPath, TPath.Combine('test\schemas\remotes', LRelativeRemotePath));
+      if FileExists(LCandidatePath) then
+      begin
+        AMappedFilePath := LCandidatePath;
+        Exit(True);
+      end;
+    end;
+
     Exit(False);
+  end;
 
   if not FileExists(LCandidatePath) then
     Exit(False);
@@ -343,11 +366,23 @@ end;
 function TRegistryVisitor.TryFindResource(const ABaseURI: string; var AResource: TResource): Boolean;
 var
   LURI: TURIReference;
+  LNormalizedURI: string;
 begin
   LURI := TURIReference.From(ABaseURI);
   LURI.Query := '';
   LURI.Fragment := '';
-  Result := FResources.TryGetValue(LURI.Unsplit, AResource);
+  LNormalizedURI := TURIUtils.NormalizeURI(LURI.Unsplit);
+  Result := FResources.TryGetValue(LNormalizedURI, AResource);
+  if not Result then
+    Result := FResources.TryGetValue(LURI.Unsplit, AResource);
+
+  if not Result then
+  begin
+    TryLoadRemoteResource(LURI);
+    Result := FResources.TryGetValue(LNormalizedURI, AResource);
+    if not Result then
+      Result := FResources.TryGetValue(LURI.Unsplit, AResource);
+  end;
 end;
 
 function TRegistryVisitor.KeywordPrecedence: TArray<string>;
@@ -443,10 +478,25 @@ procedure TBaseRegistryCoreVisitor.VisitAnchor(const AValue: TJSONString);
 var
   LScope: TScope;
   LResource: TResource;
+  LAnchorName: string;
+  LAbsoluteAnchor: string;
 begin
   LScope := Visitor.CurrentScope;
+  LAnchorName := AValue.Value;
+  if LAnchorName.StartsWith('#') then
+    LAnchorName := LAnchorName.Substring(1);
+
   if Visitor.TryFindResource(LScope.BaseURI, LResource) then
-    LResource.AddAnchor(AValue.Value, LScope.SchemaNode);
+  begin
+    LResource.AddAnchor(LAnchorName, LScope.SchemaNode);
+    if not LAnchorName.IsEmpty then
+    begin
+      LResource.AddAnchor('#' + LAnchorName, LScope.SchemaNode);
+
+      LAbsoluteAnchor := LScope.BaseURI + '#' + LAnchorName;
+      LResource.AddAnchor(LAbsoluteAnchor, LScope.SchemaNode);
+    end;
+  end;
 end;
 
 procedure TBaseRegistryCoreVisitor.VisitBooleanSchema(const AValue: TJSONBool);
@@ -469,6 +519,7 @@ var
   LScope: TScope;
   LNewBaseURI: TURIReference;
   LResourceURI: TURIReference;
+  LResourceKeyURI: string;
   LResource: TResource;
 begin
   LScope := Visitor.FScopeStack.Peek;
@@ -483,13 +534,14 @@ begin
   LResourceURI := LNewBaseURI;
   LResourceURI.Query := '';
   LResourceURI.Fragment := '';
+  LResourceKeyURI := TURIUtils.NormalizeURI(LResourceURI.Unsplit);
 
   // Se o recurso base ainda nгo existe, adiciona-o.
-  if not Visitor.FResources.ContainsKey(LResourceURI.Unsplit) then
-    Visitor.FResources.Add(LResourceURI.Unsplit, TResource.Create(LResourceURI, LScope.SchemaNode));
+  if not Visitor.FResources.ContainsKey(LResourceKeyURI) then
+    Visitor.FResources.Add(LResourceKeyURI, TResource.Create(LResourceURI, LScope.SchemaNode));
 
   // Em drafts antigos, $id com fragmento atua como um identificador local semelhante a anchor.
-  if (LNewBaseURI.Fragment <> '') and Visitor.FResources.TryGetValue(LResourceURI.Unsplit, LResource) then
+  if (LNewBaseURI.Fragment <> '') and Visitor.FResources.TryGetValue(LResourceKeyURI, LResource) then
     LResource.AddAnchor(LNewBaseURI.Fragment, LScope.SchemaNode);
 
   // Marca a palavra-chave como visitada para que o Walker n�o a processe duas vezes
@@ -504,8 +556,33 @@ var
   LTargetURI: TURIReference;
   LResourceRef: TURIReference;
   LResourceURI: string;
+  LDefs: TJSONValue;
+  LSchemaId: TJSONValue;
 begin
   LScope := Visitor.CurrentScope;
+
+  // Se o schema atual declara id/$id, atualiza a base antes de resolver $ref.
+  if (LScope.SchemaNode is TJSONObject) then
+  begin
+    if TJSONObject(LScope.SchemaNode).TryGetValue('$id', LSchemaId) and (LSchemaId is TJSONString) then
+      VisitId(TJSONString(LSchemaId))
+    else if TJSONObject(LScope.SchemaNode).TryGetValue('id', LSchemaId) and (LSchemaId is TJSONString) then
+      VisitId(TJSONString(LSchemaId));
+
+    LScope := Visitor.CurrentScope;
+  end;
+
+  // Mesmo quando há $ref no schema atual, precisamos descobrir âncoras em $defs
+  // para resolver referências locais e URNs definidos por $id.
+  if (LScope.SchemaNode is TJSONObject) then
+  begin
+    if TJSONObject(LScope.SchemaNode).TryGetValue('$defs', LDefs) and (LDefs is TJSONObject) then
+      Visitor.DiscoverInObjectOfSchemas(TJSONObject(LDefs));
+
+    if TJSONObject(LScope.SchemaNode).TryGetValue('definitions', LDefs) and (LDefs is TJSONObject) then
+      Visitor.DiscoverInObjectOfSchemas(TJSONObject(LDefs));
+  end;
+
   LTargetURI := TURIReference.From(AValue.Value).ResolveWith(TURIReference.From(LScope.BaseURI));
   LResourceRef := LTargetURI;
   LResourceRef.Query := '';

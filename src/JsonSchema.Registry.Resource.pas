@@ -157,6 +157,8 @@ begin
   else
   begin
     FAnchors.TryGetValue(LPointerPath, Result);
+    if not Assigned(Result) then
+      FAnchors.TryGetValue(FBaseURI.Unsplit + '#' + LPointerPath, Result);
     // Se n�o encontrou em �ncoras normais, tente as din�micas (para o caso de $ref as usar)
     if not Assigned(Result) then
       FDynamicAnchors.TryGetValue(LPointerPath, Result);

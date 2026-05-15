@@ -4,7 +4,8 @@ interface
 
 uses
   System.JSON,
-  System.Classes;
+  System.Classes,
+  System.Generics.Collections;
 
 type
   TScope = record
@@ -17,6 +18,7 @@ type
     ContainsCount: Integer;
     VisitedKeywords: TArray<string>;
     CoveredProperties: TArray<string>;
+    EvaluatedPropertiesInScope: THashSet<string>;
   end;
 
   TVisitorProc = procedure(const AValue: TJSONValue) of object;

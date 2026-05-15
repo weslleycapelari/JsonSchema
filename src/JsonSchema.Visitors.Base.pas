@@ -106,18 +106,35 @@ begin
     ContainsCount     := 0;
     VisitedKeywords   := [];
     CoveredProperties := [];
+    EvaluatedPropertiesInScope := THashSet<string>.Create;
   end;
   FScopeStack.Push(LScope);
 end;
 
 function TBaseVisitor<T>.CurrentScope(const AOffset: Integer): TScope;
 begin
+  FillChar(Result, SizeOf(Result), 0);
   if FScopeStack.Count > AOffset then
     Result := FScopeStack.List[FScopeStack.Count - AOffset - 1];
 end;
 
 destructor TBaseVisitor<T>.Destroy;
+var
+  LScope: TScope;
+  LFreedSets: TList<THashSet<string>>;
 begin
+  LFreedSets := TList<THashSet<string>>.Create;
+  try
+    for LScope in FScopeStack do
+      if Assigned(LScope.EvaluatedPropertiesInScope) and not LFreedSets.Contains(LScope.EvaluatedPropertiesInScope) then
+      begin
+        LFreedSets.Add(LScope.EvaluatedPropertiesInScope);
+        LScope.EvaluatedPropertiesInScope.Free;
+      end;
+  finally
+    LFreedSets.Free;
+  end;
+
   FScopeStack.Free;
   inherited;
 end;
@@ -150,9 +167,19 @@ begin
 end;
 
 function TBaseVisitor<T>.PushScope(const AScope: TScope): IVisitor<T>;
+var
+  LScope: TScope;
 begin
   Result := Self;
-  FScopeStack.Push(AScope);
+  LScope := AScope;
+
+  if (FScopeStack.Count > 0) and Assigned(CurrentScope.EvaluatedPropertiesInScope) and
+     (LScope.EvaluatedPropertiesInScope = CurrentScope.EvaluatedPropertiesInScope) then
+    LScope.EvaluatedPropertiesInScope := THashSet<string>.Create
+  else if not Assigned(LScope.EvaluatedPropertiesInScope) then
+    LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+  FScopeStack.Push(LScope);
 end;
 
 function TBaseVisitor<T>.RelativeJsonPointer: IBaseRelativeJsonPointer<T>;

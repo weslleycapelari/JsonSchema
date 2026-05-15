@@ -13,7 +13,7 @@ type
     function TranslateEnumValueMismatch: TErrorMessage;
     function TranslateConstValueMismatch: TErrorMessage;
 
-    // --- Erros Numéricos ---
+    // --- Erros Numï¿½ricos ---
     function TranslateMultipleOf: TErrorMessage;
     function TranslateMaximum: TErrorMessage;
     function TranslateExclusiveMaximum: TErrorMessage;
@@ -53,6 +53,7 @@ type
 
     // --- Fallback ---
     function TranslateUnresolvedReference: TErrorMessage;
+    function TranslateUnsupportedVocabulary: TErrorMessage;
     function TranslateUnknown: TErrorMessage;
   end;
 

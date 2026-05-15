@@ -16,7 +16,7 @@ type
     [TranslateError(vetConstValueMismatch)]
     function TranslateConstValueMismatch: TErrorMessage;
 
-    // --- Erros Numéricos ---
+    // --- Erros Numï¿½ricos ---
     [TranslateError(vetMultipleOf)]
     function TranslateMultipleOf: TErrorMessage;
     [TranslateError(vetMaximum)]
@@ -85,6 +85,8 @@ type
     // --- Fallback ---
     [TranslateError(vetUnresolvedReference)]
     function TranslateUnresolvedReference: TErrorMessage;
+    [TranslateError(vetUnsupportedVocabulary)]
+    function TranslateUnsupportedVocabulary: TErrorMessage;
     [TranslateError(vetUnknown)]
     function TranslateUnknown: TErrorMessage;
   end;
@@ -289,6 +291,12 @@ function TTranslate_enUS.TranslateUnresolvedReference: TErrorMessage;
 begin
   Result.Error := 'Could not find the reference "%s".';
   Result.Hint  := 'Check if the reference name is correct.';
+end;
+
+function TTranslate_enUS.TranslateUnsupportedVocabulary: TErrorMessage;
+begin
+  Result.Error := 'The required vocabulary "%s" is not supported.';
+  Result.Hint  := 'Use only vocabularies supported by this validator or mark unknown vocabularies as optional.';
 end;
 
 end.

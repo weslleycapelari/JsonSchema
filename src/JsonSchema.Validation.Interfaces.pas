@@ -4,6 +4,7 @@ interface
 
 uses
   System.JSON,
+  System.Generics.Collections,
   JsonSchema.Visitors.Interfaces,
   JsonSchema.Translate.Types,
   JsonSchema.Registry.Base;
@@ -28,7 +29,9 @@ type
     ['{9461F9BC-C13B-4C32-816D-3C363B33163A}']
     function Errors: TArray<IError>;
     function AddError(const AError: IError): IValidationResult;
+    function AddEvaluatedProperty(const AProperty: string): IValidationResult;
     function IsValid: Boolean;
+    function EvaluatedProperties: TEnumerable<string>;
   end;
 
   IError = interface(IInterface)

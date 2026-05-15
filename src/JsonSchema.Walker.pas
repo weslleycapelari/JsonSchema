@@ -127,12 +127,42 @@ begin
 end;
 
 procedure TWalker<T>.Walk;
+const
+  CValidationKeywords: array[0..17] of string = (
+    'type',
+    'multipleOf',
+    'maximum',
+    'exclusiveMaximum',
+    'minimum',
+    'exclusiveMinimum',
+    'maxLength',
+    'minLength',
+    'pattern',
+    'maxItems',
+    'minItems',
+    'uniqueItems',
+    'maxProperties',
+    'minProperties',
+    'required',
+    'enum',
+    'const',
+    'format'
+  );
 var
   LPair: TJSONPair;
   LKeyword: string;
   LJsonValue: TJSONValue;
+  LRefValue: TJSONValue;
+  LHasRef: Boolean;
   LPrecedence: TArray<string>;
   LPrecedentKeyword: string;
+  LSchemaDraft: string;
+  LDraftVersion: TDraftVersion;
+  LAllowSiblingKeywordsWithRef: Boolean;
+  LValidationKeyword: string;
+  LDraft2019VocabularyMode: IDraft2019_09ValidationVocabularyMode;
+  LSilentValidationMode: Boolean;
+  LIsValidationKeyword: Boolean;
 begin
   if not Assigned(FSchema) then
     Exit;
@@ -150,13 +180,41 @@ begin
   if not (FSchema is TJSONObject) then
     Exit;
 
-  if TJSONObject(FSchema).TryGetValue('$ref', LJsonValue) then
+  LPrecedence := FVisitor.KeywordPrecedence;
+
+  LAllowSiblingKeywordsWithRef := False;
+  LDraftVersion := TDraftVersion.dvUnknown;
+  if TJSONObject(FSchema).TryGetValue('$schema', LSchemaDraft) then
+    LDraftVersion := TDraftVersion.FromSchema(LSchemaDraft)
+  else
   begin
-    DispatchVisit('$ref', LJsonValue);
+    for LPrecedentKeyword in LPrecedence do
+      if (LPrecedentKeyword = '$recursiveRef') or (LPrecedentKeyword = '$dynamicRef') or
+         (LPrecedentKeyword = 'unevaluatedProperties') then
+      begin
+        LDraftVersion := TDraftVersion.dvDraft2019_09;
+        Break;
+      end;
+  end;
+
+  LAllowSiblingKeywordsWithRef := LDraftVersion in [TDraftVersion.dvDraft2019_09, TDraftVersion.dvDraft2020_12];
+
+  LSilentValidationMode := Supports(FVisitor, IDraft2019_09ValidationVocabularyMode, LDraft2019VocabularyMode) and
+    LDraft2019VocabularyMode.IsValidationVocabularySilent;
+
+  if LSilentValidationMode then
+    for LValidationKeyword in CValidationKeywords do
+      FVisitor.AddVisitedKeyword(LValidationKeyword);
+
+  LHasRef := TJSONObject(FSchema).TryGetValue('$ref', LRefValue);
+  if LHasRef and (not LAllowSiblingKeywordsWithRef) then
+  begin
+    DispatchVisit('$ref', LRefValue);
     Exit;
   end;
 
-  LPrecedence := FVisitor.KeywordPrecedence;
+  if LHasRef and LAllowSiblingKeywordsWithRef then
+    FVisitor.AddVisitedKeyword('$ref');
 
   if Length(LPrecedence) > 0 then
   begin
@@ -164,6 +222,18 @@ begin
     begin
       if TJSONObject(FSchema).TryGetValue(LPrecedentKeyword, LJsonValue) then
       begin
+        LIsValidationKeyword := False;
+        if LSilentValidationMode then
+          for LValidationKeyword in CValidationKeywords do
+            if SameText(LPrecedentKeyword, LValidationKeyword) then
+            begin
+              LIsValidationKeyword := True;
+              Break;
+            end;
+
+        if LIsValidationKeyword then
+          Continue;
+
         if FVisitor.HasVisitedKeyword(LPrecedentKeyword) then
           Continue;
 
@@ -177,11 +247,26 @@ begin
   begin
     LKeyword := LPair.JsonString.Value;
 
+    LIsValidationKeyword := False;
+    if LSilentValidationMode then
+      for LValidationKeyword in CValidationKeywords do
+        if SameText(LKeyword, LValidationKeyword) then
+        begin
+          LIsValidationKeyword := True;
+          Break;
+        end;
+
+    if LIsValidationKeyword then
+      Continue;
+
     if FVisitor.HasVisitedKeyword(LKeyword) then
       Continue;
 
     DispatchVisit(LKeyword, LPair.JsonValue);
   end;
+
+  if LHasRef and LAllowSiblingKeywordsWithRef then
+    DispatchVisit('$ref', LRefValue);
 end;
 
 { TValidationWalker }

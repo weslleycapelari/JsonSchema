@@ -1,4 +1,4 @@
-unit JsonSchema.Validation.Base;
+﻿unit JsonSchema.Validation.Base;
 
 interface
 
@@ -468,8 +468,6 @@ var
   LTargetRootSchema: TJSONValue;
   LTargetDraftSchema: string;
   LTargetDraftVersion: TDraftVersion;
-  LCurrentDraftVersion: TDraftVersion;
-  LTypeName: string;
   LCrossDraftResult: IValidationResult;
   LCrossDraftError: IError;
   LDependentRequired: TJSONValue;
@@ -477,6 +475,15 @@ var
   LRequiredArray: TJSONArray;
   LRequiredValue: TJSONValue;
   LInstanceObject: TJSONObject;
+  LEvaluatedProperty: string;
+  LNormalizedEvaluatedProperty: string;
+  LRelativePath: string;
+  LSegmentSeparator: Integer;
+  LFirstSegment: string;
+  LItemIndex: Integer;
+  LPrecedenceKey: string;
+  LCurrentHandlesNewDrafts: Boolean;
+  LResultEvaluatedBefore: THashSet<string>;
 begin
   if not Supports(Visitor, IValidationVisitor<T>, LValidationVisitor) then
     Exit; // Sanity check
@@ -522,17 +529,6 @@ begin
     if (LTargetRootSchema is TJSONObject) and TJSONObject(LTargetRootSchema).TryGetValue<string>('$schema', LTargetDraftSchema) then
       LTargetDraftVersion := TDraftVersion.FromSchema(LTargetDraftSchema);
 
-    LCurrentDraftVersion := TDraftVersion.dvUnknown;
-    LTypeName := GetTypeName(TypeInfo(T));
-    if ContainsText(LTypeName, 'Draft6') then
-      LCurrentDraftVersion := TDraftVersion.dvDraft6
-    else if ContainsText(LTypeName, 'Draft7') then
-      LCurrentDraftVersion := TDraftVersion.dvDraft7
-    else if ContainsText(LTypeName, 'Draft2019_09') then
-      LCurrentDraftVersion := TDraftVersion.dvDraft2019_09
-    else if ContainsText(LTypeName, 'Draft2020_12') then
-      LCurrentDraftVersion := TDraftVersion.dvDraft2020_12;
-
     if (LTargetDraftVersion = TDraftVersion.dvUnknown) then
     begin
       if ContainsText(LFinalURI.Unsplit, '/draft2019-09/') then
@@ -541,9 +537,72 @@ begin
         LTargetDraftVersion := TDraftVersion.dvDraft2020_12;
     end;
 
-    if (LTargetDraftVersion in [TDraftVersion.dvDraft2019_09, TDraftVersion.dvDraft2020_12]) then
+    // Verifica se o visitor atual j\u00e1 suporta nativamente os drafts 2019-09/2020-12.
+    // Se sim, n\u00e3o usar o caminho cross-draft para refs do mesmo draft (preserva o dynamic scope chain).
+    LCurrentHandlesNewDrafts := False;
+    for LPrecedenceKey in Visitor.KeywordPrecedence do
+      if (LPrecedenceKey = '$recursiveRef') or (LPrecedenceKey = '$dynamicRef') then
+      begin
+        LCurrentHandlesNewDrafts := True;
+        Break;
+      end;
+
+    if (LTargetDraftVersion in [TDraftVersion.dvDraft2019_09, TDraftVersion.dvDraft2020_12]) and
+       not LCurrentHandlesNewDrafts then
     begin
       LCrossDraftResult := TJsonSchema.Validate(LTargetSchema, LScope.InstanceNode, LTargetDraftVersion);
+
+      if not Assigned(LScope.EvaluatedPropertiesInScope) then
+        LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+      for LEvaluatedProperty in LCrossDraftResult.EvaluatedProperties do
+      begin
+        LNormalizedEvaluatedProperty := LEvaluatedProperty;
+        if not LNormalizedEvaluatedProperty.IsEmpty then
+        begin
+          if (LScope.InstancePath <> '#') and not LNormalizedEvaluatedProperty.StartsWith(LScope.InstancePath + '/') then
+          begin
+            if LNormalizedEvaluatedProperty = '#' then
+              LNormalizedEvaluatedProperty := LScope.InstancePath
+            else if LNormalizedEvaluatedProperty.StartsWith('#/') then
+              LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty.Substring(1)
+            else if LNormalizedEvaluatedProperty.StartsWith('#.') then
+              LNormalizedEvaluatedProperty := LScope.InstancePath + '/' +
+                StringReplace(LNormalizedEvaluatedProperty.Substring(2), '.', '/', [rfReplaceAll])
+            else if LNormalizedEvaluatedProperty.StartsWith('/') then
+              LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty
+            else if LNormalizedEvaluatedProperty.StartsWith('.') then
+              LNormalizedEvaluatedProperty := LScope.InstancePath + '/' +
+                StringReplace(LNormalizedEvaluatedProperty.Substring(1), '.', '/', [rfReplaceAll])
+            else
+              LNormalizedEvaluatedProperty := LScope.InstancePath + '/' + LNormalizedEvaluatedProperty;
+          end;
+        end;
+
+        LScope.EvaluatedPropertiesInScope.Add(LNormalizedEvaluatedProperty);
+        LValidationVisitor.Result.AddEvaluatedProperty(LNormalizedEvaluatedProperty);
+
+        // Em modo cross-draft, reconstrói cobertura local para unevaluated* do visitor pai.
+        if LNormalizedEvaluatedProperty.StartsWith(LScope.InstancePath + '/') then
+        begin
+          LRelativePath := LNormalizedEvaluatedProperty.Substring((LScope.InstancePath + '/').Length);
+          LSegmentSeparator := Pos('/', LRelativePath);
+          if LSegmentSeparator > 0 then
+            LFirstSegment := Copy(LRelativePath, 1, LSegmentSeparator - 1)
+          else
+            LFirstSegment := LRelativePath;
+
+          if TryStrToInt(LFirstSegment, LItemIndex) then
+          begin
+            TUtils.AddArray<Integer>(LScope.CoveredItems, LItemIndex);
+          end
+          else if LFirstSegment <> '' then
+          begin
+            TUtils.AddArray<string>(LScope.CoveredProperties, LFirstSegment);
+          end;
+        end;
+      end;
+      Visitor.UpdateScope(LScope);
+
       if not LCrossDraftResult.IsValid then
         for LCrossDraftError in LCrossDraftResult.Errors do
           LValidationVisitor.Result.AddError(LCrossDraftError);
@@ -589,15 +648,122 @@ begin
       ContainsCount     := 0;
       VisitedKeywords   := [];
       CoveredProperties := [];
+      EvaluatedPropertiesInScope := THashSet<string>.Create;
+      if Assigned(LScope.EvaluatedPropertiesInScope) then
+        for LEvaluatedProperty in LScope.EvaluatedPropertiesInScope do
+          EvaluatedPropertiesInScope.Add(LEvaluatedProperty);
+      // Injeta também a memória global já avaliada para o filho enxergar
+      // anotações herdadas do pai durante a sub-validação de $ref.
+      for LEvaluatedProperty in LValidationVisitor.Result.EvaluatedProperties do
+        EvaluatedPropertiesInScope.Add(LEvaluatedProperty);
       // A inst�ncia e seu caminho n�o mudam
     end;
 
-    Visitor.PushScope(LNewScope);
+    LResultEvaluatedBefore := THashSet<string>.Create;
     try
-      LWalker := TWalker<T>.Create(LTargetSchema, Visitor);
-      LWalker.Walk;
+      for LEvaluatedProperty in LValidationVisitor.Result.EvaluatedProperties do
+        LResultEvaluatedBefore.Add(LEvaluatedProperty);
+
+      Visitor.PushScope(LNewScope);
+      try
+        LWalker := TWalker<T>.Create(LTargetSchema, Visitor);
+        LWalker.Walk;
+
+        // Sincroniza imediatamente as anotações novas no escopo local do $ref
+        // antes do pop, para manter coerência intra-subvalidação.
+        LNewScope := Visitor.CurrentScope;
+        if not Assigned(LNewScope.EvaluatedPropertiesInScope) then
+          LNewScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+        for LEvaluatedProperty in LValidationVisitor.Result.EvaluatedProperties do
+        begin
+          if LResultEvaluatedBefore.Contains(LEvaluatedProperty) then
+            Continue;
+
+          LNormalizedEvaluatedProperty := LEvaluatedProperty;
+          if not LNormalizedEvaluatedProperty.IsEmpty then
+          begin
+            if (LScope.InstancePath <> '#') and not LNormalizedEvaluatedProperty.StartsWith(LScope.InstancePath + '/') then
+            begin
+              if LNormalizedEvaluatedProperty = '#' then
+                LNormalizedEvaluatedProperty := LScope.InstancePath
+              else if LNormalizedEvaluatedProperty.StartsWith('#/') then
+                LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty.Substring(1)
+              else if LNormalizedEvaluatedProperty.StartsWith('#.') then
+                LNormalizedEvaluatedProperty := LScope.InstancePath + '/' +
+                  StringReplace(LNormalizedEvaluatedProperty.Substring(2), '.', '/', [rfReplaceAll])
+              else if LNormalizedEvaluatedProperty.StartsWith('/') then
+                LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty
+              else if LNormalizedEvaluatedProperty.StartsWith('.') then
+                LNormalizedEvaluatedProperty := LScope.InstancePath + '/' +
+                  StringReplace(LNormalizedEvaluatedProperty.Substring(1), '.', '/', [rfReplaceAll])
+              else
+                LNormalizedEvaluatedProperty := LScope.InstancePath + '/' + LNormalizedEvaluatedProperty;
+            end;
+          end;
+
+          LNewScope.EvaluatedPropertiesInScope.Add(LNormalizedEvaluatedProperty);
+        end;
+        Visitor.UpdateScope(LNewScope);
+      finally
+        LNewScope := Visitor.PopScope;
+      end;
+
+      LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
+      LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+      if Assigned(LNewScope.EvaluatedPropertiesInScope) then
+      begin
+        if not Assigned(LScope.EvaluatedPropertiesInScope) then
+          LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+        for LEvaluatedProperty in LNewScope.EvaluatedPropertiesInScope do
+        begin
+          LNormalizedEvaluatedProperty := LEvaluatedProperty;
+          if not LNormalizedEvaluatedProperty.IsEmpty then
+          begin
+            if (LScope.InstancePath <> '#') and not LNormalizedEvaluatedProperty.StartsWith(LScope.InstancePath + '/') then
+            begin
+              if LNormalizedEvaluatedProperty = '#' then
+                LNormalizedEvaluatedProperty := LScope.InstancePath
+              else if LNormalizedEvaluatedProperty.StartsWith('#/') then
+                LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty.Substring(1)
+              else if LNormalizedEvaluatedProperty.StartsWith('#.') then
+                LNormalizedEvaluatedProperty := LScope.InstancePath + '/' +
+                  StringReplace(LNormalizedEvaluatedProperty.Substring(2), '.', '/', [rfReplaceAll])
+              else if LNormalizedEvaluatedProperty.StartsWith('/') then
+                LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty
+              else if LNormalizedEvaluatedProperty.StartsWith('.') then
+                LNormalizedEvaluatedProperty := LScope.InstancePath + '/' +
+                  StringReplace(LNormalizedEvaluatedProperty.Substring(1), '.', '/', [rfReplaceAll])
+              else
+                LNormalizedEvaluatedProperty := LScope.InstancePath + '/' + LNormalizedEvaluatedProperty;
+            end;
+          end;
+
+          LScope.EvaluatedPropertiesInScope.Add(LNormalizedEvaluatedProperty);
+          LValidationVisitor.Result.AddEvaluatedProperty(LNormalizedEvaluatedProperty);
+
+          // Em refs no mesmo draft, reconstruí cobertura local para unevaluated* no escopo pai.
+          if LNormalizedEvaluatedProperty.StartsWith(LScope.InstancePath + '/') then
+          begin
+            LRelativePath := LNormalizedEvaluatedProperty.Substring((LScope.InstancePath + '/').Length);
+            LSegmentSeparator := Pos('/', LRelativePath);
+            if LSegmentSeparator > 0 then
+              LFirstSegment := Copy(LRelativePath, 1, LSegmentSeparator - 1)
+            else
+              LFirstSegment := LRelativePath;
+
+            if TryStrToInt(LFirstSegment, LItemIndex) then
+              TUtils.AddArray<Integer>(LScope.CoveredItems, LItemIndex)
+            else if LFirstSegment <> '' then
+              TUtils.AddArray<string>(LScope.CoveredProperties, LFirstSegment);
+          end;
+        end;
+      end;
+
+      Visitor.UpdateScope(LScope);
     finally
-      Visitor.PopScope;
+      LResultEvaluatedBefore.Free;
     end;
   finally
     if LGuardEntered then
@@ -1099,6 +1265,10 @@ begin
         end;
       end;
     end
+    else if LFormatName = 'duration' then
+      LIsValid := TRegEx.IsMatch(LInstanceValue,
+        '^P(?!$)((\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?|(\d+W))$',
+        [roCompiled])
     else if LFormatName = 'date' then
     begin
       LMatch := TRegEx.Match(LInstanceValue,
@@ -1418,6 +1588,10 @@ begin
     else if LFormatName = 'hostname' then
       LIsValid := TRegEx.IsMatch(LInstanceValue,
         '^(?=.{1,253}$)(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-))(?:\.(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-)))*$',
+        [roCompiled])
+    else if LFormatName = 'uuid' then
+      LIsValid := TRegEx.IsMatch(LInstanceValue,
+        '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
         [roCompiled]);
 
     if not LIsValid then
@@ -1894,6 +2068,8 @@ procedure TBaseValidationVisitor<T>.VisitContentEncoding(const AValue: TJSONStri
 var
   LScope: TScope;
   LInstanceValue: string;
+  LPrecedenceKey: string;
+  LAnnotationOnly: Boolean;
 begin
   LScope := Visitor.CurrentScope;
   if TUtils.JsonGetType(LScope.InstanceNode) <> 'string' then
@@ -1902,9 +2078,28 @@ begin
   if not SameText(AValue.Value, 'base64') then
     Exit;
 
+  LAnnotationOnly := False;
+  for LPrecedenceKey in Visitor.KeywordPrecedence do
+    if (LPrecedenceKey = '$recursiveRef') or (LPrecedenceKey = '$dynamicRef') then
+    begin
+      LAnnotationOnly := True;
+      Break;
+    end;
+
   LInstanceValue := TJSONString(LScope.InstanceNode).Value;
   if not TRegEx.IsMatch(LInstanceValue, '^[A-Za-z0-9+/]*={0,2}$', [roCompiled]) then
-    Visitor.AddError(TErrorType.vetInvalidFormat, ['contentEncoding']);
+  begin
+    if not LAnnotationOnly then
+      Visitor.AddError(TErrorType.vetInvalidFormat, ['contentEncoding']);
+    Exit;
+  end;
+
+  try
+    TNetEncoding.Base64.DecodeStringToBytes(LInstanceValue);
+  except
+    if not LAnnotationOnly then
+      Visitor.AddError(TErrorType.vetInvalidFormat, ['contentEncoding']);
+  end;
 end;
 
 procedure TBaseValidationVisitor<T>.VisitContentMediaType(const AValue: TJSONString);
@@ -1916,6 +2111,8 @@ var
   LBytes: TBytes;
   LDecoded: string;
   LJsonValue: TJSONValue;
+  LPrecedenceKey: string;
+  LAnnotationOnly: Boolean;
 begin
   LScope := Visitor.CurrentScope;
   if TUtils.JsonGetType(LScope.InstanceNode) <> 'string' then
@@ -1923,6 +2120,19 @@ begin
 
   LMediaType := LowerCase(AValue.Value);
   if LMediaType <> 'application/json' then
+    Exit;
+
+  LAnnotationOnly := False;
+  for LPrecedenceKey in Visitor.KeywordPrecedence do
+    if (LPrecedenceKey = '$recursiveRef') or (LPrecedenceKey = '$dynamicRef') then
+    begin
+      LAnnotationOnly := True;
+      Break;
+    end;
+
+  // Em 2019-09/2020-12, content* funciona como anotação por padrão.
+  // Sem um modo estrito explícito, não deve tornar a validação inválida.
+  if LAnnotationOnly then
     Exit;
 
   LInstanceValue := TJSONString(LScope.InstanceNode).Value;
@@ -2017,6 +2227,7 @@ var
   LWalker: IWalker;
   LCovered: TList<string>;
   LNewScope: TScope;
+  LErrorCount: Integer;
 begin
   LScope := Visitor.CurrentScope;
 
@@ -2044,6 +2255,7 @@ begin
       end;
 
       Visitor.PushScope(LNewScope);
+      LErrorCount := Length(Visitor.Result.Errors);
       try
         LWalker := TWalker<T>.Create(AValue, Visitor);
         LWalker.Walk;
@@ -2052,6 +2264,13 @@ begin
       end;
 
       TUtils.AddArray<string>(LScope.CoveredProperties, LPair.JsonString.Value);
+      if Length(Visitor.Result.Errors) = LErrorCount then
+      begin
+        if not Assigned(LScope.EvaluatedPropertiesInScope) then
+          LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+        LScope.EvaluatedPropertiesInScope.Add(Format('%s/%s', [LScope.InstancePath, LPair.JsonString.Value]));
+        Visitor.Result.AddEvaluatedProperty(Format('%s/%s', [LScope.InstancePath, LPair.JsonString.Value]));
+      end;
     end;
   finally
     LCovered.Free;
@@ -2066,43 +2285,140 @@ var
   LScope: TScope;
   LWalker: IWalker;
   LNewScope: TScope;
-  LErrorCount: Integer;
+  LVisitor: T;
+  LBranchValid: Boolean;
+  LParentOffset: Integer;
+  LParentMaxOffset: Integer;
+  LParentScopeItem: TScope;
+  LEvaluatedProperty: string;
+  LNormalizedEvaluatedProperty: string;
+  LCombinedCoveredItems: TArray<Integer>;
+  LCombinedCoveredProperties: TArray<string>;
+  LCombinedEvaluatedProperties: THashSet<string>;
 begin
   LScope := Visitor.CurrentScope;
+  LCombinedCoveredItems := LScope.CoveredItems;
+  LCombinedCoveredProperties := LScope.CoveredProperties;
+  LCombinedEvaluatedProperties := THashSet<string>.Create;
+  try
+    if Assigned(LScope.EvaluatedPropertiesInScope) then
+      for LEvaluatedProperty in LScope.EvaluatedPropertiesInScope do
+        LCombinedEvaluatedProperties.Add(LEvaluatedProperty);
 
-  for LCount := 0 to AValue.Count - 1 do
-  begin
-    LNewScope := LScope;
-    with LNewScope do
+    for LCount := 0 to AValue.Count - 1 do
     begin
-      SchemaPath        := Format('%s/allOf/%d', [SchemaPath, LCount]);
-      SchemaNode        := AValue[LCount];
-      InstanceNode      := InstanceNode;
-      InstancePath      := Format('%s', [InstancePath]);
-      CoveredItems      := [];
-      ContainsCount     := 0;
-      VisitedKeywords   := [];
-      CoveredProperties := [];
+      LNewScope := LScope;
+      with LNewScope do
+      begin
+        SchemaPath        := Format('%s/allOf/%d', [SchemaPath, LCount]);
+        SchemaNode        := AValue[LCount];
+        InstanceNode      := InstanceNode;
+        InstancePath      := Format('%s', [InstancePath]);
+        CoveredItems      := [];
+        ContainsCount     := 0;
+        VisitedKeywords   := [];
+        CoveredProperties := [];
+      end;
+
+      LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
+      LVisitor.PopScope;
+      LParentMaxOffset := -1;
+      LParentOffset := 0;
+      while Assigned(Visitor.CurrentScope(LParentOffset).SchemaNode) do
+      begin
+        LParentMaxOffset := LParentOffset;
+        Inc(LParentOffset);
+      end;
+
+      for LParentOffset := LParentMaxOffset downto 0 do
+      begin
+        LParentScopeItem := Visitor.CurrentScope(LParentOffset);
+        LParentScopeItem.EvaluatedPropertiesInScope := nil;
+        LVisitor.PushScope(LParentScopeItem);
+      end;
+
+      LVisitor.PushScope(LNewScope);
+      LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
+      LWalker.Walk;
+
+      // Mantém o escopo do branch sincronizado com as anotações produzidas
+      // durante a avaliação do branch antes do pop.
+      LNewScope := LVisitor.CurrentScope;
+      if not Assigned(LNewScope.EvaluatedPropertiesInScope) then
+        LNewScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+      for LEvaluatedProperty in LVisitor.Result.EvaluatedProperties do
+      begin
+        LNormalizedEvaluatedProperty := LEvaluatedProperty;
+        if not LNormalizedEvaluatedProperty.IsEmpty then
+        begin
+          if (LScope.InstancePath <> '#') and not LNormalizedEvaluatedProperty.StartsWith(LScope.InstancePath + '/') then
+          begin
+            if LNormalizedEvaluatedProperty = '#' then
+              LNormalizedEvaluatedProperty := LScope.InstancePath
+            else if LNormalizedEvaluatedProperty.StartsWith('#/') then
+              LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty.Substring(1)
+            else if LNormalizedEvaluatedProperty.StartsWith('/') then
+              LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty
+            else
+              LNormalizedEvaluatedProperty := LScope.InstancePath + '/' + LNormalizedEvaluatedProperty;
+          end;
+        end;
+
+        LNewScope.EvaluatedPropertiesInScope.Add(LNormalizedEvaluatedProperty);
+      end;
+      LVisitor.UpdateScope(LNewScope);
+
+      LNewScope := LVisitor.PopScope;
+      LBranchValid := LVisitor.Result.IsValid;
+
+      if not LBranchValid then
+      begin
+        Visitor.AddError(vetAllOf, [LCount]);
+        Exit;
+      end;
+
+      LCombinedCoveredItems := TUtils.MergeArray<Integer>([LCombinedCoveredItems, LNewScope.CoveredItems]);
+      LCombinedCoveredProperties := TUtils.MergeArray<string>([LCombinedCoveredProperties, LNewScope.CoveredProperties]);
+
+      if Assigned(LNewScope.EvaluatedPropertiesInScope) then
+        for LEvaluatedProperty in LNewScope.EvaluatedPropertiesInScope do
+      begin
+        LNormalizedEvaluatedProperty := LEvaluatedProperty;
+        if not LNormalizedEvaluatedProperty.IsEmpty then
+        begin
+          if (LScope.InstancePath <> '#') and not LNormalizedEvaluatedProperty.StartsWith(LScope.InstancePath + '/') then
+          begin
+            if LNormalizedEvaluatedProperty = '#' then
+              LNormalizedEvaluatedProperty := LScope.InstancePath
+            else if LNormalizedEvaluatedProperty.StartsWith('#/') then
+              LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty.Substring(1)
+            else if LNormalizedEvaluatedProperty.StartsWith('/') then
+              LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty
+            else
+              LNormalizedEvaluatedProperty := LScope.InstancePath + '/' + LNormalizedEvaluatedProperty;
+          end;
+        end;
+
+        LCombinedEvaluatedProperties.Add(LNormalizedEvaluatedProperty);
+        Visitor.Result.AddEvaluatedProperty(LNormalizedEvaluatedProperty);
+      end;
     end;
 
-    LErrorCount := Length(Visitor.Result.Errors);
-    Visitor.PushScope(LNewScope);
-    try
-      LWalker := TWalker<T>.Create(LNewScope.SchemaNode, Visitor);
-      LWalker.Walk;
-    finally
-      LNewScope := Visitor.PopScope;
-      LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
-      LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+    LScope.CoveredItems := LCombinedCoveredItems;
+    LScope.CoveredProperties := LCombinedCoveredProperties;
+    if LCombinedEvaluatedProperties.Count > 0 then
+    begin
+      if not Assigned(LScope.EvaluatedPropertiesInScope) then
+        LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+      for LEvaluatedProperty in LCombinedEvaluatedProperties do
+        LScope.EvaluatedPropertiesInScope.Add(LEvaluatedProperty);
     end;
 
     Visitor.UpdateScope(LScope);
-
-    if Length(Visitor.Result.Errors) > LErrorCount then
-    begin
-      Visitor.AddError(vetAllOf, [LCount]);
-      Exit;
-    end;
+  finally
+    LCombinedEvaluatedProperties.Free;
   end;
 end;
 
@@ -2113,8 +2429,16 @@ var
   LWalker: IWalker;
   LVisitor: T;
   LNewScope: TScope;
+  LBranchValid: Boolean;
+  LAnyBranchValid: Boolean;
+  LEvaluatedProperty: string;
+  LNormalizedEvaluatedProperty: string;
+  LParentOffset: Integer;
+  LParentMaxOffset: Integer;
+  LParentScopeItem: TScope;
 begin
   LScope := Visitor.CurrentScope;
+  LAnyBranchValid := False;
 
   for LCount := 0 to AValue.Count - 1 do
   begin
@@ -2132,23 +2456,67 @@ begin
     end;
 
     LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
+    LVisitor.PopScope; // Remove o scope inicial do construtor para substituir pela cadeia do pai
+    // Injeta a cadeia de escopos do pai para manter o dynamic scope chain do $recursiveRef.
+    // Os scopes s\u00e3o empilhados do mais antigo (fundo) ao mais novo (topo), preservando a ordem.
+    LParentMaxOffset := -1;
+    LParentOffset := 0;
+    while Assigned(Visitor.CurrentScope(LParentOffset).SchemaNode) do
+    begin
+      LParentMaxOffset := LParentOffset;
+      Inc(LParentOffset);
+    end;
+    for LParentOffset := LParentMaxOffset downto 0 do
+    begin
+      LParentScopeItem := Visitor.CurrentScope(LParentOffset);
+      LParentScopeItem.EvaluatedPropertiesInScope := nil; // Sandbox cria novo set; sem double-free com o pai
+      LVisitor.PushScope(LParentScopeItem);
+    end;
     LVisitor.PushScope(LNewScope);
     try
       LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
       LWalker.Walk;
     finally
       LNewScope := LVisitor.PopScope;
-      LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
-      LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+      LBranchValid := LVisitor.Result.IsValid;
+
+      if LBranchValid then
+      begin
+        LAnyBranchValid := True;
+        LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
+        LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+        if not Assigned(LScope.EvaluatedPropertiesInScope) then
+          LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+        for LEvaluatedProperty in LVisitor.Result.EvaluatedProperties do
+        begin
+          LNormalizedEvaluatedProperty := LEvaluatedProperty;
+          if not LNormalizedEvaluatedProperty.IsEmpty then
+          begin
+            if (LScope.InstancePath <> '#') and not LNormalizedEvaluatedProperty.StartsWith(LScope.InstancePath + '/') then
+            begin
+              if LNormalizedEvaluatedProperty = '#' then
+                LNormalizedEvaluatedProperty := LScope.InstancePath
+              else if LNormalizedEvaluatedProperty.StartsWith('#/') then
+                LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty.Substring(1)
+              else if LNormalizedEvaluatedProperty.StartsWith('/') then
+                LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty
+              else
+                LNormalizedEvaluatedProperty := LScope.InstancePath + '/' + LNormalizedEvaluatedProperty;
+            end;
+          end;
+
+          LScope.EvaluatedPropertiesInScope.Add(LNormalizedEvaluatedProperty);
+          Visitor.Result.AddEvaluatedProperty(LNormalizedEvaluatedProperty);
+        end;
+      end;
     end;
 
     Visitor.UpdateScope(LScope);
-
-    if LVisitor.Result.IsValid then
-      Exit;
   end;
 
-  Visitor.AddError(vetAnyOf);
+  if not LAnyBranchValid then
+    Visitor.AddError(vetAnyOf);
 end;
 
 procedure TBaseApplicatorVisitor<T>.VisitElse(const AValue: TJSONValue);
@@ -2156,6 +2524,8 @@ var
   LScope: TScope;
   LWalker: IWalker;
   LNewScope: TScope;
+  LErrorCount: Integer;
+  LEvaluatedProperty: string;
 begin
   LScope := Visitor.CurrentScope;
   if LScope.SchemaNode.FindValue('if') = nil then
@@ -2175,12 +2545,32 @@ begin
   end;
 
   Visitor.PushScope(LNewScope);
+  LErrorCount := Length(Visitor.Result.Errors);
   try
     LWalker := TWalker<T>.Create(LNewScope.SchemaNode, Visitor);
     LWalker.Walk;
   finally
-    Visitor.PopScope;
+    LNewScope := Visitor.PopScope;
   end;
+
+  if Length(Visitor.Result.Errors) = LErrorCount then
+  begin
+    LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
+    LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+    if Assigned(LNewScope.EvaluatedPropertiesInScope) then
+    begin
+      if not Assigned(LScope.EvaluatedPropertiesInScope) then
+        LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+      for LEvaluatedProperty in LNewScope.EvaluatedPropertiesInScope do
+      begin
+        LScope.EvaluatedPropertiesInScope.Add(LEvaluatedProperty);
+        Visitor.Result.AddEvaluatedProperty(LEvaluatedProperty);
+      end;
+    end;
+  end;
+
+  Visitor.UpdateScope(LScope);
 end;
 
 procedure TBaseApplicatorVisitor<T>.VisitIf(const AValue: TJSONValue);
@@ -2190,6 +2580,7 @@ var
   LSchema: TJSONValue;
   LVisitor: T;
   LNewScope: TScope;
+  LEvaluatedProperty: string;
 begin
   LScope := Visitor.CurrentScope;
 
@@ -2214,8 +2605,22 @@ begin
     LWalker.Walk;
   finally
     LNewScope := LVisitor.PopScope;
-    LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
-    LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+    if LVisitor.Result.IsValid then
+    begin
+      LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
+      LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+      if Assigned(LNewScope.EvaluatedPropertiesInScope) then
+      begin
+        if not Assigned(LScope.EvaluatedPropertiesInScope) then
+          LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+        for LEvaluatedProperty in LNewScope.EvaluatedPropertiesInScope do
+        begin
+          LScope.EvaluatedPropertiesInScope.Add(LEvaluatedProperty);
+          Visitor.Result.AddEvaluatedProperty(LEvaluatedProperty);
+        end;
+      end;
+    end;
   end;
 
   Visitor.UpdateScope(LScope);
@@ -2320,14 +2725,9 @@ begin
     CoveredProperties := [];
   end;
 
-  Visitor.PushScope(LNewScope);
   LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
-  try
-    LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
-    LWalker.Walk;
-  finally
-    Visitor.PopScope;
-  end;
+  LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
+  LWalker.Walk;
 
   if LVisitor.Result.IsValid then
     Visitor.AddError(vetNot);
@@ -2341,46 +2741,83 @@ var
   LVisitor: T;
   LMatches: Integer;
   LNewScope: TScope;
+  LWinningCoveredItems: TArray<Integer>;
+  LWinningCoveredProperties: TArray<string>;
+  LWinningEvaluatedProperties: THashSet<string>;
+  LEvaluatedProperty: string;
 begin
   LScope := Visitor.CurrentScope;
 
   LMatches := 0;
-  for LCount := 0 to AValue.Count - 1 do
-  begin
-    LNewScope := LScope;
-    with LNewScope do
+  LWinningCoveredItems := [];
+  LWinningCoveredProperties := [];
+  LWinningEvaluatedProperties := THashSet<string>.Create;
+  try
+    for LCount := 0 to AValue.Count - 1 do
     begin
-      SchemaPath        := Format('%s/oneOf/%d', [SchemaPath, LCount]);
-      SchemaNode        := AValue[LCount];
-      InstanceNode      := InstanceNode;
-      InstancePath      := Format('%s', [InstancePath]);
-      CoveredItems      := [];
-      ContainsCount     := 0;
-      VisitedKeywords   := [];
-      CoveredProperties := [];
+      LNewScope := LScope;
+      with LNewScope do
+      begin
+        SchemaPath        := Format('%s/oneOf/%d', [SchemaPath, LCount]);
+        SchemaNode        := AValue[LCount];
+        InstanceNode      := InstanceNode;
+        InstancePath      := Format('%s', [InstancePath]);
+        CoveredItems      := [];
+        ContainsCount     := 0;
+        VisitedKeywords   := [];
+        CoveredProperties := [];
+      end;
+
+      LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
+      LVisitor.PushScope(LNewScope);
+      try
+        LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
+        LWalker.Walk;
+      finally
+        LNewScope := LVisitor.PopScope;
+      end;
+
+      if LVisitor.Result.IsValid then
+      begin
+        Inc(LMatches);
+
+        if LMatches = 1 then
+        begin
+          LWinningCoveredItems := LNewScope.CoveredItems;
+          LWinningCoveredProperties := LNewScope.CoveredProperties;
+          LWinningEvaluatedProperties.Clear;
+
+          if Assigned(LNewScope.EvaluatedPropertiesInScope) then
+            for LEvaluatedProperty in LNewScope.EvaluatedPropertiesInScope do
+              LWinningEvaluatedProperties.Add(LEvaluatedProperty);
+        end;
+      end;
     end;
 
-    LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
-    LVisitor.PushScope(LNewScope);
-    try
-      LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
-      LWalker.Walk;
-    finally
-      LNewScope := LVisitor.PopScope;
-      LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
-      LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+    if LMatches = 0 then
+      Visitor.AddError(vetOneOf_NoMatch)
+    else if LMatches > 1 then
+      Visitor.AddError(vetOneOf_MultipleMatches)
+    else
+    begin
+      LScope.CoveredItems := TUtils.MergeArray<Integer>([LScope.CoveredItems, LWinningCoveredItems]);
+      LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LWinningCoveredProperties]);
+      if LWinningEvaluatedProperties.Count > 0 then
+      begin
+        if not Assigned(LScope.EvaluatedPropertiesInScope) then
+          LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+        for LEvaluatedProperty in LWinningEvaluatedProperties do
+        begin
+          LScope.EvaluatedPropertiesInScope.Add(LEvaluatedProperty);
+          Visitor.Result.AddEvaluatedProperty(LEvaluatedProperty);
+        end;
+      end;
+      Visitor.UpdateScope(LScope);
     end;
-
-    Visitor.UpdateScope(LScope);
-
-    if LVisitor.Result.IsValid then
-      Inc(LMatches);
+  finally
+    LWinningEvaluatedProperties.Free;
   end;
-
-  if LMatches = 0 then
-    Visitor.AddError(vetOneOf_NoMatch)
-  else if LMatches > 1 then
-    Visitor.AddError(vetOneOf_MultipleMatches);
 end;
 
 procedure TBaseApplicatorVisitor<T>.VisitPatternProperties(const AValue: TJSONObject);
@@ -2392,6 +2829,7 @@ var
   LPropName: string;
   LNewScope: TScope;
   LPatternPair: TJSONPair;
+  LErrorCount: Integer;
 begin
   LScope := Visitor.CurrentScope;
   if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
@@ -2421,6 +2859,7 @@ begin
       end;
 
       Visitor.PushScope(LNewScope);
+      LErrorCount := Length(Visitor.Result.Errors);
       try
         LWalker := TWalker<T>.Create(LNewScope.SchemaNode, Visitor);
         LWalker.Walk;
@@ -2429,6 +2868,13 @@ begin
       end;
 
       TUtils.AddArray<string>(LScope.CoveredProperties, LPair.JsonString.Value);
+      if Length(Visitor.Result.Errors) = LErrorCount then
+      begin
+        if not Assigned(LScope.EvaluatedPropertiesInScope) then
+          LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+        LScope.EvaluatedPropertiesInScope.Add(Format('%s/%s', [LScope.InstancePath, LPair.JsonString.Value]));
+        Visitor.Result.AddEvaluatedProperty(Format('%s/%s', [LScope.InstancePath, LPair.JsonString.Value]));
+      end;
     end;
   end;
 
@@ -2482,6 +2928,7 @@ var
   LWalker: IWalker;
   LNewScope: TScope;
   LSubInstance: TJSONValue;
+  LErrorCount: Integer;
 begin
   LScope := Visitor.CurrentScope;
   if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
@@ -2506,6 +2953,7 @@ begin
     end;
 
     Visitor.PushScope(LNewScope);
+    LErrorCount := Length(Visitor.Result.Errors);
     try
       LWalker := TWalker<T>.Create(LNewScope.SchemaNode, Visitor);
       LWalker.Walk;
@@ -2514,6 +2962,13 @@ begin
     end;
 
     TUtils.AddArray<string>(LScope.CoveredProperties, LPair.JsonString.Value);
+    if Length(Visitor.Result.Errors) = LErrorCount then
+    begin
+      if not Assigned(LScope.EvaluatedPropertiesInScope) then
+        LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+      LScope.EvaluatedPropertiesInScope.Add(Format('%s/%s', [LScope.InstancePath, LPair.JsonString.Value]));
+      Visitor.Result.AddEvaluatedProperty(Format('%s/%s', [LScope.InstancePath, LPair.JsonString.Value]));
+    end;
     Visitor.UpdateScope(LScope);
   end;
 end;
@@ -2523,6 +2978,8 @@ var
   LScope: TScope;
   LWalker: IWalker;
   LNewScope: TScope;
+  LErrorCount: Integer;
+  LEvaluatedProperty: string;
 begin
   LScope := Visitor.CurrentScope;
   if LScope.SchemaNode.FindValue('if') = nil then
@@ -2542,12 +2999,32 @@ begin
   end;
 
   Visitor.PushScope(LNewScope);
+  LErrorCount := Length(Visitor.Result.Errors);
   try
     LWalker := TWalker<T>.Create(LNewScope.SchemaNode, Visitor);
     LWalker.Walk;
   finally
-    Visitor.PopScope;
+    LNewScope := Visitor.PopScope;
   end;
+
+  if Length(Visitor.Result.Errors) = LErrorCount then
+  begin
+    LScope.CoveredItems      := TUtils.MergeArray<Integer>([LScope.CoveredItems, LNewScope.CoveredItems]);
+    LScope.CoveredProperties := TUtils.MergeArray<string>([LScope.CoveredProperties, LNewScope.CoveredProperties]);
+    if Assigned(LNewScope.EvaluatedPropertiesInScope) then
+    begin
+      if not Assigned(LScope.EvaluatedPropertiesInScope) then
+        LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+      for LEvaluatedProperty in LNewScope.EvaluatedPropertiesInScope do
+      begin
+        LScope.EvaluatedPropertiesInScope.Add(LEvaluatedProperty);
+        Visitor.Result.AddEvaluatedProperty(LEvaluatedProperty);
+      end;
+    end;
+  end;
+
+  Visitor.UpdateScope(LScope);
 end;
 
 end.

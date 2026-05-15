@@ -5,6 +5,7 @@ interface
 uses
   System.JSON,
   System.Classes,
+  System.Generics.Collections,
   JsonSchema.Translate.Types,
   JsonSchema.Visitors.Base,
   JsonSchema.Validation.Interfaces;
@@ -13,10 +14,15 @@ type
   TValidationResult = class(TInterfacedPersistent, IValidationResult)
   private
     FErrors: TArray<IError>;
+    FEvaluatedProperties: THashSet<string>;
   public
+    constructor Create;
+    destructor Destroy; override;
     function Errors: TArray<IError>;
     function AddError(const AError: IError): IValidationResult;
+    function AddEvaluatedProperty(const AProperty: string): IValidationResult;
     function IsValid: Boolean;
+    function EvaluatedProperties: TEnumerable<string>;
   end;
 
   TError = class sealed(TInterfacedPersistent, IError)
@@ -62,11 +68,35 @@ uses
 
 { TValidationResult }
 
+constructor TValidationResult.Create;
+begin
+  inherited;
+  FEvaluatedProperties := THashSet<string>.Create;
+end;
+
+destructor TValidationResult.Destroy;
+begin
+  FEvaluatedProperties.Free;
+  inherited;
+end;
+
 function TValidationResult.AddError(const AError: IError): IValidationResult;
 begin
   Result := Self;
   SetLength(FErrors, Length(FErrors) + 1);
   FErrors[Length(FErrors) - 1] := AError;
+end;
+
+function TValidationResult.AddEvaluatedProperty(const AProperty: string): IValidationResult;
+begin
+  Result := Self;
+  if not AProperty.IsEmpty then
+    FEvaluatedProperties.Add(AProperty);
+end;
+
+function TValidationResult.EvaluatedProperties: TEnumerable<string>;
+begin
+  Result := FEvaluatedProperties;
 end;
 
 function TValidationResult.Errors: TArray<IError>;

@@ -9,12 +9,12 @@ uses
 
 type
   /// <summary>
-  ///   Classe para configurar e executar a validação de uma TURIReference.
+  ///   Classe para configurar e executar a validaï¿½ï¿½o de uma TURIReference.
   /// </summary>
   /// <remarks>
   ///   Permite definir um conjunto de regras (ex: esquemas permitidos,
-  ///   componentes obrigatórios) e aplicá-las a uma URI.
-  ///   Referência RFC 3986: Seções 3 e 7.
+  ///   componentes obrigatï¿½rios) e aplicï¿½-las a uma URI.
+  ///   Referï¿½ncia RFC 3986: Seï¿½ï¿½es 3 e 7.
   /// </remarks>
   TURIValidator = class
   private
@@ -32,10 +32,10 @@ type
     function ForbidPassword: TURIValidator;
 
     /// <summary>
-    ///   Executa a validação na URI fornecida.
+    ///   Executa a validaï¿½ï¿½o na URI fornecida.
     /// </summary>
-    /// <param name="AURI">A instância de TURIReference a ser validada.</param>
-    /// <exception cref="EValidationError">Lançada se a URI falhar na validação.</exception>
+    /// <param name="AURI">A instï¿½ncia de TURIReference a ser validada.</param>
+    /// <exception cref="EValidationError">Lanï¿½ada se a URI falhar na validaï¿½ï¿½o.</exception>
     procedure Validate(const AURI: TURIReference);
   end;
 
@@ -53,7 +53,7 @@ begin
   FAllowedHosts.Clear;
   for LHost in AHosts do
   begin
-    // Armazena os hosts já normalizados (lowercase) para comparação eficiente.
+    // Armazena os hosts jï¿½ normalizados (lowercase) para comparaï¿½ï¿½o eficiente.
     FAllowedHosts.Add(LHost.ToLower);
   end;
   Result := Self;
@@ -66,7 +66,7 @@ begin
   FAllowedSchemes.Clear;
   for LScheme in ASchemes do
   begin
-    // Armazena os schemes já normalizados (lowercase) para comparação eficiente.
+    // Armazena os schemes jï¿½ normalizados (lowercase) para comparaï¿½ï¿½o eficiente.
     FAllowedSchemes.Add(LScheme.ToLower);
   end;
   Result := Self;
@@ -103,14 +103,19 @@ end;
 procedure TURIValidator.Validate(const AURI: TURIReference);
 var
   LComponent: TURIComponent;
+  LRequiredComponents: TURIComponents;
   LMissingComponents: string;
   LUserInfo: string;
 begin
-  // 1. Validar componentes obrigatórios
+  LRequiredComponents := FRequiredComponents;
+  if SameText(AURI.Scheme, 'urn') then
+    LRequiredComponents := LRequiredComponents - [uricAuthority];
+
+  // 1. Validar componentes obrigatï¿½rios
   LMissingComponents := '';
-  if FRequiredComponents <> [] then
+  if LRequiredComponents <> [] then
   begin
-    for LComponent in FRequiredComponents do
+    for LComponent in LRequiredComponents do
     begin
       case LComponent of
         uricScheme:    if AURI.Scheme = '' then LMissingComponents := LMissingComponents + 'Scheme, ';
@@ -118,8 +123,8 @@ begin
         uricUserInfo:  if AURI.UserInfo = '' then LMissingComponents := LMissingComponents + 'UserInfo, ';
         uricHost:      if AURI.Host = '' then LMissingComponents := LMissingComponents + 'Host, ';
         uricPath:      if AURI.Path = '' then LMissingComponents := LMissingComponents + 'Path, ';
-        // Query e Fragment podem ser vazios mas presentes ('?'), então a verificação
-        // de ausência (nil na lib python) é mais complexa e aqui checamos apenas o conteúdo.
+        // Query e Fragment podem ser vazios mas presentes ('?'), entï¿½o a verificaï¿½ï¿½o
+        // de ausï¿½ncia (nil na lib python) ï¿½ mais complexa e aqui checamos apenas o conteï¿½do.
         uricQuery:     if AURI.Query = '' then LMissingComponents := LMissingComponents + 'Query, ';
         uricFragment:  if AURI.Fragment = '' then LMissingComponents := LMissingComponents + 'Fragment, ';
       end;
@@ -127,7 +132,7 @@ begin
 
     if LMissingComponents <> '' then
     begin
-      // Remove a vírgula e o espaço do final
+      // Remove a vï¿½rgula e o espaï¿½o do final
       LMissingComponents := LMissingComponents.Substring(0, LMissingComponents.Length - 2);
       raise EMissingComponentError.CreateFmt(
         'Required URI component(s) are missing: [%s]', [LMissingComponents]);
@@ -148,18 +153,18 @@ begin
       'Host "%s" is not in the list of allowed hosts.', [AURI.Host]);
   end;
 
-  // 4. Validar se a senha é proibida
+  // 4. Validar se a senha ï¿½ proibida
   if FForbidPassword then
   begin
     LUserInfo := AURI.UserInfo;
-    // Se 'userinfo' existe e contém ':' (indicando uma senha), lança a exceção.
+    // Se 'userinfo' existe e contï¿½m ':' (indicando uma senha), lanï¿½a a exceï¿½ï¿½o.
     if (LUserInfo <> '') and (LUserInfo.IndexOf(':') > -1) then
     begin
       raise EValidationError.Create('URI contains a password, which is forbidden by the validator.');
     end;
   end;
 
-  // Se todas as validações passaram, o método termina sem exceções.
+  // Se todas as validaï¿½ï¿½es passaram, o mï¿½todo termina sem exceï¿½ï¿½es.
 end;
 
 end.

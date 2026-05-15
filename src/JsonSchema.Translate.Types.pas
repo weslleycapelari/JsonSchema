@@ -4,8 +4,8 @@ interface
 
 type
   TLanguage = (
-    lang_enUS,    // Inglês (Estados Unidos)
-    lang_ptBR     // Português (Brasil)
+    lang_enUS,    // Inglï¿½s (Estados Unidos)
+    lang_ptBR     // Portuguï¿½s (Brasil)
   );
 
   /// <summary>Estrutura da resposta de mensagem de erro/hint da biblioteca</summary>
@@ -14,7 +14,7 @@ type
     Hint: string;
   end;
 
-  /// <summary>Tipo de função de tradução que retorna a estrutura de mensagem de erro</summary>
+  /// <summary>Tipo de funï¿½ï¿½o de traduï¿½ï¿½o que retorna a estrutura de mensagem de erro</summary>
   TTranslateFunc = function: TErrorMessage of object;
 
   TErrorType = (
@@ -23,7 +23,7 @@ type
     vetEnumValueMismatch,
     vetConstValueMismatch,
 
-    // Erros numéricos
+    // Erros numï¿½ricos
     vetMultipleOf,
     vetMaximum,
     vetExclusiveMaximum,
@@ -61,8 +61,9 @@ type
     vetNot,
 
     vetUnresolvedReference,
+    vetUnsupportedVocabulary,
 
-    // Erro genérico
+    // Erro genï¿½rico
     vetSchemaIsFalse,
     vetUnknown
   );
