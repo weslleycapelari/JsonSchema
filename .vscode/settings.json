@@ -1,3 +1,4 @@
 {
-    "delphiLsp.settingsFile": "file:///c%3A/Users/weslley.capelari/Documents/Projetos/Github/weslleycapelari/JsonSchema/test/console/TestJsonSchemaConsole.delphilsp.json"
+    "delphiLsp.settingsFile": "file:///c%3A/Users/weslley.capelari/Documents/Projetos/Github/weslleycapelari/JsonSchema/test/console/TestJsonSchemaConsole.delphilsp.json",
+    "markdown.validate.enabled": true
 }
