@@ -8,20 +8,21 @@ uses
   JsonSchema.Registry.Uri;
 
 type
-  TResource = record
+  TResource = class
   private
     FBaseURI: TURIReference;
     FAnchors: TDictionary<string, TJSONValue>;
     FRootSchema: TJSONValue;
     FDynamicAnchors: TDictionary<string, TJSONValue>;
   public
-    constructor Create(const ABaseURI: TURIReference; const ASchema: TJSONValue);
+    constructor Create(const pBaseURI: TURIReference; const pSchema: TJSONValue);
+    destructor Destroy; override;
 
-    procedure AddAnchor(const AAnchor: string; const ASchemaNode: TJSONValue);
-    procedure AddDynamicAnchor(const AAnchor: string; const ASchemaNode: TJSONValue);
+    procedure AddAnchor(const pAnchor: string; const pSchemaNode: TJSONValue);
+    procedure AddDynamicAnchor(const pAnchor: string; const pSchemaNode: TJSONValue);
 
-    function ResolveFragment(const AFragment: string): TJSONValue; overload;
-    function ResolveFragment(const AFragment: string; out AResolvedBaseURI: string): TJSONValue; overload;
+    function ResolveFragment(const pFragment: string): TJSONValue; overload;
+    function ResolveFragment(const pFragment: string; out pResolvedBaseURI: string): TJSONValue; overload;
 
     property BaseURI: TURIReference read FBaseURI;
   end;
@@ -35,114 +36,121 @@ uses
 
 { TResource }
 
-procedure TResource.AddAnchor(const AAnchor: string; const ASchemaNode: TJSONValue);
+procedure TResource.AddAnchor(const pAnchor: string; const pSchemaNode: TJSONValue);
 begin
-  FAnchors.AddOrSetValue(AAnchor, ASchemaNode);
+  FAnchors.AddOrSetValue(pAnchor, pSchemaNode);
 end;
 
-procedure TResource.AddDynamicAnchor(const AAnchor: string; const ASchemaNode: TJSONValue);
+procedure TResource.AddDynamicAnchor(const pAnchor: string; const pSchemaNode: TJSONValue);
 begin
-  FDynamicAnchors.AddOrSetValue(AAnchor, ASchemaNode);
+  FDynamicAnchors.AddOrSetValue(pAnchor, pSchemaNode);
 end;
 
-constructor TResource.Create(const ABaseURI: TURIReference; const ASchema: TJSONValue);
+constructor TResource.Create(const pBaseURI: TURIReference; const pSchema: TJSONValue);
 begin
-  FBaseURI        := ABaseURI;
+  FBaseURI        := pBaseURI;
   FAnchors        := TDictionary<string, TJSONValue>.Create;
-  FRootSchema     := ASchema;
+  FRootSchema     := pSchema;
   FDynamicAnchors := TDictionary<string, TJSONValue>.Create;
 end;
 
-function TResource.ResolveFragment(const AFragment: string): TJSONValue;
-var
-  LResolvedBaseURI: string;
+destructor TResource.Destroy;
 begin
-  Result := ResolveFragment(AFragment, LResolvedBaseURI);
+  FAnchors.Free;
+  FDynamicAnchors.Free;
+  inherited;
 end;
 
-function TResource.ResolveFragment(const AFragment: string; out AResolvedBaseURI: string): TJSONValue;
+function TResource.ResolveFragment(const pFragment: string): TJSONValue;
 var
-  LSegments: TArray<string>;
-  LSegment: string;
-  LDecodedSegment: string;
-  LCurrentNode: TJSONValue;
-  LIndex: Integer;
-  LDecodedId: string;
-  LLegacyId: string;
-  LCount: Integer;
-  LPointerPath: string;
+  lResolvedBaseURI: string;
 begin
-  AResolvedBaseURI := FBaseURI.Unsplit;
+  Result := ResolveFragment(pFragment, lResolvedBaseURI);
+end;
+
+function TResource.ResolveFragment(const pFragment: string; out pResolvedBaseURI: string): TJSONValue;
+var
+  lSegments: TArray<string>;
+  lSegment: string;
+  lDecodedSegment: string;
+  lCurrentNode: TJSONValue;
+  lIndex: Integer;
+  lDecodedId: string;
+  lLegacyId: string;
+  lCount: Integer;
+  lPointerPath: string;
+begin
+  pResolvedBaseURI := FBaseURI.Unsplit;
 
   // Caso 1: Fragmento vazio ou raiz, retorna o schema inteiro do recurso.
-  if AFragment.IsEmpty then
+  if pFragment.IsEmpty then
     Exit(FRootSchema);
 
-  LPointerPath := AFragment;
+  lPointerPath := pFragment;
 
   // Decodifica a string do fragmento antes de interpret�-la
-  LPointerPath := TNetEncoding.URL.Decode(LPointerPath);
+  lPointerPath := TNetEncoding.URL.Decode(lPointerPath);
 
-  if LPointerPath.StartsWith('#') then
-    LPointerPath := LPointerPath.Substring(1);
+  if lPointerPath.StartsWith('#') then
+    lPointerPath := lPointerPath.Substring(1);
 
   // Caso 2: Fragmento � um JSON Pointer.
-  if LPointerPath.StartsWith('/') then
+  if lPointerPath.StartsWith('/') then
   begin
-    LCurrentNode := FRootSchema;
-    LSegments := LPointerPath.Substring(1).Split(['/']);
+    lCurrentNode := FRootSchema;
+    lSegments := lPointerPath.Substring(1).Split(['/']);
 
-    for LSegment in LSegments do
+    for lSegment in lSegments do
     begin
-      if not Assigned(LCurrentNode) then
+      if not Assigned(lCurrentNode) then
         Exit(nil);
 
-      if (LCurrentNode is TJSONObject) and
-         TJSONObject(LCurrentNode).TryGetValue<string>('$id', LDecodedId) and
-         (LDecodedId <> '') then
+      if (lCurrentNode is TJSONObject) and
+         TJSONObject(lCurrentNode).TryGetValue<string>('$id', lDecodedId) and
+         (lDecodedId <> '') then
       begin
-        AResolvedBaseURI := TURIReference.From(LDecodedId).ResolveWith(TURIReference.From(AResolvedBaseURI)).Unsplit;
+        pResolvedBaseURI := TURIReference.From(lDecodedId).ResolveWith(TURIReference.From(pResolvedBaseURI)).Unsplit;
       end;
 
-      if (LCurrentNode is TJSONObject) and
-         TJSONObject(LCurrentNode).TryGetValue<string>('id', LLegacyId) and
-         (LLegacyId <> '') then
+      if (lCurrentNode is TJSONObject) and
+         TJSONObject(lCurrentNode).TryGetValue<string>('id', lLegacyId) and
+         (lLegacyId <> '') then
       begin
-        AResolvedBaseURI := TURIReference.From(LLegacyId).ResolveWith(TURIReference.From(AResolvedBaseURI)).Unsplit;
+        pResolvedBaseURI := TURIReference.From(lLegacyId).ResolveWith(TURIReference.From(pResolvedBaseURI)).Unsplit;
       end;
 
-      LDecodedSegment := '';
-      LCount := 1;
-      while LCount <= Length(LSegment) do
+      lDecodedSegment := '';
+      lCount := 1;
+      while lCount <= Length(lSegment) do
       begin
-        if LSegment[LCount] = '~' then
+        if lSegment[lCount] = '~' then
         begin
-          if LCount = Length(LSegment) then
+          if lCount = Length(lSegment) then
             Exit(nil);
 
-          case LSegment[LCount + 1] of
-            '0': LDecodedSegment := LDecodedSegment + '~';
-            '1': LDecodedSegment := LDecodedSegment + '/';
+          case lSegment[lCount + 1] of
+            '0': lDecodedSegment := lDecodedSegment + '~';
+            '1': lDecodedSegment := lDecodedSegment + '/';
           else
             Exit(nil);
           end;
-          Inc(LCount, 2);
+          Inc(lCount, 2);
         end
         else
         begin
-          LDecodedSegment := LDecodedSegment + LSegment[LCount];
-          Inc(LCount);
+          lDecodedSegment := lDecodedSegment + lSegment[lCount];
+          Inc(lCount);
         end;
       end;
 
-      if LCurrentNode is TJSONObject then
-        LCurrentNode := TJSONObject(LCurrentNode).GetValue(LDecodedSegment)
-      else if LCurrentNode is TJSONArray then
+      if lCurrentNode is TJSONObject then
+        lCurrentNode := TJSONObject(lCurrentNode).GetValue(lDecodedSegment)
+      else if lCurrentNode is TJSONArray then
       begin
-        if TryStrToInt(LDecodedSegment, LIndex) and
-           (LIndex >= 0) and
-           (LIndex < TJSONArray(LCurrentNode).Count) then
-          LCurrentNode := TJSONArray(LCurrentNode).Items[LIndex]
+        if TryStrToInt(lDecodedSegment, lIndex) and
+           (lIndex >= 0) and
+           (lIndex < TJSONArray(lCurrentNode).Count) then
+          lCurrentNode := TJSONArray(lCurrentNode).Items[lIndex]
         else
           Exit(nil);
       end
@@ -150,18 +158,18 @@ begin
         Exit(nil);
     end;
 
-    Result := LCurrentNode;
+    Result := lCurrentNode;
     Exit;
   end
   // Caso 3: Fragmento � uma �ncora de nome simples.
   else
   begin
-    FAnchors.TryGetValue(LPointerPath, Result);
+    FAnchors.TryGetValue(lPointerPath, Result);
     if not Assigned(Result) then
-      FAnchors.TryGetValue(FBaseURI.Unsplit + '#' + LPointerPath, Result);
+      FAnchors.TryGetValue(FBaseURI.Unsplit + '#' + lPointerPath, Result);
     // Se n�o encontrou em �ncoras normais, tente as din�micas (para o caso de $ref as usar)
     if not Assigned(Result) then
-      FDynamicAnchors.TryGetValue(LPointerPath, Result);
+      FDynamicAnchors.TryGetValue(lPointerPath, Result);
     Exit;
   end;
 

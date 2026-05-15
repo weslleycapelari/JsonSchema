@@ -536,21 +536,22 @@ end;
 
 procedure TDraft2019_09ValidationVisitor.VisitContains(const AValue: TJSONValue);
 var
-  LScope: TScope;
-  LCount: Integer;
-  LWalker: IWalker;
-  LSchema: TJSONNumber;
-  LVisitor: TDraft2019_09Visitor;
-  LNewScope: TScope;
-  LInstance: TJSONArray;
+  lScope: TScope;
+  lCount: Integer;
+  lWalker: IWalker;
+  lSchema: TJSONNumber;
+  lVisitor: TDraft2019_09Visitor;
+  lNewScope: TScope;
+  lInstance: TJSONArray;
+  lMinCreated: Boolean;
 begin
-  LScope := Visitor.CurrentScope;
-  if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
+  lScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(lScope.InstanceNode) <> 'array' then
     Exit;
 
   if AValue is TJSONBool then
   begin
-    if TJSONBool(AValue).AsBoolean and (TJSONArray(LScope.InstanceNode).Count > 0) then
+    if TJSONBool(AValue).AsBoolean and (TJSONArray(lScope.InstanceNode).Count > 0) then
       Exit;
 
     if not TJSONBool(AValue).AsBoolean then
@@ -560,44 +561,47 @@ begin
     end;
   end;
 
-  LInstance := TJSONArray(LScope.InstanceNode);
-  for LCount := 0 to LInstance.Count - 1 do
+  lInstance := TJSONArray(lScope.InstanceNode);
+  for lCount := 0 to lInstance.Count - 1 do
   begin
-    LNewScope := LScope;
-    with LNewScope do
-    begin
-      SchemaPath        := Format('%s/contains', [LScope.SchemaPath]);
-      SchemaNode        := AValue;
-      InstanceNode      := LInstance[LCount];
-      InstancePath      := Format('%s/%d', [LScope.InstancePath, LCount]);
-      CoveredItems      := [];
-      ContainsCount     := 0;
-      VisitedKeywords   := [];
-      CoveredProperties := [];
-    end;
+    lNewScope := lScope;
+    lNewScope.SchemaPath := Format('%s/contains', [lScope.SchemaPath]);
+    lNewScope.SchemaNode := AValue;
+    lNewScope.InstanceNode := lInstance[lCount];
+    lNewScope.InstancePath := Format('%s/%d', [lScope.InstancePath, lCount]);
+    lNewScope.CoveredItems := [];
+    lNewScope.ContainsCount := 0;
+    lNewScope.VisitedKeywords := [];
+    lNewScope.CoveredProperties := [];
 
-    Visitor.PushScope(LNewScope);
-    LVisitor := Visitor.New(AValue, LInstance[LCount], LScope.BaseURI);
+    Visitor.PushScope(lNewScope);
+    lVisitor := Visitor.New(AValue, lInstance[lCount], lScope.BaseURI);
     try
-      LWalker := TWalker<TDraft2019_09Visitor>.Create(AValue, LVisitor);
-      LWalker.Walk;
+      lWalker := TWalker<TDraft2019_09Visitor>.Create(AValue, lVisitor);
+      lWalker.Walk;
     finally
       Visitor.PopScope;
     end;
 
-    if LVisitor.Result.IsValid then
-      Inc(LScope.ContainsCount);
+    if lVisitor.Result.IsValid then
+      Inc(lScope.ContainsCount);
   end;
 
-  Visitor.UpdateScope(LScope);
+  Visitor.UpdateScope(lScope);
 
-  if not LScope.SchemaNode.TryGetValue('minContains', LSchema) then
-    LSchema := TJSONNumber.Create(1);
+  lMinCreated := not lScope.SchemaNode.TryGetValue('minContains', lSchema);
+  if lMinCreated then
+    lSchema := TJSONNumber.Create(1);
 
-  VisitMinContains(LSchema);
+  try
+    VisitMinContains(lSchema);
 
-  if LScope.SchemaNode.TryGetValue('maxContains', LSchema) then
-    VisitMaxContains(LSchema);
+    if lScope.SchemaNode.TryGetValue('maxContains', lSchema) then
+      VisitMaxContains(lSchema);
+  finally
+    if lMinCreated then
+      lSchema.Free;
+  end;
 
   Visitor
     .AddVisitedKeyword('minContains')
@@ -685,17 +689,12 @@ begin
     if (LDependencyValue is TJSONObject) or (LDependencyValue is TJSONBool) then
     begin
       LNewScope := LScope;
-      with LNewScope do
-      begin
-        SchemaPath        := Format('%s/dependencies/%s', [LScope.SchemaPath, LDependencyPair.JsonString.Value]);
-        SchemaNode        := LDependencyValue;
-        InstanceNode      := LScope.InstanceNode;
-        InstancePath      := LScope.InstancePath;
-        CoveredItems      := [];
-        ContainsCount     := 0;
-        VisitedKeywords   := [];
-        CoveredProperties := [];
-      end;
+      LNewScope.SchemaPath        := Format('%s/dependencies/%s', [LScope.SchemaPath, LDependencyPair.JsonString.Value]);
+      LNewScope.SchemaNode        := LDependencyValue;
+      LNewScope.CoveredItems      := [];
+      LNewScope.ContainsCount     := 0;
+      LNewScope.VisitedKeywords   := [];
+      LNewScope.CoveredProperties := [];
 
       Visitor.PushScope(LNewScope);
       LErrorCount := Length(Visitor.Result.Errors);
@@ -766,17 +765,14 @@ begin
   for LPair in TJSONObject(LScope.InstanceNode) do
   begin
     LNewScope := LScope;
-    with LNewScope do
-    begin
-      SchemaPath        := Format('%s/propertyNames', [SchemaPath]);
-      SchemaNode        := AValue;
-      InstanceNode      := LPair.JsonString;
-      InstancePath      := Format('%s/%s', [InstancePath, LPair.JsonString.Value]);
-      CoveredItems      := [];
-      ContainsCount     := 0;
-      VisitedKeywords   := [];
-      CoveredProperties := [];
-    end;
+    LNewScope.SchemaPath        := Format('%s/propertyNames', [LScope.SchemaPath]);
+    LNewScope.SchemaNode        := AValue;
+    LNewScope.InstanceNode      := LPair.JsonString;
+    LNewScope.InstancePath      := Format('%s/%s', [LScope.InstancePath, LPair.JsonString.Value]);
+    LNewScope.CoveredItems      := [];
+    LNewScope.ContainsCount     := 0;
+    LNewScope.VisitedKeywords   := [];
+    LNewScope.CoveredProperties := [];
 
     Visitor.PushScope(LNewScope);
     LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
@@ -879,17 +875,12 @@ begin
       LSubSchema := LDependencyPair.JsonValue;
 
       LNewScope := LScope;
-      with LNewScope do
-      begin
-        SchemaPath        := Format('%s/dependentSchemas/%s', [LScope.SchemaPath, LDependencyPair.JsonString.Value]);
-        SchemaNode        := LSubSchema;
-        InstanceNode      := LScope.InstanceNode;
-        InstancePath      := LScope.InstancePath;
-        CoveredItems      := [];
-        ContainsCount     := 0;
-        VisitedKeywords   := [];
-        CoveredProperties := [];
-      end;
+      LNewScope.SchemaPath        := Format('%s/dependentSchemas/%s', [LScope.SchemaPath, LDependencyPair.JsonString.Value]);
+      LNewScope.SchemaNode        := LSubSchema;
+      LNewScope.CoveredItems      := [];
+      LNewScope.ContainsCount     := 0;
+      LNewScope.VisitedKeywords   := [];
+      LNewScope.CoveredProperties := [];
 
       Visitor.PushScope(LNewScope);
       LErrorCount := Length(Visitor.Result.Errors);
@@ -969,17 +960,14 @@ begin
         Continue;
 
       LNewScope := LScope;
-      with LNewScope do
-      begin
-        SchemaPath        := Format('%s/unevaluatedItems', [SchemaPath]);
-        SchemaNode        := AValue;
-        InstanceNode      := TJSONArray(InstanceNode)[LCount];
-        InstancePath      := Format('%s/%d', [InstancePath, LCount]);
-        CoveredItems      := [];
-        ContainsCount     := 0;
-        VisitedKeywords   := [];
-        CoveredProperties := [];
-      end;
+      LNewScope.SchemaPath        := Format('%s/unevaluatedItems', [LScope.SchemaPath]);
+      LNewScope.SchemaNode        := AValue;
+      LNewScope.InstanceNode      := TJSONArray(LScope.InstanceNode)[LCount];
+      LNewScope.InstancePath      := Format('%s/%d', [LScope.InstancePath, LCount]);
+      LNewScope.CoveredItems      := [];
+      LNewScope.ContainsCount     := 0;
+      LNewScope.VisitedKeywords   := [];
+      LNewScope.CoveredProperties := [];
 
       Visitor.PushScope(LNewScope);
       LErrorCount := Length(Visitor.Result.Errors);
@@ -1053,17 +1041,14 @@ begin
         Continue;
 
       LNewScope := LScope;
-      with LNewScope do
-      begin
-        SchemaPath        := Format('%s/unevaluatedProperties', [SchemaPath]);
-        SchemaNode        := AValue;
-        InstanceNode      := LPair.JsonValue;
-        InstancePath      := Format('%s/%s', [InstancePath, LPair.JsonString.Value]);
-        CoveredItems      := [];
-        ContainsCount     := 0;
-        VisitedKeywords   := [];
-        CoveredProperties := [];
-      end;
+      LNewScope.SchemaPath        := Format('%s/unevaluatedProperties', [LScope.SchemaPath]);
+      LNewScope.SchemaNode        := AValue;
+      LNewScope.InstanceNode      := LPair.JsonValue;
+      LNewScope.InstancePath      := Format('%s/%s', [LScope.InstancePath, LPair.JsonString.Value]);
+      LNewScope.CoveredItems      := [];
+      LNewScope.ContainsCount     := 0;
+      LNewScope.VisitedKeywords   := [];
+      LNewScope.CoveredProperties := [];
 
       Visitor.PushScope(LNewScope);
       LErrorCount := Length(Visitor.Result.Errors);

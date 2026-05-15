@@ -95,19 +95,16 @@ begin
   FData := AData;
   FScopeStack := TStack<TScope>.Create;
 
-  with LScope do
-  begin
-    BaseURI           := ABaseURI;
-    SchemaPath        := '#';
-    SchemaNode        := ASchema;
-    InstancePath      := '#';
-    InstanceNode      := AData;
-    CoveredItems      := [];
-    ContainsCount     := 0;
-    VisitedKeywords   := [];
-    CoveredProperties := [];
-    EvaluatedPropertiesInScope := THashSet<string>.Create;
-  end;
+  LScope.BaseURI           := ABaseURI;
+  LScope.SchemaPath        := '#';
+  LScope.SchemaNode        := ASchema;
+  LScope.InstancePath      := '#';
+  LScope.InstanceNode      := AData;
+  LScope.CoveredItems      := [];
+  LScope.ContainsCount     := 0;
+  LScope.VisitedKeywords   := [];
+  LScope.CoveredProperties := [];
+  LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
   FScopeStack.Push(LScope);
 end;
 

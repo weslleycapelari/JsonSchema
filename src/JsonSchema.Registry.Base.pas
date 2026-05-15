@@ -18,7 +18,7 @@ uses
 type
   TRegistryVisitor = class(TBaseVisitor<TRegistryVisitor>, IVisitor<TRegistryVisitor>)
   private
-    FResources: TDictionary<string, TResource>;
+    FResources: TObjectDictionary<string, TResource>;
     FInflightResources: TDictionary<string, Byte>;
 
     procedure DiscoverInObjectOfSchemas(AJsonObject: TJSONObject);
@@ -130,7 +130,7 @@ constructor TRegistryVisitor.Create(const ASchema, AData: TJSONValue; const ABas
 begin
   inherited Create(ASchema, AData, ABaseURI);
 
-  FResources := TDictionary<string, TResource>.Create;
+  FResources := TObjectDictionary<string, TResource>.Create([doOwnsValues]);
   FInflightResources := TDictionary<string, Byte>.Create;
   FResources.Add(TURIUtils.NormalizeURI(ABaseURI), TResource.Create(TURIReference.New(ABaseURI), ASchema));
 
@@ -178,14 +178,11 @@ begin
   LScope := CurrentScope;
 
   LNewScope := LScope;
-  with LNewScope do
-  begin
-    SchemaNode        := AJsonValue;
-    CoveredItems      := [];
-    ContainsCount     := 0;
-    VisitedKeywords   := [];
-    CoveredProperties := [];
-  end;
+  LNewScope.SchemaNode        := AJsonValue;
+  LNewScope.CoveredItems      := [];
+  LNewScope.ContainsCount     := 0;
+  LNewScope.VisitedKeywords   := [];
+  LNewScope.CoveredProperties := [];
 
   PushScope(LNewScope);
   try
@@ -300,16 +297,13 @@ begin
 
       LScope := CurrentScope;
       LNewScope := LScope;
-      with LNewScope do
-      begin
-        BaseURI           := LResourceKeyURI;
-        SchemaNode        := LSchemaRoot;
-        SchemaPath        := '#';
-        CoveredItems      := [];
-        ContainsCount     := 0;
-        VisitedKeywords   := [];
-        CoveredProperties := [];
-      end;
+      LNewScope.BaseURI           := LResourceKeyURI;
+      LNewScope.SchemaNode        := LSchemaRoot;
+      LNewScope.SchemaPath        := '#';
+      LNewScope.CoveredItems      := [];
+      LNewScope.ContainsCount     := 0;
+      LNewScope.VisitedKeywords   := [];
+      LNewScope.CoveredProperties := [];
 
       PushScope(LNewScope);
       try
@@ -338,16 +332,13 @@ begin
 
       LScope := CurrentScope;
       LNewScope := LScope;
-      with LNewScope do
-      begin
-        BaseURI           := LResourceKeyURI;
-        SchemaNode        := LSchemaRoot;
-        SchemaPath        := '#';
-        CoveredItems      := [];
-        ContainsCount     := 0;
-        VisitedKeywords   := [];
-        CoveredProperties := [];
-      end;
+      LNewScope.BaseURI           := LResourceKeyURI;
+      LNewScope.SchemaNode        := LSchemaRoot;
+      LNewScope.SchemaPath        := '#';
+      LNewScope.CoveredItems      := [];
+      LNewScope.ContainsCount     := 0;
+      LNewScope.VisitedKeywords   := [];
+      LNewScope.CoveredProperties := [];
 
       PushScope(LNewScope);
       try

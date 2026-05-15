@@ -98,15 +98,12 @@ begin
 
   // 2. Cria a instância de TURIReference com os componentes montados.
   // A normalização ocorre dentro do método Normalize da própria TURIReference.
-  with LReference do
-  begin
-    Scheme    := Self.FScheme;
-    Authority := LAuthority;
-    Path      := Self.FPath;
-    Query     := Self.FQuery;
-    Fragment  := Self.FFragment;
-    Encoding  := 'utf-8'; // Padrão
-  end;
+  LReference.Scheme    := Self.FScheme;
+  LReference.Authority := LAuthority;
+  LReference.Path      := Self.FPath;
+  LReference.Query     := Self.FQuery;
+  LReference.Fragment  := Self.FFragment;
+  LReference.Encoding  := 'utf-8'; // Padr?o
 
   Result := TURIReference.From(LReference.Unsplit).Normalize;
 end;

@@ -14,6 +14,7 @@ type
 implementation
 
 uses
+  System.SysUtils,
   JsonSchema.Translate.enUS,
   JsonSchema.Translate.ptBR;
 
@@ -22,8 +23,12 @@ uses
 class function TTranslateUtils.GetTranslation(const ALanguage: TLanguage): ITranslate;
 begin
   case ALanguage of
-    TLanguage.lang_enUS: Result := TTranslate_enUS.Create;
-    TLanguage.lang_ptBR: Result := TTranslate_ptBR.Create;
+    TLanguage.lang_enUS:
+      Result := TTranslate_enUS.Create;
+    TLanguage.lang_ptBR:
+      Result := TTranslate_ptBR.Create;
+  else
+    raise Exception.Create('Unsupported language: ' + IntToStr(Integer(ALanguage)));
   end;
 end;
 

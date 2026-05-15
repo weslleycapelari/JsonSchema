@@ -289,14 +289,14 @@ end;
 
 function TTranslate_ptBR.TranslateUnresolvedReference: TErrorMessage;
 begin
-  Result.Error := 'N�o foi possivel encontrar a refer�ncia "%s".';
-  Result.Hint  := 'Verificar se o nome da refer�ncia esta correta.';
+  Result.Error := 'Não foi possível encontrar a referência "%s".';
+  Result.Hint  := 'Verificar se o nome da referência está correto.';
 end;
 
 function TTranslate_ptBR.TranslateUnsupportedVocabulary: TErrorMessage;
 begin
-  Result.Error := 'O vocabul?rio obrigat?rio "%s" n?o ? suportado.';
-  Result.Hint  := 'Use apenas vocabul?rios suportados por este validador ou marque vocabul?rios desconhecidos como opcionais.';
+  Result.Error := 'O vocabulário obrigatório "%s" não é suportado.';
+  Result.Hint  := 'Use apenas vocabulários suportados por este validador ou marque vocabulários desconhecidos como opcionais.';
 end;
 
 end.

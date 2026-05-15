@@ -158,7 +158,7 @@ end;
 function TTranslate_enUS.TranslateInvalidType: TErrorMessage;
 begin
   Result.Error := 'The provided value does not match the expected type. Expected: "%s", found: "%s"';
-  Result.Hint  := 'Verify that the field value is formatted correctly for the "%s" type. For example, numeric values ??should not be enclosed in quotes';
+  Result.Hint  := 'Verify that the field value is formatted correctly for the "%s" type. For example, numeric values should not be enclosed in quotes';
 end;
 
 function TTranslate_enUS.TranslateMaxContains: TErrorMessage;
