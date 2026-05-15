@@ -35,7 +35,7 @@ Ensure every line of Delphi code written, modified, or reviewed complies 100% wi
 
 ## Output rules
 
-- Group your code review findings by the Ebook pillars: 1. Syntax, 2. Naming, 3. OOP, 4. Exceptions.
+- Group your code review findings by the Delphi Standards pillars: 1. Syntax, 2. Naming, 3. OOP, 4. Exceptions.
 - Clearly categorize findings as **Critical Violations** (e.g., use of `Break`, `with`, global variables, or unsafe memory frees) vs **Style Violations** (e.g., alignment of `:=`, missing `l` prefix).
 - Provide the exact corrected Delphi snippet for each violation.
 - Do NOT hallucinate rules from C#, Java, or standard Pascal. If a rule is not in the Delphi Coding Standards, do not enforce it.

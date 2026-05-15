@@ -3,14 +3,14 @@ name: quality-review
 description: Runs a high-level architectural and standards audit on a file, folder, or project using the MAS (Multi-Agent System) of specialized guardians.
 ---
 
-# Supreme Architectural Audit & Refactor
+# Architectural Audit & Refactor
 
 Purpose:
-Perform a deep, multi-dimensional review of the selected Delphi code scope. You must act as the "Supreme Orchestrator", invoking the specialized knowledge of all repository guardians.
+Perform a deep, multi-dimensional review of the selected Delphi code scope. You must act as the "Orchestrator", invoking the specialized knowledge of all repository guardians.
 
 Guardians to Consult:
 
-1. **Ebook Standards Maestro**: For syntax, naming prefixes (l, p, F), and formatting.
+1. **Delphi Standards Maestro**: For syntax, naming prefixes (l, p, F), and formatting.
 2. **YAGNI Guardian**: To remove speculative code and premature abstractions.
 3. **KISS Guardian**: To simplify convoluted logic and "clever" code.
 4. **DRY Architect**: To centralize duplicated business knowledge and rules.
