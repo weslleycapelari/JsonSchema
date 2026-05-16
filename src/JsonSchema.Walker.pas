@@ -43,6 +43,7 @@ uses
   System.Rtti,
   System.SysUtils,
   JsonSchema.Common.Utils,
+  JsonSchema.Validation.Base,
   JsonSchema.Validation.Draft6,
   JsonSchema.Validation.Draft7,
   JsonSchema.Validation.Draft2019_09,
@@ -215,9 +216,6 @@ begin
     Exit;
   end;
 
-  if LHasRef and LAllowSiblingKeywordsWithRef then
-    FVisitor.AddVisitedKeyword('$ref');
-
   if Length(LPrecedence) > 0 then
   begin
     for LPrecedentKeyword in LPrecedence do
@@ -245,6 +243,13 @@ begin
     end;
   end;
 
+  LSilentValidationMode := Supports(FVisitor, IDraft2019_09ValidationVocabularyMode, LDraft2019VocabularyMode) and
+    LDraft2019VocabularyMode.IsValidationVocabularySilent;
+
+  if LSilentValidationMode then
+    for LValidationKeyword in CValidationKeywords do
+      FVisitor.AddVisitedKeyword(LValidationKeyword);
+
   for LPair in TJSONObject(FSchema) do
   begin
     LKeyword := LPair.JsonString.Value;
@@ -267,8 +272,6 @@ begin
     DispatchVisit(LKeyword, LPair.JsonValue);
   end;
 
-  if LHasRef and LAllowSiblingKeywordsWithRef then
-    DispatchVisit('$ref', LRefValue);
 end;
 
 { TValidationWalker }

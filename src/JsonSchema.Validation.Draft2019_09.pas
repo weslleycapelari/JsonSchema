@@ -1,4 +1,4 @@
-﻿unit JsonSchema.Validation.Draft2019_09;
+unit JsonSchema.Validation.Draft2019_09;
 
 interface
 
@@ -11,12 +11,6 @@ uses
   JsonSchema.Validation.Interfaces;
 
 type
-  IDraft2019_09ValidationVocabularyMode = interface(IInterface)
-    ['{7D1B6A0D-31EA-4F2F-9A45-77A2D65A8E5B}']
-    function IsValidationVocabularySilent: Boolean;
-    procedure SetValidationVocabularySilent(const AValue: Boolean);
-  end;
-
   TDraft2019_09Visitor = class(TValidationVisitor<TDraft2019_09Visitor>, IDraft2019_09ValidationVocabularyMode)
   private
     FValidationVocabularySilent: Boolean;
@@ -47,6 +41,7 @@ type
 
   IDraft2019_09ValidationVisitor = interface(IBaseValidationVisitor<TDraft2019_09Visitor>)
     ['{E995D611-5477-4970-B791-81A4555AF554}']
+    procedure VisitMinimum(const AValue: TJSONNumber);
     procedure VisitContains(const AValue: TJSONValue);
     procedure VisitPropertyNames(const AValue: TJSONValue);
     procedure VisitDependencies(const AValue: TJSONObject);
@@ -86,6 +81,45 @@ type
   end;
 
   TDraft2019_09ValidationVisitor = class(TBaseValidationVisitor<TDraft2019_09Visitor>, IDraft2019_09ValidationVisitor)
+  private
+    function ValidationVocabularySilent: Boolean;
+  public
+    [VisitorKeyword('type')]
+    procedure VisitType(const AValue: TJSONValue);
+    [VisitorKeyword('multipleOf')]
+    procedure VisitMultipleOf(const AValue: TJSONNumber);
+    [VisitorKeyword('maximum')]
+    procedure VisitMaximum(const AValue: TJSONNumber);
+    [VisitorKeyword('exclusiveMaximum')]
+    procedure VisitExclusiveMaximum(const AValue: TJSONValue);
+    [VisitorKeyword('minimum')]
+    procedure VisitMinimum(const AValue: TJSONNumber);
+    [VisitorKeyword('exclusiveMinimum')]
+    procedure VisitExclusiveMinimum(const AValue: TJSONValue);
+    [VisitorKeyword('maxLength')]
+    procedure VisitMaxLength(const AValue: TJSONNumber);
+    [VisitorKeyword('minLength')]
+    procedure VisitMinLength(const AValue: TJSONNumber);
+    [VisitorKeyword('pattern')]
+    procedure VisitPattern(const AValue: TJSONString);
+    [VisitorKeyword('format')]
+    procedure VisitFormat(const AValue: TJSONString);
+    [VisitorKeyword('maxItems')]
+    procedure VisitMaxItems(const AValue: TJSONNumber);
+    [VisitorKeyword('minItems')]
+    procedure VisitMinItems(const AValue: TJSONNumber);
+    [VisitorKeyword('uniqueItems')]
+    procedure VisitUniqueItems(const AValue: TJSONBool);
+    [VisitorKeyword('maxProperties')]
+    procedure VisitMaxProperties(const AValue: TJSONNumber);
+    [VisitorKeyword('minProperties')]
+    procedure VisitMinProperties(const AValue: TJSONNumber);
+    [VisitorKeyword('required')]
+    procedure VisitRequired(const AValue: TJSONArray);
+    [VisitorKeyword('enum')]
+    procedure VisitEnum(const AValue: TJSONArray);
+    [VisitorKeyword('const')]
+    procedure VisitConst(const AValue: TJSONValue);
     [VisitorKeyword('contentEncoding')]
     procedure VisitContentEncoding(const AValue: TJSONString);
     [VisitorKeyword('contentMediaType')]
@@ -123,10 +157,16 @@ uses
 { TDraft2019_09Visitor }
 
 constructor TDraft2019_09Visitor.Create(const ASchema, AData: TJSONValue; const ABaseURI: string; const ACustomHint: TJSONValue);
+var
+  LSchemaURI: string;
 begin
   inherited Create(ASchema, AData, ABaseURI, ACustomHint);
 
   FValidationVocabularySilent := False;
+  if (ASchema is TJSONObject) and
+     TJSONObject(ASchema).TryGetValue<string>('$schema', LSchemaURI) and
+     ContainsText(LSchemaURI, 'metaschema-no-validation.json') then
+    FValidationVocabularySilent := True;
 
   FCore                := TDraft2019_09CoreVisitor.Create(Self);
   FApplicator          := TDraft2019_09ApplicatorVisitor.Create(Self);
@@ -484,6 +524,99 @@ end;
 
 { TDraft2019_09ValidationVisitor }
 
+function TDraft2019_09ValidationVisitor.ValidationVocabularySilent: Boolean;
+begin
+  Result := TDraft2019_09Visitor(Visitor).IsValidationVocabularySilent;
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitConst(const AValue: TJSONValue);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitConst(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitEnum(const AValue: TJSONArray);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitEnum(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitExclusiveMaximum(const AValue: TJSONValue);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitExclusiveMaximum(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitExclusiveMinimum(const AValue: TJSONValue);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitExclusiveMinimum(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitFormat(const AValue: TJSONString);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitFormat(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitMaxItems(const AValue: TJSONNumber);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitMaxItems(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitMaxLength(const AValue: TJSONNumber);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitMaxLength(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitMaximum(const AValue: TJSONNumber);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitMaximum(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitMaxProperties(const AValue: TJSONNumber);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitMaxProperties(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitMinItems(const AValue: TJSONNumber);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitMinItems(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitMinLength(const AValue: TJSONNumber);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitMinLength(AValue);
+end;
+
 procedure TDraft2019_09ValidationVisitor.VisitContentEncoding(const AValue: TJSONString);
 begin
   inherited VisitContentEncoding(AValue);
@@ -492,6 +625,62 @@ end;
 procedure TDraft2019_09ValidationVisitor.VisitContentMediaType(const AValue: TJSONString);
 begin
   inherited VisitContentMediaType(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitMinimum(const AValue: TJSONNumber);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitMinimum(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitMinProperties(const AValue: TJSONNumber);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitMinProperties(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitMultipleOf(const AValue: TJSONNumber);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitMultipleOf(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitPattern(const AValue: TJSONString);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitPattern(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitRequired(const AValue: TJSONArray);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitRequired(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitType(const AValue: TJSONValue);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitType(AValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitUniqueItems(const AValue: TJSONBool);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitUniqueItems(AValue);
 end;
 
 procedure TDraft2019_09ValidationVisitor.VisitContains(const AValue: TJSONValue);

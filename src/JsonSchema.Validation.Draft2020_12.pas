@@ -11,15 +11,26 @@ uses
   JsonSchema.Validation.Interfaces;
 
 type
+  IDraft2020_12FormatAssertionMode = interface(IInterface)
+    ['{1E9E0329-00E8-47F6-AB75-A0A33A3774E4}']
+    function IsFormatAssertionEnabled: Boolean;
+    procedure SetFormatAssertionEnabled(const AValue: Boolean);
+  end;
+
   TDraft2020_12Visitor = class(TValidationVisitor<TDraft2020_12Visitor>)
+  private
+    FFormatAssertionEnabled: Boolean;
   public
     constructor Create(const ASchema, AData: TJSONValue; const ABaseURI: string; const ACustomHint: TJSONValue = nil);
     function New(const ASchema, AData: TJSONValue; const ABaseURI: string): TDraft2020_12Visitor; override;
     function KeywordPrecedence: TArray<string>; override;
+    function IsFormatAssertionEnabled: Boolean;
+    procedure SetFormatAssertionEnabled(const AValue: Boolean);
   end;
 
   IDraft2020_12CoreVisitor = interface(IBaseCoreVisitor<TDraft2020_12Visitor>)
     ['{D73FF534-BC9D-4673-8C79-EF7D745FF989}']
+    procedure VisitSchema(const AValue: TJSONString);
     procedure VisitComment(const AValue: TJSONString);
     procedure VisitAnchor(const AValue: TJSONString);
     procedure VisitDynamicRef(const AValue: TJSONString);
@@ -29,6 +40,8 @@ type
 
   IDraft2020_12ApplicatorVisitor = interface(IBaseApplicatorVisitor<TDraft2020_12Visitor>)
     ['{93807819-1E9D-4017-A18B-67D5E9DDEC91}']
+    procedure VisitItems(const AValue: TJSONValue);
+    procedure VisitPrefixItems(const AValue: TJSONArray);
     procedure VisitDependentSchemas(const AValue: TJSONObject);
     procedure VisitUnevaluatedItems(const AValue: TJSONValue);
     procedure VisitUnevaluatedProperties(const AValue: TJSONValue);
@@ -48,6 +61,8 @@ type
   end;
 
   TDraft2020_12CoreVisitor = class(TBaseCoreVisitor<TDraft2020_12Visitor>, IDraft2020_12CoreVisitor)
+    [VisitorKeyword('$schema')]
+    procedure VisitSchema(const AValue: TJSONString);
     [VisitorKeyword('$comment')]
     procedure VisitComment(const AValue: TJSONString);
     [VisitorKeyword('$anchor')]
@@ -61,6 +76,10 @@ type
   end;
 
   TDraft2020_12ApplicatorVisitor = class(TBaseApplicatorVisitor<TDraft2020_12Visitor>, IDraft2020_12ApplicatorVisitor)
+    [VisitorKeyword('items')]
+    procedure VisitItems(const AValue: TJSONValue);
+    [VisitorKeyword('prefixItems')]
+    procedure VisitPrefixItems(const AValue: TJSONArray);
     [VisitorKeyword('dependentSchemas')]
     procedure VisitDependentSchemas(const AValue: TJSONObject);
     [VisitorKeyword('unevaluatedItems')]
@@ -70,6 +89,8 @@ type
   end;
 
   TDraft2020_12ValidationVisitor = class(TBaseValidationVisitor<TDraft2020_12Visitor>, IDraft2020_12ValidationVisitor)
+    [VisitorKeyword('format')]
+    procedure VisitFormat(const AValue: TJSONString);
     [VisitorKeyword('contains')]
     procedure VisitContains(const AValue: TJSONValue);
     [VisitorKeyword('propertyNames')]
@@ -90,16 +111,21 @@ implementation
 uses
   System.Math,
   System.SysUtils,
+  System.StrUtils,
   System.Generics.Collections,
   JsonSchema.Common.Utils,
   JsonSchema.Translate.Types,
-  JsonSchema.Walker;
+  JsonSchema.Walker,
+  JsonSchema.Registry.Resource,
+  JsonSchema.Registry.Uri;
 
 { TDraft2020_12Visitor }
 
 constructor TDraft2020_12Visitor.Create(const ASchema, AData: TJSONValue; const ABaseURI: string; const ACustomHint: TJSONValue);
 begin
   inherited Create(ASchema, AData, ABaseURI, ACustomHint);
+
+  FFormatAssertionEnabled := False;
 
   FCore                := TDraft2020_12CoreVisitor.Create(Self);
   FApplicator          := TDraft2020_12ApplicatorVisitor.Create(Self);
@@ -135,9 +161,56 @@ end;
 function TDraft2020_12Visitor.New(const ASchema, AData: TJSONValue; const ABaseURI: string): TDraft2020_12Visitor;
 begin
   Result := TDraft2020_12Visitor.Create(ASchema, AData, ABaseURI, FCustomHint);
+  Result.FRegistry.Free;
+  Result.FRegistry := FRegistry;
+  Result.FOwnsRegistry := False;
+  Result.FFormatAssertionEnabled := FFormatAssertionEnabled;
+end;
+
+function TDraft2020_12Visitor.IsFormatAssertionEnabled: Boolean;
+begin
+  Result := FFormatAssertionEnabled;
+end;
+
+procedure TDraft2020_12Visitor.SetFormatAssertionEnabled(const AValue: Boolean);
+begin
+  FFormatAssertionEnabled := AValue;
 end;
 
 { TDraft2020_12CoreVisitor }
+
+procedure TDraft2020_12CoreVisitor.VisitSchema(const AValue: TJSONString);
+const
+  CFormatAssertionVocabularyURI = 'https://json-schema.org/draft/2020-12/vocab/format-assertion';
+var
+  LScope: TScope;
+  LSchemaURI: TURIReference;
+  LMetaResource: TResource;
+  LMetaSchemaRoot: TJSONValue;
+  LVocabularyValue: TJSONValue;
+  LFormatAssertionValue: TJSONValue;
+  LFormatAssertionRequired: Boolean;
+begin
+  LScope := Visitor.CurrentScope;
+  LSchemaURI := TURIReference.From(AValue.Value).ResolveWith(TURIReference.From(LScope.BaseURI));
+
+  if not Visitor.Registry.TryFindResource(LSchemaURI.Unsplit, LMetaResource) then
+    Exit;
+
+  LMetaSchemaRoot := LMetaResource.ResolveFragment('');
+  if not (LMetaSchemaRoot is TJSONObject) then
+    Exit;
+
+  LFormatAssertionRequired := False;
+  if TJSONObject(LMetaSchemaRoot).TryGetValue('$vocabulary', LVocabularyValue) and (LVocabularyValue is TJSONObject) and
+     TJSONObject(LVocabularyValue).TryGetValue(CFormatAssertionVocabularyURI, LFormatAssertionValue) and
+     (LFormatAssertionValue is TJSONBool) then
+    LFormatAssertionRequired := TJSONBool(LFormatAssertionValue).AsBoolean;
+
+  TDraft2020_12Visitor(Visitor).SetFormatAssertionEnabled(LFormatAssertionRequired);
+  if not LFormatAssertionRequired then
+    Visitor.AddVisitedKeyword('format');
+end;
 
 procedure TDraft2020_12CoreVisitor.VisitAnchor(const AValue: TJSONString);
 begin
@@ -155,16 +228,167 @@ begin
 end;
 
 procedure TDraft2020_12CoreVisitor.VisitDynamicRef(const AValue: TJSONString);
+var
+  LScope: TScope;
+  LFinalURI: TURIReference;
+  LTargetResource: TResource;
+  LTargetSchema: TJSONValue;
+  LResolvedBaseURI: string;
+  LDynamicAnchorName: string;
+  LDynamicAnchorValue: TJSONValue;
+  LScopeAnchorValue: TJSONValue;
+  LOffset: Integer;
+  LDynamicBaseURI: string;
+  LDynamicRefValue: TJSONString;
+  LOriginalScope: TScope;
+  LScopeAfterRef: TScope;
 begin
+  LScope := Visitor.CurrentScope;
+  LFinalURI := TURIReference.From(AValue.Value).ResolveWith(TURIReference.From(LScope.BaseURI));
+  LDynamicAnchorName := LFinalURI.Fragment;
 
+  if LDynamicAnchorName.IsEmpty or LDynamicAnchorName.StartsWith('/') then
+  begin
+    LOriginalScope := Visitor.CurrentScope;
+    try
+      inherited VisitRef(AValue);
+    finally
+      LScopeAfterRef := Visitor.CurrentScope;
+      if not SameText(LScopeAfterRef.BaseURI, LOriginalScope.BaseURI) then
+      begin
+        LScopeAfterRef.BaseURI := LOriginalScope.BaseURI;
+        Visitor.UpdateScope(LScopeAfterRef);
+      end;
+    end;
+    Exit;
+  end;
+
+  if not Visitor.Registry.TryFindResource(LFinalURI.Unsplit, LTargetResource) then
+  begin
+    LOriginalScope := Visitor.CurrentScope;
+    try
+      inherited VisitRef(AValue);
+    finally
+      LScopeAfterRef := Visitor.CurrentScope;
+      if not SameText(LScopeAfterRef.BaseURI, LOriginalScope.BaseURI) then
+      begin
+        LScopeAfterRef.BaseURI := LOriginalScope.BaseURI;
+        Visitor.UpdateScope(LScopeAfterRef);
+      end;
+    end;
+    Exit;
+  end;
+
+  LTargetSchema := LTargetResource.ResolveFragment(LDynamicAnchorName, LResolvedBaseURI);
+  if not Assigned(LTargetSchema) then
+  begin
+    LOriginalScope := Visitor.CurrentScope;
+    try
+      inherited VisitRef(AValue);
+    finally
+      LScopeAfterRef := Visitor.CurrentScope;
+      if not SameText(LScopeAfterRef.BaseURI, LOriginalScope.BaseURI) then
+      begin
+        LScopeAfterRef.BaseURI := LOriginalScope.BaseURI;
+        Visitor.UpdateScope(LScopeAfterRef);
+      end;
+    end;
+    Exit;
+  end;
+
+  if not ((LTargetSchema is TJSONObject) and
+          TJSONObject(LTargetSchema).TryGetValue('$dynamicAnchor', LDynamicAnchorValue) and
+          (LDynamicAnchorValue is TJSONString) and
+          SameText(TJSONString(LDynamicAnchorValue).Value, LDynamicAnchorName)) then
+  begin
+    LOriginalScope := Visitor.CurrentScope;
+    try
+      inherited VisitRef(AValue);
+    finally
+      LScopeAfterRef := Visitor.CurrentScope;
+      if not SameText(LScopeAfterRef.BaseURI, LOriginalScope.BaseURI) then
+      begin
+        LScopeAfterRef.BaseURI := LOriginalScope.BaseURI;
+        Visitor.UpdateScope(LScopeAfterRef);
+      end;
+    end;
+    Exit;
+  end;
+
+  LDynamicBaseURI := '';
+  LOffset := 0;
+  while Assigned(Visitor.CurrentScope(LOffset).SchemaNode) do
+  begin
+    LScope := Visitor.CurrentScope(LOffset);
+    if (LScope.SchemaNode is TJSONObject) and
+       TJSONObject(LScope.SchemaNode).TryGetValue('$dynamicAnchor', LScopeAnchorValue) and
+       (LScopeAnchorValue is TJSONString) and
+       SameText(TJSONString(LScopeAnchorValue).Value, LDynamicAnchorName) then
+    begin
+      LDynamicBaseURI := LScope.BaseURI;
+      Break;
+    end;
+    Inc(LOffset);
+  end;
+
+  if LDynamicBaseURI.IsEmpty then
+  begin
+    LOriginalScope := Visitor.CurrentScope;
+    try
+      inherited VisitRef(AValue);
+    finally
+      LScopeAfterRef := Visitor.CurrentScope;
+      if not SameText(LScopeAfterRef.BaseURI, LOriginalScope.BaseURI) then
+      begin
+        LScopeAfterRef.BaseURI := LOriginalScope.BaseURI;
+        Visitor.UpdateScope(LScopeAfterRef);
+      end;
+    end;
+    Exit;
+  end;
+
+  LDynamicRefValue := TJSONString.Create(LDynamicBaseURI + '#' + LDynamicAnchorName);
+  try
+    LOriginalScope := Visitor.CurrentScope;
+    try
+      inherited VisitRef(LDynamicRefValue);
+    finally
+      LScopeAfterRef := Visitor.CurrentScope;
+      if not SameText(LScopeAfterRef.BaseURI, LOriginalScope.BaseURI) then
+      begin
+        LScopeAfterRef.BaseURI := LOriginalScope.BaseURI;
+        Visitor.UpdateScope(LScopeAfterRef);
+      end;
+    end;
+  finally
+    LDynamicRefValue.Free;
+  end;
 end;
 
 procedure TDraft2020_12CoreVisitor.VisitVocabulary(const AValue: TJSONObject);
+const
+  CFormatAssertionVocabularyURI = 'https://json-schema.org/draft/2020-12/vocab/format-assertion';
+var
+  LFormatAssertionValue: TJSONValue;
 begin
-
+  if AValue.TryGetValue(CFormatAssertionVocabularyURI, LFormatAssertionValue) and
+     (LFormatAssertionValue is TJSONBool) then
+  begin
+    TDraft2020_12Visitor(Visitor).SetFormatAssertionEnabled(TJSONBool(LFormatAssertionValue).AsBoolean);
+    if not TJSONBool(LFormatAssertionValue).AsBoolean then
+      Visitor.AddVisitedKeyword('format');
+  end;
 end;
 
 { TDraft2020_12ValidationVisitor }
+
+procedure TDraft2020_12ValidationVisitor.VisitFormat(const AValue: TJSONString);
+begin
+  if not TDraft2020_12Visitor(Visitor).IsFormatAssertionEnabled then
+    Exit;
+
+  inherited VisitFormat(AValue);
+end;
 
 procedure TDraft2020_12ValidationVisitor.VisitContains(const AValue: TJSONValue);
 var
@@ -234,8 +458,38 @@ begin
 end;
 
 procedure TDraft2020_12ValidationVisitor.VisitDependentRequired(const AValue: TJSONObject);
+var
+  LScope: TScope;
+  LInstance: TJSONObject;
+  LDependencyPair: TJSONPair;
+  LRequiredList: TJSONArray;
+  LRequiredValue: TJSONValue;
+  LRequiredName: string;
 begin
+  LScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+    Exit;
 
+  LInstance := TJSONObject(LScope.InstanceNode);
+  for LDependencyPair in AValue do
+  begin
+    if LInstance.FindValue(LDependencyPair.JsonString.Value) = nil then
+      Continue;
+
+    if not (LDependencyPair.JsonValue is TJSONArray) then
+      Continue;
+
+    LRequiredList := TJSONArray(LDependencyPair.JsonValue);
+    for LRequiredValue in LRequiredList do
+    begin
+      if not (LRequiredValue is TJSONString) then
+        Continue;
+
+      LRequiredName := TJSONString(LRequiredValue).Value;
+      if LInstance.FindValue(LRequiredName) = nil then
+        Visitor.AddError(vetDependentRequired, [LDependencyPair.JsonString.Value, LRequiredName]);
+    end;
+  end;
 end;
 
 procedure TDraft2020_12ValidationVisitor.VisitMaxContains(const AValue: TJSONNumber);
@@ -275,6 +529,20 @@ begin
 end;
 
 { TDraft2020_12ApplicatorVisitor }
+
+procedure TDraft2020_12ApplicatorVisitor.VisitItems(const AValue: TJSONValue);
+begin
+  // Em 2020-12, tuple validation foi movida para prefixItems.
+  if AValue is TJSONArray then
+    Exit;
+
+  inherited VisitItems(AValue);
+end;
+
+procedure TDraft2020_12ApplicatorVisitor.VisitPrefixItems(const AValue: TJSONArray);
+begin
+  inherited VisitPrefixItems(AValue);
+end;
 
 procedure TDraft2020_12ApplicatorVisitor.VisitDependentSchemas(const AValue: TJSONObject);
 var

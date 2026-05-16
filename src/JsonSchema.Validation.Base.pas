@@ -17,6 +17,13 @@ uses
   JsonSchema.Registry.Base;
 
 type
+  // Interface por GUID para evitar dependência direta do unit de draft.
+  IDraft2019_09ValidationVocabularyMode = interface(IInterface)
+    ['{7D1B6A0D-31EA-4F2F-9A45-77A2D65A8E5B}']
+    function IsValidationVocabularySilent: Boolean;
+    procedure SetValidationVocabularySilent(const AValue: Boolean);
+  end;
+
   TBaseCoreVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IBaseCoreVisitor<T>)
     [VisitorKeyword('$schema')]
     procedure VisitSchema(const AValue: TJSONString);
@@ -553,8 +560,9 @@ begin
         Break;
       end;
 
-    if (LTargetDraftVersion in [TDraftVersion.dvDraft2019_09, TDraftVersion.dvDraft2020_12]) and
-       not LCurrentHandlesNewDrafts then
+    if ((LTargetDraftVersion = TDraftVersion.dvDraft7) and LCurrentHandlesNewDrafts) or
+       ((LTargetDraftVersion in [TDraftVersion.dvDraft2019_09, TDraftVersion.dvDraft2020_12]) and
+        not LCurrentHandlesNewDrafts) then
     begin
       LCrossDraftResult := TJsonSchema.Validate(LTargetSchema, LScope.InstanceNode, LTargetDraftVersion);
 
@@ -570,12 +578,14 @@ begin
             if LNormalizedEvaluatedProperty = '#' then
               LNormalizedEvaluatedProperty := LScope.InstancePath
             else if LNormalizedEvaluatedProperty.StartsWith('#/') then
-              LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty.Substring(1)
+              LNormalizedEvaluatedProperty := LNormalizedEvaluatedProperty.Substring(1)
             else if LNormalizedEvaluatedProperty.StartsWith('#.') then
               LNormalizedEvaluatedProperty := LScope.InstancePath + '/' +
                 StringReplace(LNormalizedEvaluatedProperty.Substring(2), '.', '/', [rfReplaceAll])
             else if LNormalizedEvaluatedProperty.StartsWith('/') then
-              LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty
+            begin
+              // Caminhos iniciados por '/' já são absolutos no documento.
+            end
             else if LNormalizedEvaluatedProperty.StartsWith('.') then
               LNormalizedEvaluatedProperty := LScope.InstancePath + '/' +
                 StringReplace(LNormalizedEvaluatedProperty.Substring(1), '.', '/', [rfReplaceAll])
@@ -613,8 +623,10 @@ begin
         for LCrossDraftError in LCrossDraftResult.Errors do
           LValidationVisitor.Result.AddError(LCrossDraftError);
 
-      // Fallback minimo: dependentRequired em refs cross-draft (usado em draft7/optional/cross-draft.json).
-      if LCrossDraftResult.IsValid and (LTargetSchema is TJSONObject) and
+      // Fallback minimo: dependentRequired em refs cross-draft para drafts que
+      // suportam explicitamente o keyword.
+      if LCrossDraftResult.IsValid and (LTargetDraftVersion in [TDraftVersion.dvDraft2019_09, TDraftVersion.dvDraft2020_12]) and
+        (LTargetSchema is TJSONObject) and
          TJSONObject(LTargetSchema).TryGetValue('dependentRequired', LDependentRequired) and
          (LDependentRequired is TJSONObject) and (LScope.InstanceNode is TJSONObject) then
       begin
@@ -656,10 +668,6 @@ begin
     if Assigned(LScope.EvaluatedPropertiesInScope) then
       for LEvaluatedProperty in LScope.EvaluatedPropertiesInScope do
         LNewScope.EvaluatedPropertiesInScope.Add(LEvaluatedProperty);
-      // Injeta também a memória global já avaliada para o filho enxergar
-      // anotações herdadas do pai durante a sub-validação de $ref.
-      for LEvaluatedProperty in LValidationVisitor.Result.EvaluatedProperties do
-        LNewScope.EvaluatedPropertiesInScope.Add(LEvaluatedProperty);
 
     LResultEvaluatedBefore := THashSet<string>.Create;
     try
@@ -690,12 +698,14 @@ begin
               if LNormalizedEvaluatedProperty = '#' then
                 LNormalizedEvaluatedProperty := LScope.InstancePath
               else if LNormalizedEvaluatedProperty.StartsWith('#/') then
-                LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty.Substring(1)
+                LNormalizedEvaluatedProperty := LNormalizedEvaluatedProperty.Substring(1)
               else if LNormalizedEvaluatedProperty.StartsWith('#.') then
                 LNormalizedEvaluatedProperty := LScope.InstancePath + '/' +
                   StringReplace(LNormalizedEvaluatedProperty.Substring(2), '.', '/', [rfReplaceAll])
               else if LNormalizedEvaluatedProperty.StartsWith('/') then
-                LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty
+              begin
+                // Caminhos iniciados por '/' já são absolutos no documento.
+              end
               else if LNormalizedEvaluatedProperty.StartsWith('.') then
                 LNormalizedEvaluatedProperty := LScope.InstancePath + '/' +
                   StringReplace(LNormalizedEvaluatedProperty.Substring(1), '.', '/', [rfReplaceAll])
@@ -728,12 +738,14 @@ begin
               if LNormalizedEvaluatedProperty = '#' then
                 LNormalizedEvaluatedProperty := LScope.InstancePath
               else if LNormalizedEvaluatedProperty.StartsWith('#/') then
-                LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty.Substring(1)
+                LNormalizedEvaluatedProperty := LNormalizedEvaluatedProperty.Substring(1)
               else if LNormalizedEvaluatedProperty.StartsWith('#.') then
                 LNormalizedEvaluatedProperty := LScope.InstancePath + '/' +
                   StringReplace(LNormalizedEvaluatedProperty.Substring(2), '.', '/', [rfReplaceAll])
               else if LNormalizedEvaluatedProperty.StartsWith('/') then
-                LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty
+              begin
+                // Caminhos iniciados por '/' já são absolutos no documento.
+              end
               else if LNormalizedEvaluatedProperty.StartsWith('.') then
                 LNormalizedEvaluatedProperty := LScope.InstancePath + '/' +
                   StringReplace(LNormalizedEvaluatedProperty.Substring(1), '.', '/', [rfReplaceAll])
@@ -870,6 +882,8 @@ var
   LVisitor: T;
   LNewScope: TScope;
   LInstance: TJSONArray;
+  LMinContainsNode: TJSONValue;
+  LMinimumContains: Integer;
 begin
   LScope := Visitor.CurrentScope;
   if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
@@ -915,7 +929,17 @@ begin
 
   Visitor.UpdateScope(LScope);
   if LScope.ContainsCount = 0 then
-    Visitor.AddError(vetContains);
+  begin
+    // Drafts com minContains=0 consideram "contains" sempre satisfeito.
+    LMinimumContains := 1;
+    if (LScope.SchemaNode is TJSONObject) and
+       TJSONObject(LScope.SchemaNode).TryGetValue('minContains', LMinContainsNode) and
+       (LMinContainsNode is TJSONNumber) then
+      LMinimumContains := TUtils.JsonGetInteger(TJSONNumber(LMinContainsNode));
+
+    if LMinimumContains > 0 then
+      Visitor.AddError(vetContains);
+  end;
 end;
 
 procedure TBaseValidationVisitor<T>.VisitDependencies(const AValue: TJSONObject);
@@ -1791,7 +1815,12 @@ end;
 procedure TBaseValidationVisitor<T>.VisitMinimum(const AValue: TJSONNumber);
 var
   LScope: TScope;
+  LDraft2019VocabularyMode: IDraft2019_09ValidationVocabularyMode;
 begin
+  if Supports(Visitor, IDraft2019_09ValidationVocabularyMode, LDraft2019VocabularyMode) and
+     LDraft2019VocabularyMode.IsValidationVocabularySilent then
+    Exit;
+
   LScope := Visitor.CurrentScope;
 
   if not MatchStr(TUtils.JsonGetType(LScope.InstanceNode), ['number', 'integer']) then
@@ -2249,7 +2278,7 @@ begin
       LNewScope.SchemaPath        := Format('%s/additionalItems', [LNewScope.SchemaPath]);
       LNewScope.SchemaNode        := AValue;
       LNewScope.InstanceNode      := TJSONArray(LScope.InstanceNode)[LCount];
-      LNewScope.InstancePath      := Format('%s[%d]', [LNewScope.InstancePath, LCount]);
+      LNewScope.InstancePath      := Format('%s/%d', [LNewScope.InstancePath, LCount]);
       LNewScope.CoveredItems      := [];
       LNewScope.ContainsCount     := 0;
       LNewScope.VisitedKeywords   := [];
@@ -2385,9 +2414,16 @@ begin
       LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
       LWalker.Walk;
 
-      // Mantém o escopo do branch sincronizado com as anotações produzidas
-      // durante a avaliação do branch antes do pop.
-      LNewScope := LVisitor.CurrentScope;
+      LNewScope := LVisitor.PopScope;
+      LBranchValid := LVisitor.Result.IsValid;
+
+      if not LBranchValid then
+      begin
+        Visitor.AddError(vetAllOf, [LCount]);
+        Exit;
+      end;
+
+      // Em allOf, apenas branches válidos podem promover anotações.
       if not Assigned(LNewScope.EvaluatedPropertiesInScope) then
         LNewScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
 
@@ -2401,25 +2437,17 @@ begin
             if LNormalizedEvaluatedProperty = '#' then
               LNormalizedEvaluatedProperty := LScope.InstancePath
             else if LNormalizedEvaluatedProperty.StartsWith('#/') then
-              LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty.Substring(1)
+              LNormalizedEvaluatedProperty := LNormalizedEvaluatedProperty.Substring(1)
             else if LNormalizedEvaluatedProperty.StartsWith('/') then
-              LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty
+            begin
+              // Caminhos iniciados por '/' já são absolutos no documento.
+            end
             else
               LNormalizedEvaluatedProperty := LScope.InstancePath + '/' + LNormalizedEvaluatedProperty;
           end;
         end;
 
         LNewScope.EvaluatedPropertiesInScope.Add(LNormalizedEvaluatedProperty);
-      end;
-      LVisitor.UpdateScope(LNewScope);
-
-      LNewScope := LVisitor.PopScope;
-      LBranchValid := LVisitor.Result.IsValid;
-
-      if not LBranchValid then
-      begin
-        Visitor.AddError(vetAllOf, [LCount]);
-        Exit;
       end;
 
       LCombinedCoveredItems := TUtils.MergeArray<Integer>([LCombinedCoveredItems, LNewScope.CoveredItems]);
@@ -2436,9 +2464,11 @@ begin
             if LNormalizedEvaluatedProperty = '#' then
               LNormalizedEvaluatedProperty := LScope.InstancePath
             else if LNormalizedEvaluatedProperty.StartsWith('#/') then
-              LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty.Substring(1)
+              LNormalizedEvaluatedProperty := LNormalizedEvaluatedProperty.Substring(1)
             else if LNormalizedEvaluatedProperty.StartsWith('/') then
-              LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty
+            begin
+              // Caminhos iniciados por '/' já são absolutos no documento.
+            end
             else
               LNormalizedEvaluatedProperty := LScope.InstancePath + '/' + LNormalizedEvaluatedProperty;
           end;
@@ -2493,6 +2523,7 @@ begin
     LNewScope.ContainsCount     := 0;
     LNewScope.VisitedKeywords   := [];
     LNewScope.CoveredProperties := [];
+    LNewScope.EvaluatedPropertiesInScope := nil;
 
     LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
     LVisitor.PopScope; // Remove o scope inicial do construtor para substituir pela cadeia do pai
@@ -2537,9 +2568,11 @@ begin
               if LNormalizedEvaluatedProperty = '#' then
                 LNormalizedEvaluatedProperty := LScope.InstancePath
               else if LNormalizedEvaluatedProperty.StartsWith('#/') then
-                LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty.Substring(1)
+                LNormalizedEvaluatedProperty := LNormalizedEvaluatedProperty.Substring(1)
               else if LNormalizedEvaluatedProperty.StartsWith('/') then
-                LNormalizedEvaluatedProperty := LScope.InstancePath + LNormalizedEvaluatedProperty
+              begin
+                // Caminhos iniciados por '/' já são absolutos no documento.
+              end
               else
                 LNormalizedEvaluatedProperty := LScope.InstancePath + '/' + LNormalizedEvaluatedProperty;
             end;
@@ -2706,7 +2739,7 @@ begin
       LNewScope.SchemaPath        := Format('%s/items/%d', [LNewScope.SchemaPath, LCount - 1]);
       LNewScope.SchemaNode        := LSchema;
       LNewScope.InstanceNode      := LInstance[LCount - 1];
-      LNewScope.InstancePath      := Format('%s[%d]', [LNewScope.InstancePath, LCount - 1]);
+      LNewScope.InstancePath      := Format('%s/%d', [LNewScope.InstancePath, LCount - 1]);
       LNewScope.CoveredItems      := [];
       LNewScope.ContainsCount     := 0;
       LNewScope.VisitedKeywords   := [];
@@ -2783,6 +2816,7 @@ begin
       LNewScope.ContainsCount     := 0;
       LNewScope.VisitedKeywords   := [];
       LNewScope.CoveredProperties := [];
+      LNewScope.EvaluatedPropertiesInScope := nil;
 
       LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
       LVisitor.PushScope(LNewScope);
@@ -2911,7 +2945,7 @@ begin
     LNewScope.SchemaPath        := Format('%s/items/%d', [LNewScope.SchemaPath, LCount]);
     LNewScope.SchemaNode        := AValue[LCount];
     LNewScope.InstanceNode      := TJSONArray(LScope.InstanceNode)[LCount];
-    LNewScope.InstancePath      := Format('%s[%d]', [LNewScope.InstancePath, LCount]);
+    LNewScope.InstancePath      := Format('%s/%d', [LNewScope.InstancePath, LCount]);
     LNewScope.CoveredItems      := [];
     LNewScope.ContainsCount     := 0;
     LNewScope.VisitedKeywords   := [];

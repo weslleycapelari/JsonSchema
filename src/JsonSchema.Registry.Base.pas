@@ -221,7 +221,19 @@ begin
           (lCanonicalURI = 'https://json-schema.org/draft/2019-09/schema') then
     lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\schema.json')
   else if lCanonicalURI.EndsWith('/draft2019-09/baseurichangefolder/baseurichangefolder/folderinteger.json') then
-    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolder\folderInteger.json')
+      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolder\folderInteger.json')
+    else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/core') then
+      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\core.json')
+    else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/applicator') then
+      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\applicator.json')
+    else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/validation') then
+      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\validation.json')
+    else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/meta-data') then
+      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\meta-data.json')
+    else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/format') then
+      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\format.json')
+    else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/content') then
+      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\content.json')
   else if lCanonicalURI.EndsWith('/draft2019-09/baseurichangefolderinsubschema/baseurichangefolderinsubschema/folderinteger.json') then
     lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolderInSubschema\folderInteger.json')
   else
