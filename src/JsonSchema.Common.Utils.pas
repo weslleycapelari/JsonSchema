@@ -1,4 +1,4 @@
-unit JsonSchema.Common.Utils;
+﻿unit JsonSchema.Common.Utils;
 
 interface
 
@@ -7,18 +7,19 @@ uses
 
 type
   TUtils = class
-    class function JsonEquals(A, B: TJSONValue): Boolean; static;
-    class function JsonArrayEquals(A, B: TJSONArray): Boolean; static;
-    class function JsonObjectEquals(A, B: TJSONObject): Boolean; static;
-    class function JsonGetInteger(AValue: TJSONValue): Int64; static;
-    class function JsonGetFloat(AValue: TJSONValue): Extended; static;
-    class function JsonGetType(AValue: TJSONValue): string; static;
-    class function Utf32Encode(const AValue: string): TArray<Cardinal>; static;
-    class function RegexNormalizePattern(const APattern: string): string; static;
+    class function JsonEquals(pA, B: TJSONValue): Boolean; static;
+    class function JsonArrayEquals(pA, pB: TJSONArray): Boolean; static;
+    class function JsonObjectEquals(pA, pB: TJSONObject): Boolean; static;
+    class function JsonGetInteger(pValue: TJSONValue): Int64; static;
+    class function JsonGetFloat(pValue: TJSONValue): Extended; static;
+    class function JsonGetType(pValue: TJSONValue): string; static;
+    class function Utf32Encode(const pValue: string): TArray<Cardinal>; static;
+    class function RegexNormalizePattern(const pPattern: string): string; static;
     class function UriGenerateRandom: string; static;
-    class function MergeArray<T>(const AArrays: array of TArray<T>): TArray<T>;
-    class procedure AddArray<T>(var AArray: TArray<T>; const AValue: T);
-    class function ParseInstancePath(const APath: string): TArray<string>; static;
+    class function MergeArray<T>(const pArrays: array of TArray<T>): TArray<T>;
+    class procedure AddArray<T>(var pArray: TArray<T>; const pValue: T);
+    class function ParseInstancePath(const pPath: string): TArray<string>; static;
+    class function DecodeJsonPointerSegment(const pSegment: string; out pDecodedSegment: string): Boolean; static;
   end;
 
 implementation
@@ -33,163 +34,194 @@ uses
 
 { TUtils }
 
-class procedure TUtils.AddArray<T>(var AArray: TArray<T>; const AValue: T);
+class procedure TUtils.AddArray<T>(var pArray: TArray<T>; const pValue: T);
 begin
-  SetLength(AArray, Length(AArray) + 1);
-  AArray[Length(AArray) - 1] := AValue;
+  SetLength(pArray, Length(pArray) + 1);
+  pArray[Length(pArray) - 1] := pValue;
 end;
 
-class function TUtils.JsonArrayEquals(A, B: TJSONArray): Boolean;
+class function TUtils.DecodeJsonPointerSegment(const pSegment: string; out pDecodedSegment: string): Boolean;
 var
-  LUsed: TBits;
-  I, J: Integer;
-  LFound: Boolean;
+  lCount: Integer;
 begin
-  if A.Count <> B.Count then
+  pDecodedSegment := '';
+  lCount := 1;
+  while lCount <= Length(pSegment) do
+  begin
+    if pSegment[lCount] = '~' then
+    begin
+      if lCount = Length(pSegment) then
+        Exit(False);
+
+      case pSegment[lCount + 1] of
+        '0': pDecodedSegment := pDecodedSegment + '~';
+        '1': pDecodedSegment := pDecodedSegment + '/';
+      else
+        Exit(False);
+      end;
+      Inc(lCount, 2);
+    end
+    else
+    begin
+      pDecodedSegment := pDecodedSegment + pSegment[lCount];
+      Inc(lCount);
+    end;
+  end;
+
+  Result := True;
+end;
+
+class function TUtils.JsonArrayEquals(pA, pB: TJSONArray): Boolean;
+var
+  lUsed: TBits;
+  I, J: Integer;
+  lFound: Boolean;
+begin
+  if pA.Count <> pB.Count then
     Exit(False);
 
-  LUsed := TBits.Create;
+  lUsed := TBits.Create;
   try
-    LUsed.Size := B.Count;
+    lUsed.Size := pB.Count;
 
-    for I := 0 to A.Count - 1 do
+    for I := 0 to pA.Count - 1 do
     begin
-      LFound := False;
+      lFound := False;
 
-      for J := 0 to B.Count - 1 do
+      for J := 0 to pB.Count - 1 do
       begin
-        if not LUsed[J] and JSONEquals(A.Items[I], B.Items[J]) then
+        if not lUsed[J] and JSONEquals(pA.Items[I], pB.Items[J]) then
         begin
-          LUsed[J] := True; // marca como usado
-          LFound := True;
+          lUsed[J] := True; // marca como usado
+          lFound := True;
           Break;
         end;
       end;
 
-      if not LFound then
+      if not lFound then
         Exit(False);
     end;
 
     Result := True;
   finally
-    LUsed.Free;
+    lUsed.Free;
   end;
 end;
 
-class function TUtils.JsonEquals(A, B: TJSONValue): Boolean;
+class function TUtils.JsonEquals(pA, B: TJSONValue): Boolean;
 begin
-  if not Assigned(A) and not Assigned(B) then
+  if not Assigned(pA) and not Assigned(B) then
     Exit(True);
 
-  if not Assigned(A) or not Assigned(B) then
+  if not Assigned(pA) or not Assigned(B) then
     Exit(False);
 
-  if A.ClassType <> B.ClassType then
+  if pA.ClassType <> B.ClassType then
     Exit(False);
 
-       if A is TJSONObject then Exit(JsonObjectEquals(TJSONObject(A), TJSONObject(B)))
-  else if A is TJSONArray then  Exit(JsonArrayEquals(TJSONArray(A), TJSONArray(B)))
-  else if A is TJSONNumber then Exit(JsonGetFloat(A) = JsonGetFloat(B))
-  else if A is TJSONString then Exit(TJSONString(A).Value = TJSONString(B).Value)
-  else                          Exit(A.ToJSON = B.ToJSON);
+       if pA is TJSONObject then Exit(JsonObjectEquals(TJSONObject(pA), TJSONObject(B)))
+  else if pA is TJSONArray then  Exit(JsonArrayEquals(TJSONArray(pA), TJSONArray(B)))
+  else if pA is TJSONNumber then Exit(JsonGetFloat(pA) = JsonGetFloat(B))
+  else if pA is TJSONString then Exit(TJSONString(pA).Value = TJSONString(B).Value)
+  else                           Exit(pA.ToJSON = B.ToJSON);
 end;
 
-class function TUtils.JsonGetFloat(AValue: TJSONValue): Extended;
+class function TUtils.JsonGetFloat(pValue: TJSONValue): Extended;
 begin
-  if not TryStrToFloat(AValue.Value, Result, TFormatSettings.Create('en')) then
+  if not TryStrToFloat(pValue.Value, Result, TFormatSettings.Create('en')) then
     Result := 0;
 end;
 
-class function TUtils.JsonGetInteger(AValue: TJSONValue): Int64;
+class function TUtils.JsonGetInteger(pValue: TJSONValue): Int64;
 begin
-  if not TryStrToInt64(AValue.Value, Result) then
-    if Frac(JsonGetFloat(AValue)) <> 0 then
+  if not TryStrToInt64(pValue.Value, Result) then
+    if Frac(JsonGetFloat(pValue)) <> 0 then
       Result := 0;
 end;
 
-class function TUtils.JsonGetType(AValue: TJSONValue): string;
+class function TUtils.JsonGetType(pValue: TJSONValue): string;
 begin
-       if not Assigned(AValue) or (AValue is TJSONNull) then                       Result := 'null'
-  else if (AValue is TJSONNumber) and (Frac(TUtils.JsonGetFloat(AValue)) = 0) then Result := 'integer'
-  else if (AValue is TJSONNumber) then                                             Result := 'number'
-  else if AValue is TJSONObject then                                               Result := 'object'
-  else if AValue is TJSONArray then                                                Result := 'array'
-  else if (AValue is TJSONTrue) or (AValue is TJSONFalse) then                     Result := 'boolean'
-  else if AValue is TJSONString then                                               Result := 'string';
+       if not Assigned(pValue) or (pValue is TJSONNull) then                       Result := 'null'
+  else if (pValue is TJSONNumber) and (Frac(TUtils.JsonGetFloat(pValue)) = 0) then Result := 'integer'
+  else if (pValue is TJSONNumber) then                                             Result := 'number'
+  else if pValue is TJSONObject then                                               Result := 'object'
+  else if pValue is TJSONArray then                                                Result := 'array'
+  else if (pValue is TJSONTrue) or (pValue is TJSONFalse) then                     Result := 'boolean'
+  else if pValue is TJSONString then                                               Result := 'string';
 end;
 
-class function TUtils.JsonObjectEquals(A, B: TJSONObject): Boolean;
+class function TUtils.JsonObjectEquals(pA, pB: TJSONObject): Boolean;
 var
-  LPair: TJSONPair;
-  LOtherValue: TJSONValue;
+  lPair: TJSONPair;
+  lOtherValue: TJSONValue;
 begin
   Result := False;
 
-  if A.Count <> B.Count then
+  if pA.Count <> pB.Count then
     Exit;
 
-  for LPair in A do
+  for lPair in pA do
   begin
-    LOtherValue := B.GetValue(LPair.JsonString.Value);
-    if LOtherValue = nil then
+    lOtherValue := pB.GetValue(lPair.JsonString.Value);
+    if lOtherValue = nil then
       Exit;
 
-    if not JSONEquals(LPair.JsonValue, LOtherValue) then
+    if not JSONEquals(lPair.JsonValue, lOtherValue) then
       Exit;
   end;
 
   Result := True;
 end;
 
-class function TUtils.MergeArray<T>(const AArrays: array of TArray<T>): TArray<T>;
+class function TUtils.MergeArray<T>(const pArrays: array of TArray<T>): TArray<T>;
 var
-  LDict: TDictionary<T, Boolean>;
-  LArray: TArray<T>;
-  LValue: T;
+  lDict: TDictionary<T, Boolean>;
+  lArray: TArray<T>;
+  lValue: T;
 begin
-  LDict := TDictionary<T, Boolean>.Create;
+  lDict := TDictionary<T, Boolean>.Create;
   try
-    for LArray in AArrays do
+    for lArray in pArrays do
     begin
-      for LValue in LArray do
+      for lValue in lArray do
       begin
-        LDict.AddOrSetValue(LValue, True);
+        lDict.AddOrSetValue(lValue, True);
       end;
     end;
-    Result := LDict.Keys.ToArray;
+    Result := lDict.Keys.ToArray;
   finally
-    LDict.Free;
+    lDict.Free;
   end;
 end;
 
-class function TUtils.ParseInstancePath(const APath: string): TArray<string>;
+class function TUtils.ParseInstancePath(const pPath: string): TArray<string>;
 var
-  LSegments: TArray<string>;
-  LSegment: string;
+  lSegments: TArray<string>;
+  lSegment: string;
 begin
   // Remove o in�cio '#.' ou '#'
-  if APath.StartsWith('#.') then
-    LSegments := APath.Substring(2).Split(['.'])
-  else if APath.StartsWith('#') then
-    LSegments := APath.Substring(1).Split(['.'])
+  if pPath.StartsWith('#.') then
+    lSegments := pPath.Substring(2).Split(['.'])
+  else if pPath.StartsWith('#') then
+    lSegments := pPath.Substring(1).Split(['.'])
   else
-    LSegments := APath.Split(['.']);
+    lSegments := pPath.Split(['.']);
 
   // Remove os �ndices de array, pois nosso JSON de dicas n�o os ter�
-  for LSegment in LSegments do
+  for lSegment in lSegments do
   begin
-    var LCleanSegment := TRegEx.Replace(LSegment, '\[\d+\]', '');
-    if not LCleanSegment.IsEmpty then
-      Result := Result + [LCleanSegment];
+    var lCleanSegment := TRegEx.Replace(lSegment, '\[\d+\]', '');
+    if not lCleanSegment.IsEmpty then
+      Result := Result + [lCleanSegment];
   end;
 end;
 
-class function TUtils.RegexNormalizePattern(const APattern: string): string;
+class function TUtils.RegexNormalizePattern(const pPattern: string): string;
 const
   // ECMA-262 whitespace set used by JSON Schema test suite for \s / \S.
   CECMAWhitespaceClass = '[\x09\x0A\x0B\x0C\x0D\x20\xA0\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}\x{FEFF}]';
 begin
-  Result := APattern
+  Result := pPattern
     .Replace('\p{Letter}', '\p{L}', [rfReplaceAll])
     .Replace('\p{digit}', '\p{N}', [rfReplaceAll])
     .Replace('\s', CECMAWhitespaceClass, [rfReplaceAll])
@@ -201,21 +233,21 @@ begin
   Result := TURIReference.From('urn:uuid:' + TGUID.NewGuid.ToString.Substring(1, 36)).Unsplit;
 end;
 
-class function TUtils.Utf32Encode(const AValue: string): TArray<Cardinal>;
+class function TUtils.Utf32Encode(const pValue: string): TArray<Cardinal>;
 var
-  LCount: Integer;
-  LCodePoint: Cardinal;
+  lCount: Integer;
+  lCodePoint: Cardinal;
 begin
-  LCount := 1;
-  while LCount <= Length(AValue) do
+  lCount := 1;
+  while lCount <= Length(pValue) do
   begin
-    LCodePoint := Char.ConvertToUtf32(AValue, LCount - 1);
-    Result := Result + [LCodePoint];
+    lCodePoint := Char.ConvertToUtf32(pValue, lCount - 1);
+    Result := Result + [lCodePoint];
 
-    if AValue[LCount].IsHighSurrogate then
-      Inc(LCount, 2)
+    if pValue[lCount].IsHighSurrogate then
+      Inc(lCount, 2)
     else
-      Inc(LCount);
+      Inc(lCount);
   end;
 end;
 

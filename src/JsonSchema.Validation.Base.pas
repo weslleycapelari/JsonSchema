@@ -1,4 +1,4 @@
-unit JsonSchema.Validation.Base;
+﻿unit JsonSchema.Validation.Base;
 
 interface
 
@@ -114,6 +114,8 @@ type
     procedure VisitFormat(const AValue: TJSONString);
 
     // Array
+    [VisitorKeyword('contains')]
+    procedure VisitContains(const AValue: TJSONValue);
     [VisitorKeyword('maxItems')]
     procedure VisitMaxItems(const AValue: TJSONNumber);
     [VisitorKeyword('minItems')]
@@ -122,12 +124,16 @@ type
     procedure VisitUniqueItems(const AValue: TJSONBool);
 
     // Objeto
+    [VisitorKeyword('dependencies')]
+    procedure VisitDependencies(const AValue: TJSONObject);
     [VisitorKeyword('maxProperties')]
     procedure VisitMaxProperties(const AValue: TJSONNumber);
     [VisitorKeyword('minProperties')]
     procedure VisitMinProperties(const AValue: TJSONNumber);
     [VisitorKeyword('required')]
     procedure VisitRequired(const AValue: TJSONArray);
+    [VisitorKeyword('propertyNames')]
+    procedure VisitPropertyNames(const AValue: TJSONValue);
 
     // Conteudo
     [VisitorKeyword('contentEncoding')]
@@ -853,6 +859,129 @@ begin
       Visitor.AddError(TErrorType.vetEnumValueMismatch, [AValue.ToString]);
   finally
     Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitContains(const AValue: TJSONValue);
+var
+  LScope: TScope;
+  LCount: Integer;
+  LWalker: IWalker;
+  LVisitor: T;
+  LNewScope: TScope;
+  LInstance: TJSONArray;
+begin
+  LScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
+    Exit;
+
+  if AValue is TJSONBool then
+  begin
+    if TJSONBool(AValue).AsBoolean and (TJSONArray(LScope.InstanceNode).Count > 0) then
+      Exit;
+
+    if not TJSONBool(AValue).AsBoolean then
+    begin
+       Visitor.AddError(vetContains);
+       Exit;
+    end;
+  end;
+
+  LInstance := TJSONArray(LScope.InstanceNode);
+  for LCount := 0 to LInstance.Count - 1 do
+  begin
+    LNewScope := LScope;
+    LNewScope.SchemaPath        := Format('%s/contains', [LScope.SchemaPath]);
+    LNewScope.SchemaNode        := AValue;
+    LNewScope.InstanceNode      := LInstance[LCount];
+    LNewScope.InstancePath      := Format('%s/%d', [LScope.InstancePath, LCount]);
+    LNewScope.CoveredItems      := [];
+    LNewScope.ContainsCount     := 0;
+    LNewScope.VisitedKeywords   := [];
+    LNewScope.CoveredProperties := [];
+
+    Visitor.PushScope(LNewScope);
+    LVisitor := Visitor.New(AValue, LInstance[LCount], LScope.BaseURI);
+    try
+      LWalker := TWalker<T>.Create(AValue, LVisitor);
+      LWalker.Walk;
+    finally
+      Visitor.PopScope;
+    end;
+
+    if LVisitor.Result.IsValid then
+      Inc(LScope.ContainsCount);
+  end;
+
+  Visitor.UpdateScope(LScope);
+  if LScope.ContainsCount = 0 then
+    Visitor.AddError(vetContains);
+end;
+
+procedure TBaseValidationVisitor<T>.VisitDependencies(const AValue: TJSONObject);
+var
+  LScope: TScope;
+  LInstance: TJSONObject;
+  LDependencyPair: TJSONPair;
+  LDependencyValue: TJSONValue;
+  LRequiredList: TJSONArray;
+  LRequiredValue: TJSONValue;
+  LRequiredName: string;
+  LNewScope: TScope;
+  LWalker: IWalker;
+  LVisitor: T;
+  LError: IError;
+begin
+  LScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+    Exit;
+
+  LInstance := TJSONObject(LScope.InstanceNode);
+  for LDependencyPair in AValue do
+  begin
+    if LInstance.FindValue(LDependencyPair.JsonString.Value) = nil then
+      Continue;
+
+    LDependencyValue := LDependencyPair.JsonValue;
+
+    if LDependencyValue is TJSONArray then
+    begin
+      LRequiredList := TJSONArray(LDependencyValue);
+      for LRequiredValue in LRequiredList do
+      begin
+        if not (LRequiredValue is TJSONString) then
+          Continue;
+
+        LRequiredName := TJSONString(LRequiredValue).Value;
+        if LInstance.FindValue(LRequiredName) = nil then
+          Visitor.AddError(vetDependentRequired, [LDependencyPair.JsonString.Value, LRequiredName]);
+      end;
+      Continue;
+    end;
+
+    if (LDependencyValue is TJSONObject) or (LDependencyValue is TJSONBool) then
+    begin
+      LNewScope := LScope;
+      LNewScope.SchemaPath        := Format('%s/dependencies/%s', [LScope.SchemaPath, LDependencyPair.JsonString.Value]);
+      LNewScope.SchemaNode        := LDependencyValue;
+      LNewScope.CoveredItems      := [];
+      LNewScope.ContainsCount     := 0;
+      LNewScope.VisitedKeywords   := [];
+      LNewScope.CoveredProperties := [];
+
+      LVisitor := Visitor.New(LDependencyValue, LScope.InstanceNode, LScope.BaseURI);
+      LVisitor.PushScope(LNewScope);
+      try
+        LWalker := TWalker<T>.Create(LDependencyValue, LVisitor);
+        LWalker.Walk;
+      finally
+        LVisitor.PopScope;
+      end;
+
+      if not LVisitor.Result.IsValid then
+        for LError in LVisitor.Result.Errors do
+          Visitor.Result.AddError(LError);
+    end;
   end;
 end;
 
@@ -1846,6 +1975,44 @@ begin
       Visitor.AddError(TErrorType.vetPattern, [TUtils.RegexNormalizePattern(AValue.Value)]);
   finally
     Visitor.PopScope;
+  end;
+end;
+
+procedure TBaseValidationVisitor<T>.VisitPropertyNames(const AValue: TJSONValue);
+var
+  LPair: TJSONPair;
+  LScope: TScope;
+  LWalker: IWalker;
+  LVisitor: T;
+  LNewScope: TScope;
+begin
+  LScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+    Exit;
+
+  for LPair in TJSONObject(LScope.InstanceNode) do
+  begin
+    LNewScope := LScope;
+    LNewScope.SchemaPath        := Format('%s/propertyNames', [LScope.SchemaPath]);
+    LNewScope.SchemaNode        := AValue;
+    LNewScope.InstanceNode      := LPair.JsonString;
+    LNewScope.InstancePath      := Format('%s/%s', [LScope.InstancePath, LPair.JsonString.Value]);
+    LNewScope.CoveredItems      := [];
+    LNewScope.ContainsCount     := 0;
+    LNewScope.VisitedKeywords   := [];
+    LNewScope.CoveredProperties := [];
+
+    Visitor.PushScope(LNewScope);
+    LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
+    try
+      LWalker := TWalker<T>.Create(LNewScope.SchemaNode, LVisitor);
+      LWalker.Walk;
+    finally
+      Visitor.PopScope;
+    end;
+
+    if not LVisitor.Result.IsValid then
+      Visitor.AddError(vetInvalidPropertyName, [LPair.JsonString.Value]);
   end;
 end;
 

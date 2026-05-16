@@ -1,4 +1,4 @@
-unit JsonSchema.Translate.Interfaces;
+﻿unit JsonSchema.Translate.Interfaces;
 
 interface
 

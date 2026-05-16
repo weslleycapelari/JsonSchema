@@ -1,4 +1,4 @@
-unit Schema2Delphi.Main;
+ï»¿unit Schema2Delphi.Main;
 
 interface
 
@@ -48,13 +48,13 @@ begin
 
   if Trim(mmoSchemaInput.Text) = '' then
   begin
-    LabelStatus.Caption := 'Erro: O JSON Schema não pode estar vazio.';
+    LabelStatus.Caption := 'Erro: O JSON Schema nï¿½o pode estar vazio.';
     Exit;
   end;
 
   if Trim(edtUnitName.Text) = '' then
   begin
-    LabelStatus.Caption := 'Erro: Por favor, forneça um nome para a unit.';
+    LabelStatus.Caption := 'Erro: Por favor, forneï¿½a um nome para a unit.';
     Exit;
   end;
 

@@ -1,4 +1,4 @@
-unit JsonSchema.Walker.Types;
+﻿unit JsonSchema.Walker.Types;
 
 interface
 

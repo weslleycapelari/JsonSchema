@@ -1,4 +1,4 @@
-unit JsonSchema.Registry.Uri.Builder;
+ï»¿unit JsonSchema.Registry.Uri.Builder;
 
 interface
 
@@ -7,10 +7,10 @@ uses
   JsonSchema.Registry.Uri;
 
 type
-  /// <summary>Classe para construção programática e fluente de uma TURIReference.</summary>
+  /// <summary>Classe para construï¿½ï¿½o programï¿½tica e fluente de uma TURIReference.</summary>
   /// <remarks>
-  ///   Permite a montagem de uma URI parte por parte, garantindo a formatação correta ao final do processo.
-  ///   Referência RFC 3986: Seção 5.3 (Component Recomposition).
+  ///   Permite a montagem de uma URI parte por parte, garantindo a formataï¿½ï¿½o correta ao final do processo.
+  ///   Referï¿½ncia RFC 3986: Seï¿½ï¿½o 5.3 (Component Recomposition).
   /// </remarks>
   TURIBuilder = class
   private
@@ -35,10 +35,10 @@ type
     function WithQueryFromPairs(const APairs: TDictionary<string, string>): TURIBuilder;
     function WithFragment(const AValue: string): TURIBuilder;
 
-    /// <summary>Finaliza a construção e retorna a TURIReference resultante.</summary>
+    /// <summary>Finaliza a construï¿½ï¿½o e retorna a TURIReference resultante.</summary>
     function Build: TURIReference;
 
-    /// <summary>Finaliza a construção e retorna a string da URI resultante.</summary>
+    /// <summary>Finaliza a construï¿½ï¿½o e retorna a string da URI resultante.</summary>
     function Unsplit: string;
   end;
 
@@ -83,7 +83,7 @@ begin
         LAuthorityBuilder.Append(FUserInfo);
         LAuthorityBuilder.Append('@');
       end;
-      // Host já deve estar no formato correto (ex: [::1] para IPv6 literal).
+      // Host jï¿½ deve estar no formato correto (ex: [::1] para IPv6 literal).
       LAuthorityBuilder.Append(FHost);
       if not FPort.IsEmpty then
       begin
@@ -96,8 +96,8 @@ begin
     LAuthorityBuilder.Free;
   end;
 
-  // 2. Cria a instância de TURIReference com os componentes montados.
-  // A normalização ocorre dentro do método Normalize da própria TURIReference.
+  // 2. Cria a instï¿½ncia de TURIReference com os componentes montados.
+  // A normalizaï¿½ï¿½o ocorre dentro do mï¿½todo Normalize da prï¿½pria TURIReference.
   LReference.Scheme    := Self.FScheme;
   LReference.Authority := LAuthority;
   LReference.Path      := Self.FPath;
@@ -135,7 +135,7 @@ end;
 
 function TURIBuilder.Unsplit: string;
 begin
-  // Método de conveniência que constrói e já converte para string.
+  // Mï¿½todo de conveniï¿½ncia que constrï¿½i e jï¿½ converte para string.
   Result := Self.Build.Unsplit;
 end;
 
@@ -143,8 +143,8 @@ function TURIBuilder.WithCredentials(const AUsername, APassword: string): TURIBu
 var
   LEncoder: TNetEncoding;
 begin
-  // Constrói o subcomponente 'userinfo' com o devido percent-encoding.
-  // RFC 3986, Seção 3.2.1
+  // Constrï¿½i o subcomponente 'userinfo' com o devido percent-encoding.
+  // RFC 3986, Seï¿½ï¿½o 3.2.1
   LEncoder := TNetEncoding.URL;
   if AUsername.IsEmpty then
     raise ERFC3986Exception.Create('Username cannot be empty in WithCredentials');
@@ -172,7 +172,7 @@ function TURIBuilder.WithPath(const AValue: string): TURIBuilder;
 begin
   FPath := AValue;
   // Garante que o path comece com '/' se uma autoridade for definida,
-  // conforme a lógica do Build fará a montagem.
+  // conforme a lï¿½gica do Build farï¿½ a montagem.
   if (FHost <> '') and (not FPath.StartsWith('/')) and (FPath <> '') then
     FPath := '/' + FPath;
 
@@ -181,7 +181,7 @@ end;
 
 function TURIBuilder.WithPort(const AValue: Word): TURIBuilder;
 begin
-  // A porta é armazenada como string. O tipo Word já garante o range (0-65535).
+  // A porta ï¿½ armazenada como string. O tipo Word jï¿½ garante o range (0-65535).
   FPort := AValue.ToString;
   Result := Self;
 end;

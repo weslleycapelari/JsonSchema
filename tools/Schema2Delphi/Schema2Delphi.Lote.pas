@@ -1,4 +1,4 @@
-unit Schema2Delphi.Lote;
+ï»¿unit Schema2Delphi.Lote;
 
 interface
 
@@ -199,7 +199,7 @@ begin
   try
     LSchemaAbsPath := ExpandFileName(pConfigs.SchemaPath);
     if not FileExists(LSchemaAbsPath) then
-      raise Exception.Create('O arquivo JSON-Schema não existe');
+      raise Exception.Create('O arquivo JSON-Schema nï¿½o existe');
 
     LFileContent := TStringList.Create;
     try
@@ -255,7 +255,7 @@ begin
     end;
   except
     on E: Exception do
-      ShowMessage('Não foi possivel gerar os arquivos: ' + E.Message);
+      ShowMessage('Nï¿½o foi possivel gerar os arquivos: ' + E.Message);
   end;
 end;
 

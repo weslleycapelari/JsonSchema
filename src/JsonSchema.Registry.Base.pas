@@ -1,4 +1,4 @@
-unit JsonSchema.Registry.Base;
+﻿unit JsonSchema.Registry.Base;
 
 interface
 
@@ -21,94 +21,94 @@ type
     FResources: TObjectDictionary<string, TResource>;
     FInflightResources: TDictionary<string, Byte>;
 
-    procedure DiscoverInObjectOfSchemas(AJsonObject: TJSONObject);
-    procedure DiscoverInArrayOfSchemas(AJsonArray: TJSONArray);
-    procedure DiscoverInSingleSchema(AJsonValue: TJSONValue);
-    class function TryResolveStaticMappedFile(const ARemoteURI: string; out AMappedFilePath: string): Boolean; static;
-    class function IsLocalTestServerURI(const AURI: string): Boolean; static;
-    procedure TryLoadRemoteResource(const ATargetURI: TURIReference);
+    procedure DiscoverInObjectOfSchemas(pJsonObject: TJSONObject);
+    procedure DiscoverInArrayOfSchemas(pJsonArray: TJSONArray);
+    procedure DiscoverInSingleSchema(pJsonValue: TJSONValue);
+    class function TryResolveStaticMappedFile(const pRemoteURI: string; out pMappedFilePath: string): Boolean; static;
+    class function IsLocalTestServerURI(const pURI: string): Boolean; static;
+    procedure TryLoadRemoteResource(const pTargetURI: TURIReference);
   public
-    constructor Create(const ASchema, AData: TJSONValue; const ABaseURI: string);
+    constructor Create(const pSchema, pData: TJSONValue; const pBaseURI: string);
     destructor Destroy; override;
-    function New(const ASchema, AData: TJSONValue; const ABaseURI: string): TRegistryVisitor; override;
+    function New(const pSchema, pData: TJSONValue; const pBaseURI: string): TRegistryVisitor; override;
     function KeywordPrecedence: TArray<string>; override;
-    function TryFindResource(const ABaseURI: string; var AResource: TResource): Boolean;
+    function TryFindResource(const pBaseURI: string; var pResource: TResource): Boolean;
   end;
 
   TBaseRegistryCoreVisitor = class(TBase<TRegistryVisitor>, IBaseCoreVisitor<TRegistryVisitor>)
     [VisitorKeyword('$schema')]
-    procedure VisitSchema(const AValue: TJSONString);
+    procedure VisitSchema(const pValue: TJSONString);
     [VisitorKeyword('id')]
     [VisitorKeyword('$id')]
-    procedure VisitId(const AValue: TJSONString);
+    procedure VisitId(const pValue: TJSONString);
     [VisitorKeyword('$ref')]
-    procedure VisitRef(const AValue: TJSONString);
+    procedure VisitRef(const pValue: TJSONString);
     [VisitorKeyword('$anchor')]
-    procedure VisitAnchor(const AValue: TJSONString);
+    procedure VisitAnchor(const pValue: TJSONString);
     [VisitorKeyword('definitions')]
     [VisitorKeyword('$defs')]
-    procedure VisitDefinitions(const AValue: TJSONObject);
-    procedure VisitBooleanSchema(const AValue: TJSONBool);
+    procedure VisitDefinitions(const pValue: TJSONObject);
+    procedure VisitBooleanSchema(const pValue: TJSONBool);
   end;
 
   TBaseRegistryApplicatorVisitor = class(TBase<TRegistryVisitor>, IBaseApplicatorVisitor<TRegistryVisitor>)
     [VisitorKeyword('properties')]
-    procedure VisitProperties(const AValue: TJSONObject);
+    procedure VisitProperties(const pValue: TJSONObject);
     [VisitorKeyword('items')]
-    procedure VisitItems(const AValue: TJSONValue);
+    procedure VisitItems(const pValue: TJSONValue);
 
     [VisitorKeyword('allOf')]
-    procedure VisitAllOf(const AValue: TJSONArray);
+    procedure VisitAllOf(const pValue: TJSONArray);
     [VisitorKeyword('anyOf')]
-    procedure VisitAnyOf(const AValue: TJSONArray);
+    procedure VisitAnyOf(const pValue: TJSONArray);
     [VisitorKeyword('oneOf')]
-    procedure VisitOneOf(const AValue: TJSONArray);
+    procedure VisitOneOf(const pValue: TJSONArray);
     [VisitorKeyword('not')]
-    procedure VisitNot(const AValue: TJSONValue);
+    procedure VisitNot(const pValue: TJSONValue);
     [VisitorKeyword('if')]
-    procedure VisitIf(const AValue: TJSONValue);
+    procedure VisitIf(const pValue: TJSONValue);
     [VisitorKeyword('then')]
-    procedure VisitThen(const AValue: TJSONValue);
+    procedure VisitThen(const pValue: TJSONValue);
     [VisitorKeyword('else')]
-    procedure VisitElse(const AValue: TJSONValue);
+    procedure VisitElse(const pValue: TJSONValue);
     [VisitorKeyword('patternProperties')]
-    procedure VisitPatternProperties(const AValue: TJSONObject);
+    procedure VisitPatternProperties(const pValue: TJSONObject);
     [VisitorKeyword('additionalProperties')]
-    procedure VisitAdditionalProperties(const AValue: TJSONValue);
+    procedure VisitAdditionalProperties(const pValue: TJSONValue);
     [VisitorKeyword('additionalItems')]
-    procedure VisitAdditionalItems(const AValue: TJSONValue);
+    procedure VisitAdditionalItems(const pValue: TJSONValue);
     [VisitorKeyword('prefixItems')]
-    procedure VisitPrefixItems(const AValue: TJSONArray);
+    procedure VisitPrefixItems(const pValue: TJSONArray);
   end;
 
   TBaseRegistryHyperSchemaVisitor = class(TBase<TRegistryVisitor>, IBaseHyperSchemaVisitor<TRegistryVisitor>)
-    procedure VisitBase(const AValue: TJSONString);
-    procedure VisitLinks(const AValue: TJSONArray);
-    procedure VisitHref(const AValue: TJSONString);
-    procedure VisitTargetSchema(const AValue: TJSONValue);
-    procedure VisitSubmissionSchema(const AValue: TJSONValue);
-    procedure VisitHrefSchema(const AValue: TJSONValue);
+    procedure VisitBase(const pValue: TJSONString);
+    procedure VisitLinks(const pValue: TJSONArray);
+    procedure VisitHref(const pValue: TJSONString);
+    procedure VisitTargetSchema(const pValue: TJSONValue);
+    procedure VisitSubmissionSchema(const pValue: TJSONValue);
+    procedure VisitHrefSchema(const pValue: TJSONValue);
   end;
 
   TBaseRegistryValidationVisitor = class(TBase<TRegistryVisitor>, IBaseValidationVisitor<TRegistryVisitor>)
-    procedure VisitType(const AValue: TJSONValue);
-    procedure VisitEnum(const AValue: TJSONArray);
-    procedure VisitConst(const AValue: TJSONValue);
-    procedure VisitMultipleOf(const AValue: TJSONNumber);
-    procedure VisitMaximum(const AValue: TJSONNumber);
-    procedure VisitExclusiveMaximum(const AValue: TJSONValue);
-    procedure VisitMinimum(const AValue: TJSONNumber);
-    procedure VisitExclusiveMinimum(const AValue: TJSONValue);
-    procedure VisitMaxLength(const AValue: TJSONNumber);
-    procedure VisitMinLength(const AValue: TJSONNumber);
-    procedure VisitPattern(const AValue: TJSONString);
-    procedure VisitFormat(const AValue: TJSONString);
-    procedure VisitMaxItems(const AValue: TJSONNumber);
-    procedure VisitMinItems(const AValue: TJSONNumber);
-    procedure VisitUniqueItems(const AValue: TJSONBool);
-    procedure VisitMaxProperties(const AValue: TJSONNumber);
-    procedure VisitMinProperties(const AValue: TJSONNumber);
-    procedure VisitRequired(const AValue: TJSONArray);
+    procedure VisitType(const pValue: TJSONValue);
+    procedure VisitEnum(const pValue: TJSONArray);
+    procedure VisitConst(const pValue: TJSONValue);
+    procedure VisitMultipleOf(const pValue: TJSONNumber);
+    procedure VisitMaximum(const pValue: TJSONNumber);
+    procedure VisitExclusiveMaximum(const pValue: TJSONValue);
+    procedure VisitMinimum(const pValue: TJSONNumber);
+    procedure VisitExclusiveMinimum(const pValue: TJSONValue);
+    procedure VisitMaxLength(const pValue: TJSONNumber);
+    procedure VisitMinLength(const pValue: TJSONNumber);
+    procedure VisitPattern(const pValue: TJSONString);
+    procedure VisitFormat(const pValue: TJSONString);
+    procedure VisitMaxItems(const pValue: TJSONNumber);
+    procedure VisitMinItems(const pValue: TJSONNumber);
+    procedure VisitUniqueItems(const pValue: TJSONBool);
+    procedure VisitMaxProperties(const pValue: TJSONNumber);
+    procedure VisitMinProperties(const pValue: TJSONNumber);
+    procedure VisitRequired(const pValue: TJSONArray);
   end;
 
   TBaseRegistryRelativeJsonPointer = class(TBase<TRegistryVisitor>, IBaseRelativeJsonPointer<TRegistryVisitor>)
@@ -126,13 +126,13 @@ uses
 
 { TRegistryVisitor }
 
-constructor TRegistryVisitor.Create(const ASchema, AData: TJSONValue; const ABaseURI: string);
+constructor TRegistryVisitor.Create(const pSchema, pData: TJSONValue; const pBaseURI: string);
 begin
-  inherited Create(ASchema, AData, ABaseURI);
+  inherited Create(pSchema, pData, pBaseURI);
 
   FResources := TObjectDictionary<string, TResource>.Create([doOwnsValues]);
   FInflightResources := TDictionary<string, Byte>.Create;
-  FResources.Add(TURIUtils.NormalizeURI(ABaseURI), TResource.Create(TURIReference.New(ABaseURI), ASchema));
+  FResources.Add(TURIUtils.NormalizeURI(pBaseURI), TResource.Create(TURIReference.New(pBaseURI), pSchema));
 
   FCore                := TBaseRegistryCoreVisitor.Create(Self);
   FApplicator          := TBaseRegistryApplicatorVisitor.Create(Self);
@@ -148,93 +148,93 @@ begin
   inherited;
 end;
 
-procedure TRegistryVisitor.DiscoverInArrayOfSchemas(AJsonArray: TJSONArray);
+procedure TRegistryVisitor.DiscoverInArrayOfSchemas(pJsonArray: TJSONArray);
 var
-  LItem: TJSONValue;
+  lItem: TJSONValue;
 begin
-  if not Assigned(AJsonArray) then
+  if not Assigned(pJsonArray) then
     Exit;
 
-  for LItem in AJsonArray do
-    DiscoverInSingleSchema(LItem);
+  for lItem in pJsonArray do
+    DiscoverInSingleSchema(lItem);
 end;
 
-procedure TRegistryVisitor.DiscoverInObjectOfSchemas(AJsonObject: TJSONObject);
+procedure TRegistryVisitor.DiscoverInObjectOfSchemas(pJsonObject: TJSONObject);
 var
-  LPair: TJSONPair;
+  lPair: TJSONPair;
 begin
-  if not Assigned(AJsonObject) then
+  if not Assigned(pJsonObject) then
     Exit;
 
-  for LPair in AJsonObject do
-    DiscoverInSingleSchema(LPair.JsonValue);
+  for lPair in pJsonObject do
+    DiscoverInSingleSchema(lPair.JsonValue);
 end;
 
-procedure TRegistryVisitor.DiscoverInSingleSchema(AJsonValue: TJSONValue);
+procedure TRegistryVisitor.DiscoverInSingleSchema(pJsonValue: TJSONValue);
 var
-  LScope: TScope;
-  LNewScope: TScope;
+  lScope: TScope;
+  lNewScope: TScope;
 begin
-  LScope := CurrentScope;
+  lScope := CurrentScope;
 
-  LNewScope := LScope;
-  LNewScope.SchemaNode        := AJsonValue;
-  LNewScope.CoveredItems      := [];
-  LNewScope.ContainsCount     := 0;
-  LNewScope.VisitedKeywords   := [];
-  LNewScope.CoveredProperties := [];
+  lNewScope := lScope;
+  lNewScope.SchemaNode        := pJsonValue;
+  lNewScope.CoveredItems      := [];
+  lNewScope.ContainsCount     := 0;
+  lNewScope.VisitedKeywords   := [];
+  lNewScope.CoveredProperties := [];
 
-  PushScope(LNewScope);
+  PushScope(lNewScope);
   try
   // Apenas objetos e booleanos s�o schemas v�lidos para percorrer.
-    if Assigned(AJsonValue) and ((AJsonValue is TJSONObject) or (AJsonValue is TJSONBool)) then
-      TWalker<TRegistryVisitor>.Create(AJsonValue, Self).Walk;
+    if Assigned(pJsonValue) and ((pJsonValue is TJSONObject) or (pJsonValue is TJSONBool)) then
+      TWalker<TRegistryVisitor>.Create(pJsonValue, Self).Walk;
   finally
     PopScope;
   end;
 end;
 
-class function TRegistryVisitor.TryResolveStaticMappedFile(const ARemoteURI: string; out AMappedFilePath: string): Boolean;
+class function TRegistryVisitor.TryResolveStaticMappedFile(const pRemoteURI: string; out pMappedFilePath: string): Boolean;
 var
-  LCanonicalURI: string;
-  LRepoRootPath: string;
-  LCandidatePath: string;
-  LRelativeRemotePath: string;
+  lCanonicalURI: string;
+  lRepoRootPath: string;
+  lCandidatePath: string;
+  lRelativeRemotePath: string;
 begin
-  AMappedFilePath := '';
-  LCanonicalURI := LowerCase(ARemoteURI);
+  pMappedFilePath := '';
+  lCanonicalURI := LowerCase(pRemoteURI);
 
-  LRepoRootPath := TPath.GetFullPath(
+  lRepoRootPath := TPath.GetFullPath(
     TPath.Combine(
       TPath.Combine(
         TPath.Combine(ExtractFilePath(ParamStr(0)), '..'),
         '..'),
       '..'));
 
-  if (LCanonicalURI = 'http://json-schema.org/draft-06/schema') or
-     (LCanonicalURI = 'https://json-schema.org/draft-06/schema') then
-    LCandidatePath := TPath.Combine(LRepoRootPath, 'test\schemas\remotes\draft6\schema.json')
-  else if (LCanonicalURI = 'http://json-schema.org/draft-07/schema') or
-          (LCanonicalURI = 'https://json-schema.org/draft-07/schema') then
-    LCandidatePath := TPath.Combine(LRepoRootPath, 'test\schemas\remotes\draft7\schema.json')
-  else if (LCanonicalURI = 'http://json-schema.org/draft/2019-09/schema') or
-          (LCanonicalURI = 'https://json-schema.org/draft/2019-09/schema') then
-    LCandidatePath := TPath.Combine(LRepoRootPath, 'test\schemas\remotes\draft2019-09\schema.json')
-  else if LCanonicalURI.EndsWith('/draft2019-09/baseurichangefolder/baseurichangefolder/folderinteger.json') then
-    LCandidatePath := TPath.Combine(LRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolder\folderInteger.json')
-  else if LCanonicalURI.EndsWith('/draft2019-09/baseurichangefolderinsubschema/baseurichangefolderinsubschema/folderinteger.json') then
-    LCandidatePath := TPath.Combine(LRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolderInSubschema\folderInteger.json')
+  if (lCanonicalURI = 'http://json-schema.org/draft-06/schema') or
+     (lCanonicalURI = 'https://json-schema.org/draft-06/schema') then
+    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft6\schema.json')
+  else if (lCanonicalURI = 'http://json-schema.org/draft-07/schema') or
+          (lCanonicalURI = 'https://json-schema.org/draft-07/schema') then
+    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft7\schema.json')
+  else if (lCanonicalURI = 'http://json-schema.org/draft/2019-09/schema') or
+          (lCanonicalURI = 'https://json-schema.org/draft/2019-09/schema') then
+    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\schema.json')
+  else if lCanonicalURI.EndsWith('/draft2019-09/baseurichangefolder/baseurichangefolder/folderinteger.json') then
+    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolder\folderInteger.json')
+  else if lCanonicalURI.EndsWith('/draft2019-09/baseurichangefolderinsubschema/baseurichangefolderinsubschema/folderinteger.json') then
+    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolderInSubschema\folderInteger.json')
   else
   begin
-    if IsLocalTestServerURI(ARemoteURI) then
+    if IsLocalTestServerURI(pRemoteURI) then
     begin
-      LRelativeRemotePath := StringReplace(ARemoteURI, 'http://localhost:1234/', '', [rfIgnoreCase]);
-      LRelativeRemotePath := StringReplace(LRelativeRemotePath, 'http://127.0.0.1:1234/', '', [rfIgnoreCase]);
-      LRelativeRemotePath := StringReplace(LRelativeRemotePath, '/', PathDelim, [rfReplaceAll]);
-      LCandidatePath := TPath.Combine(LRepoRootPath, TPath.Combine('test\schemas\remotes', LRelativeRemotePath));
-      if FileExists(LCandidatePath) then
+      lRelativeRemotePath := StringReplace(pRemoteURI, 'http://localhost:1234/', '', [rfIgnoreCase]);
+      lRelativeRemotePath := StringReplace(lRelativeRemotePath, 'http://127.0.0.1:1234/', '', [rfIgnoreCase]);
+      lRelativeRemotePath := StringReplace(lRelativeRemotePath, '/', PathDelim, [rfReplaceAll]);
+      lCandidatePath := TPath.Combine(lRepoRootPath, TPath.Combine('test\schemas\remotes', lRelativeRemotePath));
+      if FileExists(lCandidatePath) then
       begin
-        AMappedFilePath := LCandidatePath;
+        pMappedFilePath := lCandidatePath;
         Exit(True);
       end;
     end;
@@ -242,137 +242,137 @@ begin
     Exit(False);
   end;
 
-  if not FileExists(LCandidatePath) then
+  if not FileExists(lCandidatePath) then
     Exit(False);
 
-  AMappedFilePath := LCandidatePath;
+  pMappedFilePath := lCandidatePath;
   Result := True;
 end;
 
-class function TRegistryVisitor.IsLocalTestServerURI(const AURI: string): Boolean;
+class function TRegistryVisitor.IsLocalTestServerURI(const pURI: string): Boolean;
 var
-  LLowerURI: string;
+  lLowerURI: string;
 begin
-  LLowerURI := LowerCase(AURI);
-  Result := LLowerURI.StartsWith('http://localhost:1234/') or
-            LLowerURI.StartsWith('http://127.0.0.1:1234/');
+  lLowerURI := LowerCase(pURI);
+  Result := lLowerURI.StartsWith('http://localhost:1234/') or
+            lLowerURI.StartsWith('http://127.0.0.1:1234/');
 end;
 
-procedure TRegistryVisitor.TryLoadRemoteResource(const ATargetURI: TURIReference);
+procedure TRegistryVisitor.TryLoadRemoteResource(const pTargetURI: TURIReference);
 var
-  LFetchURI: TURIReference;
-  LRemoteURI: string;
-  LMappedFilePath: string;
-  LResourceKeyURI: string;
-  LHttpClient: THTTPClient;
-  LResponse: IHTTPResponse;
-  LResponseBody: string;
-  LSchemaRoot: TJSONValue;
-  LScope: TScope;
-  LNewScope: TScope;
+  lFetchURI: TURIReference;
+  lRemoteURI: string;
+  lMappedFilePath: string;
+  lResourceKeyURI: string;
+  lHttpClient: THTTPClient;
+  lResponse: IHTTPResponse;
+  lResponseBody: string;
+  lSchemaRoot: TJSONValue;
+  lScope: TScope;
+  lNewScope: TScope;
 begin
-  LFetchURI := ATargetURI;
-  LFetchURI.Query := '';
-  LFetchURI.Fragment := '';
-  LRemoteURI := LFetchURI.Unsplit;
-  LResourceKeyURI := TURIUtils.NormalizeURI(LRemoteURI);
+  lFetchURI := pTargetURI;
+  lFetchURI.Query := '';
+  lFetchURI.Fragment := '';
+  lRemoteURI := lFetchURI.Unsplit;
+  lResourceKeyURI := TURIUtils.NormalizeURI(lRemoteURI);
 
-  if FResources.ContainsKey(LResourceKeyURI) then
+  if FResources.ContainsKey(lResourceKeyURI) then
     Exit;
 
-  if FInflightResources.ContainsKey(LResourceKeyURI) then
+  if FInflightResources.ContainsKey(lResourceKeyURI) then
     Exit;
 
-  FInflightResources.AddOrSetValue(LResourceKeyURI, 1);
+  FInflightResources.AddOrSetValue(lResourceKeyURI, 1);
   try
 
-    if TryResolveStaticMappedFile(LRemoteURI, LMappedFilePath) then
+    if TryResolveStaticMappedFile(lRemoteURI, lMappedFilePath) then
     begin
-      LResponseBody := TFile.ReadAllText(LMappedFilePath, TEncoding.UTF8);
-      LSchemaRoot := TJSONObject.ParseJSONValue(LResponseBody);
-      if not Assigned(LSchemaRoot) then
+      lResponseBody := TFile.ReadAllText(lMappedFilePath, TEncoding.UTF8);
+      lSchemaRoot := TJSONObject.ParseJSONValue(lResponseBody);
+      if not Assigned(lSchemaRoot) then
         Exit;
 
-      FResources.AddOrSetValue(LResourceKeyURI, TResource.Create(TURIReference.From(LResourceKeyURI), LSchemaRoot));
+      FResources.AddOrSetValue(lResourceKeyURI, TResource.Create(TURIReference.From(lResourceKeyURI), lSchemaRoot));
 
-      LScope := CurrentScope;
-      LNewScope := LScope;
-      LNewScope.BaseURI           := LResourceKeyURI;
-      LNewScope.SchemaNode        := LSchemaRoot;
-      LNewScope.SchemaPath        := '#';
-      LNewScope.CoveredItems      := [];
-      LNewScope.ContainsCount     := 0;
-      LNewScope.VisitedKeywords   := [];
-      LNewScope.CoveredProperties := [];
+      lScope := CurrentScope;
+      lNewScope := lScope;
+      lNewScope.BaseURI           := lResourceKeyURI;
+      lNewScope.SchemaNode        := lSchemaRoot;
+      lNewScope.SchemaPath        := '#';
+      lNewScope.CoveredItems      := [];
+      lNewScope.ContainsCount     := 0;
+      lNewScope.VisitedKeywords   := [];
+      lNewScope.CoveredProperties := [];
 
-      PushScope(LNewScope);
+      PushScope(lNewScope);
       try
-        TWalker<TRegistryVisitor>.Create(LSchemaRoot, Self).Walk;
+        TWalker<TRegistryVisitor>.Create(lSchemaRoot, Self).Walk;
       finally
         PopScope;
       end;
       Exit;
     end;
 
-    if not IsLocalTestServerURI(LRemoteURI) then
+    if not IsLocalTestServerURI(lRemoteURI) then
       Exit;
 
-    LHttpClient := THTTPClient.Create;
+    lHttpClient := THTTPClient.Create;
     try
-      LResponse := LHttpClient.Get(LRemoteURI);
-      if not Assigned(LResponse) or (LResponse.StatusCode <> 200) then
+      lResponse := lHttpClient.Get(lRemoteURI);
+      if not Assigned(lResponse) or (lResponse.StatusCode <> 200) then
         Exit;
 
-      LResponseBody := LResponse.ContentAsString(TEncoding.UTF8);
-      LSchemaRoot := TJSONObject.ParseJSONValue(LResponseBody);
-      if not Assigned(LSchemaRoot) then
+      lResponseBody := lResponse.ContentAsString(TEncoding.UTF8);
+      lSchemaRoot := TJSONObject.ParseJSONValue(lResponseBody);
+      if not Assigned(lSchemaRoot) then
         Exit;
 
-      FResources.AddOrSetValue(LResourceKeyURI, TResource.Create(TURIReference.From(LResourceKeyURI), LSchemaRoot));
+      FResources.AddOrSetValue(lResourceKeyURI, TResource.Create(TURIReference.From(lResourceKeyURI), lSchemaRoot));
 
-      LScope := CurrentScope;
-      LNewScope := LScope;
-      LNewScope.BaseURI           := LResourceKeyURI;
-      LNewScope.SchemaNode        := LSchemaRoot;
-      LNewScope.SchemaPath        := '#';
-      LNewScope.CoveredItems      := [];
-      LNewScope.ContainsCount     := 0;
-      LNewScope.VisitedKeywords   := [];
-      LNewScope.CoveredProperties := [];
+      lScope := CurrentScope;
+      lNewScope := lScope;
+      lNewScope.BaseURI           := lResourceKeyURI;
+      lNewScope.SchemaNode        := lSchemaRoot;
+      lNewScope.SchemaPath        := '#';
+      lNewScope.CoveredItems      := [];
+      lNewScope.ContainsCount     := 0;
+      lNewScope.VisitedKeywords   := [];
+      lNewScope.CoveredProperties := [];
 
-      PushScope(LNewScope);
+      PushScope(lNewScope);
       try
-        TWalker<TRegistryVisitor>.Create(LSchemaRoot, Self).Walk;
+        TWalker<TRegistryVisitor>.Create(lSchemaRoot, Self).Walk;
       finally
         PopScope;
       end;
     finally
-      LHttpClient.Free;
+      lHttpClient.Free;
     end;
   finally
-    FInflightResources.Remove(LResourceKeyURI);
+    FInflightResources.Remove(lResourceKeyURI);
   end;
 end;
 
-function TRegistryVisitor.TryFindResource(const ABaseURI: string; var AResource: TResource): Boolean;
+function TRegistryVisitor.TryFindResource(const pBaseURI: string; var pResource: TResource): Boolean;
 var
-  LURI: TURIReference;
-  LNormalizedURI: string;
+  lURI: TURIReference;
+  lNormalizedURI: string;
 begin
-  LURI := TURIReference.From(ABaseURI);
-  LURI.Query := '';
-  LURI.Fragment := '';
-  LNormalizedURI := TURIUtils.NormalizeURI(LURI.Unsplit);
-  Result := FResources.TryGetValue(LNormalizedURI, AResource);
+  lURI := TURIReference.From(pBaseURI);
+  lURI.Query := '';
+  lURI.Fragment := '';
+  lNormalizedURI := TURIUtils.NormalizeURI(lURI.Unsplit);
+  Result := FResources.TryGetValue(lNormalizedURI, pResource);
   if not Result then
-    Result := FResources.TryGetValue(LURI.Unsplit, AResource);
+    Result := FResources.TryGetValue(lURI.Unsplit, pResource);
 
   if not Result then
   begin
-    TryLoadRemoteResource(LURI);
-    Result := FResources.TryGetValue(LNormalizedURI, AResource);
+    TryLoadRemoteResource(lURI);
+    Result := FResources.TryGetValue(lNormalizedURI, pResource);
     if not Result then
-      Result := FResources.TryGetValue(LURI.Unsplit, AResource);
+      Result := FResources.TryGetValue(lURI.Unsplit, pResource);
   end;
 end;
 
@@ -388,152 +388,152 @@ begin
   ];
 end;
 
-function TRegistryVisitor.New(const ASchema, AData: TJSONValue; const ABaseURI: string): TRegistryVisitor;
+function TRegistryVisitor.New(const pSchema, pData: TJSONValue; const pBaseURI: string): TRegistryVisitor;
 begin
-  Result := TRegistryVisitor.Create(ASchema, AData, ABaseURI);
+  Result := TRegistryVisitor.Create(pSchema, pData, pBaseURI);
 end;
 
 { TBaseRegistryApplicatorVisitor }
 
-procedure TBaseRegistryApplicatorVisitor.VisitAdditionalItems(const AValue: TJSONValue);
+procedure TBaseRegistryApplicatorVisitor.VisitAdditionalItems(const pValue: TJSONValue);
 begin
-  Visitor.DiscoverInSingleSchema(AValue);
+  Visitor.DiscoverInSingleSchema(pValue);
 end;
 
-procedure TBaseRegistryApplicatorVisitor.VisitAdditionalProperties(const AValue: TJSONValue);
+procedure TBaseRegistryApplicatorVisitor.VisitAdditionalProperties(const pValue: TJSONValue);
 begin
-  Visitor.DiscoverInSingleSchema(AValue);
+  Visitor.DiscoverInSingleSchema(pValue);
 end;
 
-procedure TBaseRegistryApplicatorVisitor.VisitAllOf(const AValue: TJSONArray);
+procedure TBaseRegistryApplicatorVisitor.VisitAllOf(const pValue: TJSONArray);
 begin
-  Visitor.DiscoverInArrayOfSchemas(AValue);
+  Visitor.DiscoverInArrayOfSchemas(pValue);
 end;
 
-procedure TBaseRegistryApplicatorVisitor.VisitAnyOf(const AValue: TJSONArray);
+procedure TBaseRegistryApplicatorVisitor.VisitAnyOf(const pValue: TJSONArray);
 begin
-  Visitor.DiscoverInArrayOfSchemas(AValue);
+  Visitor.DiscoverInArrayOfSchemas(pValue);
 end;
 
-procedure TBaseRegistryApplicatorVisitor.VisitElse(const AValue: TJSONValue);
+procedure TBaseRegistryApplicatorVisitor.VisitElse(const pValue: TJSONValue);
 begin
-  Visitor.DiscoverInSingleSchema(AValue);
+  Visitor.DiscoverInSingleSchema(pValue);
 end;
 
-procedure TBaseRegistryApplicatorVisitor.VisitIf(const AValue: TJSONValue);
+procedure TBaseRegistryApplicatorVisitor.VisitIf(const pValue: TJSONValue);
 begin
-  Visitor.DiscoverInSingleSchema(AValue);
+  Visitor.DiscoverInSingleSchema(pValue);
 end;
 
-procedure TBaseRegistryApplicatorVisitor.VisitItems(const AValue: TJSONValue);
+procedure TBaseRegistryApplicatorVisitor.VisitItems(const pValue: TJSONValue);
 begin
   // A l�gica de `items` pode ter um schema (objeto) ou um array de schemas.
-  if AValue is TJSONObject then
-    Visitor.DiscoverInSingleSchema(AValue)
-  else if AValue is TJSONArray then
-    Visitor.DiscoverInArrayOfSchemas(AValue as TJSONArray);
+  if pValue is TJSONObject then
+    Visitor.DiscoverInSingleSchema(pValue)
+  else if pValue is TJSONArray then
+    Visitor.DiscoverInArrayOfSchemas(pValue as TJSONArray);
 end;
 
-procedure TBaseRegistryApplicatorVisitor.VisitNot(const AValue: TJSONValue);
+procedure TBaseRegistryApplicatorVisitor.VisitNot(const pValue: TJSONValue);
 begin
-  Visitor.DiscoverInSingleSchema(AValue);
+  Visitor.DiscoverInSingleSchema(pValue);
 end;
 
-procedure TBaseRegistryApplicatorVisitor.VisitOneOf(const AValue: TJSONArray);
+procedure TBaseRegistryApplicatorVisitor.VisitOneOf(const pValue: TJSONArray);
 begin
-  Visitor.DiscoverInArrayOfSchemas(AValue);
+  Visitor.DiscoverInArrayOfSchemas(pValue);
 end;
 
-procedure TBaseRegistryApplicatorVisitor.VisitPatternProperties(const AValue: TJSONObject);
+procedure TBaseRegistryApplicatorVisitor.VisitPatternProperties(const pValue: TJSONObject);
 begin
-  Visitor.DiscoverInObjectOfSchemas(AValue);
+  Visitor.DiscoverInObjectOfSchemas(pValue);
 end;
 
-procedure TBaseRegistryApplicatorVisitor.VisitPrefixItems(const AValue: TJSONArray);
+procedure TBaseRegistryApplicatorVisitor.VisitPrefixItems(const pValue: TJSONArray);
 begin
-  Visitor.DiscoverInArrayOfSchemas(AValue);
+  Visitor.DiscoverInArrayOfSchemas(pValue);
 end;
 
-procedure TBaseRegistryApplicatorVisitor.VisitProperties(const AValue: TJSONObject);
+procedure TBaseRegistryApplicatorVisitor.VisitProperties(const pValue: TJSONObject);
 begin
   // A l�gica � id�ntica a VisitDefinitions: percorrer os valores do objeto.
-  Visitor.DiscoverInObjectOfSchemas(AValue);
+  Visitor.DiscoverInObjectOfSchemas(pValue);
 end;
 
-procedure TBaseRegistryApplicatorVisitor.VisitThen(const AValue: TJSONValue);
+procedure TBaseRegistryApplicatorVisitor.VisitThen(const pValue: TJSONValue);
 begin
-  Visitor.DiscoverInSingleSchema(AValue);
+  Visitor.DiscoverInSingleSchema(pValue);
 end;
 
-procedure TBaseRegistryCoreVisitor.VisitAnchor(const AValue: TJSONString);
+procedure TBaseRegistryCoreVisitor.VisitAnchor(const pValue: TJSONString);
 var
-  LScope: TScope;
-  LResource: TResource;
-  LAnchorName: string;
-  LAbsoluteAnchor: string;
+  lScope: TScope;
+  lResource: TResource;
+  lAnchorName: string;
+  lAbsoluteAnchor: string;
 begin
-  LScope := Visitor.CurrentScope;
-  LAnchorName := AValue.Value;
-  if LAnchorName.StartsWith('#') then
-    LAnchorName := LAnchorName.Substring(1);
+  lScope := Visitor.CurrentScope;
+  lAnchorName := pValue.Value;
+  if lAnchorName.StartsWith('#') then
+    lAnchorName := lAnchorName.Substring(1);
 
-  if Visitor.TryFindResource(LScope.BaseURI, LResource) then
+  if Visitor.TryFindResource(lScope.BaseURI, lResource) then
   begin
-    LResource.AddAnchor(LAnchorName, LScope.SchemaNode);
-    if not LAnchorName.IsEmpty then
+    lResource.AddAnchor(lAnchorName, lScope.SchemaNode);
+    if not lAnchorName.IsEmpty then
     begin
-      LResource.AddAnchor('#' + LAnchorName, LScope.SchemaNode);
+      lResource.AddAnchor('#' + lAnchorName, lScope.SchemaNode);
 
-      LAbsoluteAnchor := LScope.BaseURI + '#' + LAnchorName;
-      LResource.AddAnchor(LAbsoluteAnchor, LScope.SchemaNode);
+      lAbsoluteAnchor := lScope.BaseURI + '#' + lAnchorName;
+      lResource.AddAnchor(lAbsoluteAnchor, lScope.SchemaNode);
     end;
   end;
 end;
 
-procedure TBaseRegistryCoreVisitor.VisitBooleanSchema(const AValue: TJSONBool);
+procedure TBaseRegistryCoreVisitor.VisitBooleanSchema(const pValue: TJSONBool);
 begin
 
 end;
 
 { TBaseRegistryCoreVisitor<T> }
 
-procedure TBaseRegistryCoreVisitor.VisitDefinitions(const AValue: TJSONObject);
+procedure TBaseRegistryCoreVisitor.VisitDefinitions(const pValue: TJSONObject);
 var
-  LPair: TJSONPair;
+  lPair: TJSONPair;
 begin
-  for LPair in AValue do
-    Visitor.DiscoverInSingleSchema(LPair.JsonValue);
+  for lPair in pValue do
+    Visitor.DiscoverInSingleSchema(lPair.JsonValue);
 end;
 
-procedure TBaseRegistryCoreVisitor.VisitId(const AValue: TJSONString);
+procedure TBaseRegistryCoreVisitor.VisitId(const pValue: TJSONString);
 var
-  LScope: TScope;
-  LNewBaseURI: TURIReference;
-  LResourceURI: TURIReference;
-  LResourceKeyURI: string;
-  LResource: TResource;
+  lScope: TScope;
+  lNewBaseURI: TURIReference;
+  lResourceURI: TURIReference;
+  lResourceKeyURI: string;
+  lResource: TResource;
 begin
-  LScope := Visitor.FScopeStack.Peek;
+  lScope := Visitor.FScopeStack.Peek;
 
   // Resolve a nova URI contra a base atual.
-  LNewBaseURI := TURIReference.From(AValue.Value).ResolveWith(TURIReference.From(LScope.BaseURI));
-  LScope.BaseURI := LNewBaseURI.Unsplit;
+  lNewBaseURI := TURIReference.From(pValue.Value).ResolveWith(TURIReference.From(lScope.BaseURI));
+  lScope.BaseURI := lNewBaseURI.Unsplit;
 
   // Atualiza o escopo na pilha ANTES de continuar a recurs�o.
-  Visitor.FScopeStack.List[Visitor.FScopeStack.Count - 1] := LScope;
+  Visitor.FScopeStack.List[Visitor.FScopeStack.Count - 1] := lScope;
 
-  LResourceURI := LNewBaseURI;
-  LResourceURI.Query := '';
-  LResourceURI.Fragment := '';
-  LResourceKeyURI := TURIUtils.NormalizeURI(LResourceURI.Unsplit);
+  lResourceURI := lNewBaseURI;
+  lResourceURI.Query := '';
+  lResourceURI.Fragment := '';
+  lResourceKeyURI := TURIUtils.NormalizeURI(lResourceURI.Unsplit);
 
   // Se o recurso base ainda nгo existe, adiciona-o.
-  if not Visitor.FResources.ContainsKey(LResourceKeyURI) then
-    Visitor.FResources.Add(LResourceKeyURI, TResource.Create(LResourceURI, LScope.SchemaNode));
+  if not Visitor.FResources.ContainsKey(lResourceKeyURI) then
+    Visitor.FResources.Add(lResourceKeyURI, TResource.Create(lResourceURI, lScope.SchemaNode));
 
   // Em drafts antigos, $id com fragmento atua como um identificador local semelhante a anchor.
-  if (LNewBaseURI.Fragment <> '') and Visitor.FResources.TryGetValue(LResourceKeyURI, LResource) then
-    LResource.AddAnchor(LNewBaseURI.Fragment, LScope.SchemaNode);
+  if (lNewBaseURI.Fragment <> '') and Visitor.FResources.TryGetValue(lResourceKeyURI, lResource) then
+    lResource.AddAnchor(lNewBaseURI.Fragment, lScope.SchemaNode);
 
   // Marca a palavra-chave como visitada para que o Walker n�o a processe duas vezes
   // se a preced�ncia for usada.
@@ -541,176 +541,176 @@ begin
   Visitor.AddVisitedKeyword('id');
 end;
 
-procedure TBaseRegistryCoreVisitor.VisitRef(const AValue: TJSONString);
+procedure TBaseRegistryCoreVisitor.VisitRef(const pValue: TJSONString);
 var
-  LScope: TScope;
-  LTargetURI: TURIReference;
-  LResourceRef: TURIReference;
-  LResourceURI: string;
-  LDefs: TJSONValue;
-  LSchemaId: TJSONValue;
+  lScope: TScope;
+  lTargetURI: TURIReference;
+  lResourceRef: TURIReference;
+  lResourceURI: string;
+  lDefs: TJSONValue;
+  lSchemaId: TJSONValue;
 begin
-  LScope := Visitor.CurrentScope;
+  lScope := Visitor.CurrentScope;
 
   // Se o schema atual declara id/$id, atualiza a base antes de resolver $ref.
-  if (LScope.SchemaNode is TJSONObject) then
+  if (lScope.SchemaNode is TJSONObject) then
   begin
-    if TJSONObject(LScope.SchemaNode).TryGetValue('$id', LSchemaId) and (LSchemaId is TJSONString) then
-      VisitId(TJSONString(LSchemaId))
-    else if TJSONObject(LScope.SchemaNode).TryGetValue('id', LSchemaId) and (LSchemaId is TJSONString) then
-      VisitId(TJSONString(LSchemaId));
+    if TJSONObject(lScope.SchemaNode).TryGetValue('$id', lSchemaId) and (lSchemaId is TJSONString) then
+      VisitId(TJSONString(lSchemaId))
+    else if TJSONObject(lScope.SchemaNode).TryGetValue('id', lSchemaId) and (lSchemaId is TJSONString) then
+      VisitId(TJSONString(lSchemaId));
 
-    LScope := Visitor.CurrentScope;
+    lScope := Visitor.CurrentScope;
   end;
 
   // Mesmo quando há $ref no schema atual, precisamos descobrir âncoras em $defs
   // para resolver referências locais e URNs definidos por $id.
-  if (LScope.SchemaNode is TJSONObject) then
+  if (lScope.SchemaNode is TJSONObject) then
   begin
-    if TJSONObject(LScope.SchemaNode).TryGetValue('$defs', LDefs) and (LDefs is TJSONObject) then
-      Visitor.DiscoverInObjectOfSchemas(TJSONObject(LDefs));
+    if TJSONObject(lScope.SchemaNode).TryGetValue('$defs', lDefs) and (lDefs is TJSONObject) then
+      Visitor.DiscoverInObjectOfSchemas(TJSONObject(lDefs));
 
-    if TJSONObject(LScope.SchemaNode).TryGetValue('definitions', LDefs) and (LDefs is TJSONObject) then
-      Visitor.DiscoverInObjectOfSchemas(TJSONObject(LDefs));
+    if TJSONObject(lScope.SchemaNode).TryGetValue('definitions', lDefs) and (lDefs is TJSONObject) then
+      Visitor.DiscoverInObjectOfSchemas(TJSONObject(lDefs));
   end;
 
-  LTargetURI := TURIReference.From(AValue.Value).ResolveWith(TURIReference.From(LScope.BaseURI));
-  LResourceRef := LTargetURI;
-  LResourceRef.Query := '';
-  LResourceRef.Fragment := '';
-  LResourceURI := TURIUtils.NormalizeURI(LResourceRef.Unsplit);
+  lTargetURI := TURIReference.From(pValue.Value).ResolveWith(TURIReference.From(lScope.BaseURI));
+  lResourceRef := lTargetURI;
+  lResourceRef.Query := '';
+  lResourceRef.Fragment := '';
+  lResourceURI := TURIUtils.NormalizeURI(lResourceRef.Unsplit);
 
   // Se o recurso referenciado ainda n�o est� no registro, e � "busc�vel" (ex: http),
   // o registro tentar� carreg�-lo.
-  if not Visitor.FResources.ContainsKey(LResourceURI) then
-    Visitor.TryLoadRemoteResource(LTargetURI);
+  if not Visitor.FResources.ContainsKey(lResourceURI) then
+    Visitor.TryLoadRemoteResource(lTargetURI);
 end;
 
-procedure TBaseRegistryCoreVisitor.VisitSchema(const AValue: TJSONString);
+procedure TBaseRegistryCoreVisitor.VisitSchema(const pValue: TJSONString);
 begin
 
 end;
 
 { TBaseRegistryValidationVisitor }
 
-procedure TBaseRegistryValidationVisitor.VisitConst(const AValue: TJSONValue);
+procedure TBaseRegistryValidationVisitor.VisitConst(const pValue: TJSONValue);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitEnum(const AValue: TJSONArray);
+procedure TBaseRegistryValidationVisitor.VisitEnum(const pValue: TJSONArray);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitExclusiveMaximum(const AValue: TJSONValue);
+procedure TBaseRegistryValidationVisitor.VisitExclusiveMaximum(const pValue: TJSONValue);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitExclusiveMinimum(const AValue: TJSONValue);
+procedure TBaseRegistryValidationVisitor.VisitExclusiveMinimum(const pValue: TJSONValue);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitFormat(const AValue: TJSONString);
+procedure TBaseRegistryValidationVisitor.VisitFormat(const pValue: TJSONString);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitMaximum(const AValue: TJSONNumber);
+procedure TBaseRegistryValidationVisitor.VisitMaximum(const pValue: TJSONNumber);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitMaxItems(const AValue: TJSONNumber);
+procedure TBaseRegistryValidationVisitor.VisitMaxItems(const pValue: TJSONNumber);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitMaxLength(const AValue: TJSONNumber);
+procedure TBaseRegistryValidationVisitor.VisitMaxLength(const pValue: TJSONNumber);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitMaxProperties(const AValue: TJSONNumber);
+procedure TBaseRegistryValidationVisitor.VisitMaxProperties(const pValue: TJSONNumber);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitMinimum(const AValue: TJSONNumber);
+procedure TBaseRegistryValidationVisitor.VisitMinimum(const pValue: TJSONNumber);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitMinItems(const AValue: TJSONNumber);
+procedure TBaseRegistryValidationVisitor.VisitMinItems(const pValue: TJSONNumber);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitMinLength(const AValue: TJSONNumber);
+procedure TBaseRegistryValidationVisitor.VisitMinLength(const pValue: TJSONNumber);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitMinProperties(const AValue: TJSONNumber);
+procedure TBaseRegistryValidationVisitor.VisitMinProperties(const pValue: TJSONNumber);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitMultipleOf(const AValue: TJSONNumber);
+procedure TBaseRegistryValidationVisitor.VisitMultipleOf(const pValue: TJSONNumber);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitPattern(const AValue: TJSONString);
+procedure TBaseRegistryValidationVisitor.VisitPattern(const pValue: TJSONString);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitRequired(const AValue: TJSONArray);
+procedure TBaseRegistryValidationVisitor.VisitRequired(const pValue: TJSONArray);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitType(const AValue: TJSONValue);
+procedure TBaseRegistryValidationVisitor.VisitType(const pValue: TJSONValue);
 begin
 
 end;
 
-procedure TBaseRegistryValidationVisitor.VisitUniqueItems(const AValue: TJSONBool);
+procedure TBaseRegistryValidationVisitor.VisitUniqueItems(const pValue: TJSONBool);
 begin
 
 end;
 
 { TBaseRegistryHyperSchemaVisitor }
 
-procedure TBaseRegistryHyperSchemaVisitor.VisitBase(const AValue: TJSONString);
+procedure TBaseRegistryHyperSchemaVisitor.VisitBase(const pValue: TJSONString);
 begin
 
 end;
 
-procedure TBaseRegistryHyperSchemaVisitor.VisitHref(const AValue: TJSONString);
+procedure TBaseRegistryHyperSchemaVisitor.VisitHref(const pValue: TJSONString);
 begin
 
 end;
 
-procedure TBaseRegistryHyperSchemaVisitor.VisitHrefSchema(const AValue: TJSONValue);
+procedure TBaseRegistryHyperSchemaVisitor.VisitHrefSchema(const pValue: TJSONValue);
 begin
 
 end;
 
-procedure TBaseRegistryHyperSchemaVisitor.VisitLinks(const AValue: TJSONArray);
+procedure TBaseRegistryHyperSchemaVisitor.VisitLinks(const pValue: TJSONArray);
 begin
 
 end;
 
-procedure TBaseRegistryHyperSchemaVisitor.VisitSubmissionSchema(const AValue: TJSONValue);
+procedure TBaseRegistryHyperSchemaVisitor.VisitSubmissionSchema(const pValue: TJSONValue);
 begin
 
 end;
 
-procedure TBaseRegistryHyperSchemaVisitor.VisitTargetSchema(const AValue: TJSONValue);
+procedure TBaseRegistryHyperSchemaVisitor.VisitTargetSchema(const pValue: TJSONValue);
 begin
 
 end;

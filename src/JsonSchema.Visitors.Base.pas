@@ -1,4 +1,4 @@
-unit JsonSchema.Visitors.Base;
+﻿unit JsonSchema.Visitors.Base;
 
 interface
 

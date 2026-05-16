@@ -1,4 +1,4 @@
-unit JsonSchema.Translate.ptBR;
+﻿unit JsonSchema.Translate.ptBR;
 
 interface
 

@@ -1,4 +1,4 @@
-unit JsonSchema.Walker;
+﻿unit JsonSchema.Walker;
 
 interface
 
@@ -95,6 +95,9 @@ begin
 
   for LObject in LObjects do
   begin
+    if not Assigned(LObject) then
+      Continue;
+
     LType := LContext.GetType(LObject.ClassType);
     for LMethod in LType.GetMethods do
     begin
@@ -182,7 +185,6 @@ begin
 
   LPrecedence := FVisitor.KeywordPrecedence;
 
-  LAllowSiblingKeywordsWithRef := False;
   LDraftVersion := TDraftVersion.dvUnknown;
   if TJSONObject(FSchema).TryGetValue('$schema', LSchemaDraft) then
     LDraftVersion := TDraftVersion.FromSchema(LSchemaDraft)

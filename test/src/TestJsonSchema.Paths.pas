@@ -1,4 +1,4 @@
-unit TestJsonSchema.Paths;
+﻿unit TestJsonSchema.Paths;
 
 interface
 

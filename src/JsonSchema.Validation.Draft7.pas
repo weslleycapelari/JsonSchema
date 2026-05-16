@@ -1,4 +1,4 @@
-unit JsonSchema.Validation.Draft7;
+﻿unit JsonSchema.Validation.Draft7;
 
 interface
 
@@ -38,23 +38,6 @@ type
     procedure VisitDependencies(const AValue: TJSONObject);
   end;
 
-  IDraft7HyperSchemaVisitor = interface(IBaseHyperSchemaVisitor<TDraft7Visitor>)
-    ['{A0C4CC5A-0A72-4F6C-AD6E-5DE40B5ED8E1}']
-    procedure VisitReadOnly(const AValue: TJSONBool);
-
-    procedure VisitRel(const AValue: TJSONString);
-    procedure VisitTitle(const AValue: TJSONString);
-    procedure VisitAnchor(const AValue: TJSONString);
-    procedure VisitAnchorPointer(const AValue: TJSONString);
-    procedure VisitTemplatePointers(const AValue: TJSONObject);
-    procedure VisitTemplateRequired(const AValue: TJSONArray);
-    procedure VisitDescription(const AValue: TJSONString);
-    procedure VisitTargetMediaType(const AValue: TJSONString);
-    procedure VisitTargetHints(const AValue: TJSONObject);
-    procedure VisitHeaderSchema(const AValue: TJSONValue);
-    procedure VisitSubmissionMediaType(const AValue: TJSONString);
-  end;
-
   IDraft7RelativeJsonPointer = interface(IBaseRelativeJsonPointer<TDraft7Visitor>)
     ['{2DDD2C75-0B7F-4C9A-8D13-A611019E580D}']
   end;
@@ -83,34 +66,6 @@ type
     procedure VisitDependencies(const AValue: TJSONObject);
   end;
 
-  TDraft7HyperSchemaVisitor = class(TBaseHyperSchemaVisitor<TDraft7Visitor>, IDraft7HyperSchemaVisitor)
-    [VisitorKeyword('readOnly')]
-    procedure VisitReadOnly(const AValue: TJSONBool);
-
-    [VisitorKeyword('rel')]
-    procedure VisitRel(const AValue: TJSONString);
-    [VisitorKeyword('title')]
-    procedure VisitTitle(const AValue: TJSONString);
-    [VisitorKeyword('anchor')]
-    procedure VisitAnchor(const AValue: TJSONString);
-    [VisitorKeyword('anchorPointer')]
-    procedure VisitAnchorPointer(const AValue: TJSONString);
-    [VisitorKeyword('templatePointers')]
-    procedure VisitTemplatePointers(const AValue: TJSONObject);
-    [VisitorKeyword('templateRequired')]
-    procedure VisitTemplateRequired(const AValue: TJSONArray);
-    [VisitorKeyword('description')]
-    procedure VisitDescription(const AValue: TJSONString);
-    [VisitorKeyword('targetMediaType')]
-    procedure VisitTargetMediaType(const AValue: TJSONString);
-    [VisitorKeyword('targetHints')]
-    procedure VisitTargetHints(const AValue: TJSONObject);
-    [VisitorKeyword('headerSchema')]
-    procedure VisitHeaderSchema(const AValue: TJSONValue);
-    [VisitorKeyword('submissionMediaType')]
-    procedure VisitSubmissionMediaType(const AValue: TJSONString);
-  end;
-
   TDraft7RelativeJsonPointer = class(TBaseRelativeJsonPointer<TDraft7Visitor>, IDraft7RelativeJsonPointer)
   end;
 
@@ -132,7 +87,6 @@ begin
   FCore                := TDraft7CoreVisitor.Create(Self);
   FApplicator          := TDraft7ApplicatorVisitor.Create(Self);
   FValidation          := TDraft7ValidationVisitor.Create(Self);
-  FHyperSchema         := TDraft7HyperSchemaVisitor.Create(Self);
   FRelativeJsonPointer := TDraft7RelativeJsonPointer.Create(Self);
 end;
 
@@ -277,226 +231,18 @@ begin
 end;
 
 procedure TDraft7ValidationVisitor.VisitContains(const AValue: TJSONValue);
-var
-  LScope: TScope;
-  LCount: Integer;
-  LWalker: IWalker;
-  LVisitor: TDraft7Visitor;
-  LNewScope: TScope;
-  LInstance: TJSONArray;
 begin
-  LScope := Visitor.CurrentScope;
-  if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
-    Exit;
-
-  if AValue is TJSONBool then
-  begin
-    if TJSONBool(AValue).AsBoolean and (TJSONArray(LScope.InstanceNode).Count > 0) then
-      Exit;
-
-    if not TJSONBool(AValue).AsBoolean then
-    begin
-       Visitor.AddError(vetContains);
-       Exit;
-    end;
-  end;
-
-  LInstance := TJSONArray(LScope.InstanceNode);
-  for LCount := 0 to LInstance.Count - 1 do
-  begin
-    LNewScope := LScope;
-    LNewScope.SchemaPath        := Format('%s/contains', [LScope.SchemaPath]);
-    LNewScope.SchemaNode        := AValue;
-    LNewScope.InstanceNode      := LInstance[LCount];
-    LNewScope.InstancePath      := Format('%s/%d', [LScope.InstancePath, LCount]);
-    LNewScope.CoveredItems      := [];
-    LNewScope.ContainsCount     := 0;
-    LNewScope.VisitedKeywords   := [];
-    LNewScope.CoveredProperties := [];
-
-    Visitor.PushScope(LNewScope);
-    LVisitor := Visitor.New(AValue, LInstance[LCount], LScope.BaseURI);
-    try
-      LWalker := TWalker<TDraft7Visitor>.Create(AValue, LVisitor);
-      LWalker.Walk;
-    finally
-      Visitor.PopScope;
-    end;
-
-    if LVisitor.Result.IsValid then
-      Inc(LScope.ContainsCount);
-  end;
-
-  Visitor.UpdateScope(LScope);
-  if LScope.ContainsCount = 0 then
-    Visitor.AddError(vetContains);
+  inherited VisitContains(AValue);
 end;
 
 procedure TDraft7ValidationVisitor.VisitDependencies(const AValue: TJSONObject);
-var
-  LScope: TScope;
-  LInstance: TJSONObject;
-  LDependencyPair: TJSONPair;
-  LDependencyValue: TJSONValue;
-  LRequiredList: TJSONArray;
-  LRequiredValue: TJSONValue;
-  LRequiredName: string;
-  LNewScope: TScope;
-  LWalker: IWalker;
-  LVisitor: TDraft7Visitor;
-  LError: IError;
 begin
-  LScope := Visitor.CurrentScope;
-  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
-    Exit;
-
-  LInstance := TJSONObject(LScope.InstanceNode);
-  for LDependencyPair in AValue do
-  begin
-    if LInstance.FindValue(LDependencyPair.JsonString.Value) = nil then
-      Continue;
-
-    LDependencyValue := LDependencyPair.JsonValue;
-
-    if LDependencyValue is TJSONArray then
-    begin
-      LRequiredList := TJSONArray(LDependencyValue);
-      for LRequiredValue in LRequiredList do
-      begin
-        if not (LRequiredValue is TJSONString) then
-          Continue;
-
-        LRequiredName := TJSONString(LRequiredValue).Value;
-        if LInstance.FindValue(LRequiredName) = nil then
-          Visitor.AddError(vetDependentRequired, [LDependencyPair.JsonString.Value, LRequiredName]);
-      end;
-      Continue;
-    end;
-
-    if (LDependencyValue is TJSONObject) or (LDependencyValue is TJSONBool) then
-    begin
-      LNewScope := LScope;
-      LNewScope.SchemaPath        := Format('%s/dependencies/%s', [LScope.SchemaPath, LDependencyPair.JsonString.Value]);
-      LNewScope.SchemaNode        := LDependencyValue;
-      LNewScope.CoveredItems      := [];
-      LNewScope.ContainsCount     := 0;
-      LNewScope.VisitedKeywords   := [];
-      LNewScope.CoveredProperties := [];
-
-      LVisitor := Visitor.New(LDependencyValue, LScope.InstanceNode, LScope.BaseURI);
-      LVisitor.PushScope(LNewScope);
-      try
-        LWalker := TWalker<TDraft7Visitor>.Create(LDependencyValue, LVisitor);
-        LWalker.Walk;
-      finally
-        LVisitor.PopScope;
-      end;
-
-      if not LVisitor.Result.IsValid then
-        for LError in LVisitor.Result.Errors do
-          Visitor.Result.AddError(LError);
-    end;
-  end;
+  inherited VisitDependencies(AValue);
 end;
 
 procedure TDraft7ValidationVisitor.VisitPropertyNames(const AValue: TJSONValue);
-var
-  LPair: TJSONPair;
-  LScope: TScope;
-  LWalker: IWalker;
-  LVisitor: TDraft7Visitor;
-  LNewScope: TScope;
 begin
-  LScope := Visitor.CurrentScope;
-  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
-    Exit;
-
-  for LPair in TJSONObject(LScope.InstanceNode) do
-  begin
-    LNewScope := LScope;
-    LNewScope.SchemaPath        := Format('%s/propertyNames', [LScope.SchemaPath]);
-    LNewScope.SchemaNode        := AValue;
-    LNewScope.InstanceNode      := LPair.JsonString;
-    LNewScope.InstancePath      := Format('%s/%s', [LScope.InstancePath, LPair.JsonString.Value]);
-    LNewScope.CoveredItems      := [];
-    LNewScope.ContainsCount     := 0;
-    LNewScope.VisitedKeywords   := [];
-    LNewScope.CoveredProperties := [];
-
-    Visitor.PushScope(LNewScope);
-    LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
-    try
-      LWalker := TWalker<TDraft7Visitor>.Create(LNewScope.SchemaNode, LVisitor);
-      LWalker.Walk;
-    finally
-      Visitor.PopScope;
-    end;
-
-    if not LVisitor.Result.IsValid then
-      Visitor.AddError(vetInvalidPropertyName, [LPair.JsonString.Value]);
-  end;
-end;
-
-{ TDraft7HyperSchemaVisitor }
-
-procedure TDraft7HyperSchemaVisitor.VisitAnchor(const AValue: TJSONString);
-begin
-
-end;
-
-procedure TDraft7HyperSchemaVisitor.VisitAnchorPointer(const AValue: TJSONString);
-begin
-
-end;
-
-procedure TDraft7HyperSchemaVisitor.VisitDescription(const AValue: TJSONString);
-begin
-
-end;
-
-procedure TDraft7HyperSchemaVisitor.VisitHeaderSchema(const AValue: TJSONValue);
-begin
-
-end;
-
-procedure TDraft7HyperSchemaVisitor.VisitReadOnly(const AValue: TJSONBool);
-begin
-
-end;
-
-procedure TDraft7HyperSchemaVisitor.VisitRel(const AValue: TJSONString);
-begin
-
-end;
-
-procedure TDraft7HyperSchemaVisitor.VisitSubmissionMediaType(const AValue: TJSONString);
-begin
-
-end;
-
-procedure TDraft7HyperSchemaVisitor.VisitTargetHints(const AValue: TJSONObject);
-begin
-
-end;
-
-procedure TDraft7HyperSchemaVisitor.VisitTargetMediaType(const AValue: TJSONString);
-begin
-
-end;
-
-procedure TDraft7HyperSchemaVisitor.VisitTemplatePointers(const AValue: TJSONObject);
-begin
-
-end;
-
-procedure TDraft7HyperSchemaVisitor.VisitTemplateRequired(const AValue: TJSONArray);
-begin
-
-end;
-
-procedure TDraft7HyperSchemaVisitor.VisitTitle(const AValue: TJSONString);
-begin
-
+  inherited VisitPropertyNames(AValue);
 end;
 
 end.

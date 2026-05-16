@@ -1,4 +1,4 @@
-unit JsonSchema;
+﻿unit JsonSchema;
 
 interface
 
@@ -97,7 +97,7 @@ begin
         Result  := LVisitorDraft2020_12.Result;
       end
   else
-    raise Exception.Create('Error in schema draft version selection');
+    raise Exception.Create('Invalid or unsupported JSON Schema draft version.');
   end;
 end;
 

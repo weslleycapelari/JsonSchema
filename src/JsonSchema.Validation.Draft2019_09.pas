@@ -1,4 +1,4 @@
-unit JsonSchema.Validation.Draft2019_09;
+﻿unit JsonSchema.Validation.Draft2019_09;
 
 interface
 
@@ -55,20 +55,6 @@ type
     procedure VisitMinContains(const AValue: TJSONNumber);
   end;
 
-  IDraft2019_09HyperSchemaVisitor = interface(IBaseHyperSchemaVisitor<TDraft2019_09Visitor>)
-    procedure VisitRel(const AValue: TJSONString);
-    procedure VisitTitle(const AValue: TJSONString);
-    procedure VisitAnchor(const AValue: TJSONString);
-    procedure VisitAnchorPointer(const AValue: TJSONString);
-    procedure VisitTemplatePointers(const AValue: TJSONObject);
-    procedure VisitTemplateRequired(const AValue: TJSONArray);
-    procedure VisitDescription(const AValue: TJSONString);
-    procedure VisitTargetMediaType(const AValue: TJSONString);
-    procedure VisitTargetHints(const AValue: TJSONObject);
-    procedure VisitHeaderSchema(const AValue: TJSONValue);
-    procedure VisitSubmissionMediaType(const AValue: TJSONString);
-  end;
-
   IDraft2019_09RelativeJsonPointer = interface(IBaseRelativeJsonPointer<TDraft2019_09Visitor>)
     ['{E40B5CE3-7207-430E-81BA-07A8E798EC60}']
   end;
@@ -118,31 +104,6 @@ type
     procedure VisitMinContains(const AValue: TJSONNumber);
   end;
 
-  TDraft2019_09HyperSchemaVisitor = class(TBaseHyperSchemaVisitor<TDraft2019_09Visitor>, IDraft2019_09HyperSchemaVisitor)
-    [VisitorKeyword('rel')]
-    procedure VisitRel(const AValue: TJSONString);
-    [VisitorKeyword('title')]
-    procedure VisitTitle(const AValue: TJSONString);
-    [VisitorKeyword('anchor')]
-    procedure VisitAnchor(const AValue: TJSONString);
-    [VisitorKeyword('anchorPointer')]
-    procedure VisitAnchorPointer(const AValue: TJSONString);
-    [VisitorKeyword('templatePointers')]
-    procedure VisitTemplatePointers(const AValue: TJSONObject);
-    [VisitorKeyword('templateRequired')]
-    procedure VisitTemplateRequired(const AValue: TJSONArray);
-    [VisitorKeyword('description')]
-    procedure VisitDescription(const AValue: TJSONString);
-    [VisitorKeyword('targetMediaType')]
-    procedure VisitTargetMediaType(const AValue: TJSONString);
-    [VisitorKeyword('targetHints')]
-    procedure VisitTargetHints(const AValue: TJSONObject);
-    [VisitorKeyword('headerSchema')]
-    procedure VisitHeaderSchema(const AValue: TJSONValue);
-    [VisitorKeyword('submissionMediaType')]
-    procedure VisitSubmissionMediaType(const AValue: TJSONString);
-  end;
-
   TDraft2019_09RelativeJsonPointer = class(TBaseRelativeJsonPointer<TDraft2019_09Visitor>, IDraft2019_09RelativeJsonPointer)
   end;
 
@@ -170,7 +131,6 @@ begin
   FCore                := TDraft2019_09CoreVisitor.Create(Self);
   FApplicator          := TDraft2019_09ApplicatorVisitor.Create(Self);
   FValidation          := TDraft2019_09ValidationVisitor.Create(Self);
-  FHyperSchema         := TDraft2019_09HyperSchemaVisitor.Create(Self);
   FRelativeJsonPointer := TDraft2019_09RelativeJsonPointer.Create(Self);
 end;
 
@@ -751,98 +711,8 @@ begin
 end;
 
 procedure TDraft2019_09ValidationVisitor.VisitPropertyNames(const AValue: TJSONValue);
-var
-  LPair: TJSONPair;
-  LScope: TScope;
-  LWalker: IWalker;
-  LVisitor: TDraft2019_09Visitor;
-  LNewScope: TScope;
 begin
-  LScope := Visitor.CurrentScope;
-  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
-    Exit;
-
-  for LPair in TJSONObject(LScope.InstanceNode) do
-  begin
-    LNewScope := LScope;
-    LNewScope.SchemaPath        := Format('%s/propertyNames', [LScope.SchemaPath]);
-    LNewScope.SchemaNode        := AValue;
-    LNewScope.InstanceNode      := LPair.JsonString;
-    LNewScope.InstancePath      := Format('%s/%s', [LScope.InstancePath, LPair.JsonString.Value]);
-    LNewScope.CoveredItems      := [];
-    LNewScope.ContainsCount     := 0;
-    LNewScope.VisitedKeywords   := [];
-    LNewScope.CoveredProperties := [];
-
-    Visitor.PushScope(LNewScope);
-    LVisitor := Visitor.New(LNewScope.SchemaNode, LNewScope.InstanceNode, LScope.BaseURI);
-    try
-      LWalker := TWalker<TDraft2019_09Visitor>.Create(LNewScope.SchemaNode, LVisitor);
-      LWalker.Walk;
-    finally
-      Visitor.PopScope;
-    end;
-
-    if not LVisitor.Result.IsValid then
-      Visitor.AddError(vetInvalidPropertyName, [LPair.JsonString.Value]);
-  end;
-end;
-
-{ TDraft2019_09HyperSchemaVisitor }
-
-procedure TDraft2019_09HyperSchemaVisitor.VisitAnchor(const AValue: TJSONString);
-begin
-
-end;
-
-procedure TDraft2019_09HyperSchemaVisitor.VisitAnchorPointer(const AValue: TJSONString);
-begin
-
-end;
-
-procedure TDraft2019_09HyperSchemaVisitor.VisitDescription(const AValue: TJSONString);
-begin
-
-end;
-
-procedure TDraft2019_09HyperSchemaVisitor.VisitHeaderSchema(const AValue: TJSONValue);
-begin
-
-end;
-
-procedure TDraft2019_09HyperSchemaVisitor.VisitRel(const AValue: TJSONString);
-begin
-
-end;
-
-procedure TDraft2019_09HyperSchemaVisitor.VisitSubmissionMediaType(const AValue: TJSONString);
-begin
-
-end;
-
-procedure TDraft2019_09HyperSchemaVisitor.VisitTargetHints(const AValue: TJSONObject);
-begin
-
-end;
-
-procedure TDraft2019_09HyperSchemaVisitor.VisitTargetMediaType(const AValue: TJSONString);
-begin
-
-end;
-
-procedure TDraft2019_09HyperSchemaVisitor.VisitTemplatePointers(const AValue: TJSONObject);
-begin
-
-end;
-
-procedure TDraft2019_09HyperSchemaVisitor.VisitTemplateRequired(const AValue: TJSONArray);
-begin
-
-end;
-
-procedure TDraft2019_09HyperSchemaVisitor.VisitTitle(const AValue: TJSONString);
-begin
-
+  inherited VisitPropertyNames(AValue);
 end;
 
 { TDraft2019_09ApplicatorVisitor }

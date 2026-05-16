@@ -1,4 +1,4 @@
-unit JsonSchema.Registry.Resource;
+﻿unit JsonSchema.Registry.Resource;
 
 interface
 
@@ -32,6 +32,7 @@ implementation
 uses
   System.SysUtils,
   System.NetEncoding,
+  JsonSchema.Common.Utils,
   JsonSchema.Registry.Utils;
 
 { TResource }
@@ -77,7 +78,6 @@ var
   lIndex: Integer;
   lDecodedId: string;
   lLegacyId: string;
-  lCount: Integer;
   lPointerPath: string;
 begin
   pResolvedBaseURI := FBaseURI.Unsplit;
@@ -119,29 +119,8 @@ begin
         pResolvedBaseURI := TURIReference.From(lLegacyId).ResolveWith(TURIReference.From(pResolvedBaseURI)).Unsplit;
       end;
 
-      lDecodedSegment := '';
-      lCount := 1;
-      while lCount <= Length(lSegment) do
-      begin
-        if lSegment[lCount] = '~' then
-        begin
-          if lCount = Length(lSegment) then
-            Exit(nil);
-
-          case lSegment[lCount + 1] of
-            '0': lDecodedSegment := lDecodedSegment + '~';
-            '1': lDecodedSegment := lDecodedSegment + '/';
-          else
-            Exit(nil);
-          end;
-          Inc(lCount, 2);
-        end
-        else
-        begin
-          lDecodedSegment := lDecodedSegment + lSegment[lCount];
-          Inc(lCount);
-        end;
-      end;
+      if not TUtils.DecodeJsonPointerSegment(lSegment, lDecodedSegment) then
+        Exit(nil);
 
       if lCurrentNode is TJSONObject then
         lCurrentNode := TJSONObject(lCurrentNode).GetValue(lDecodedSegment)

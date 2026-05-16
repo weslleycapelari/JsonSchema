@@ -1,4 +1,4 @@
-unit JsonSchema.Registry.Uri.Validator;
+﻿unit JsonSchema.Registry.Uri.Validator;
 
 interface
 

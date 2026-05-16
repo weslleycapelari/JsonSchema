@@ -1,4 +1,4 @@
-unit Schema2Delphi.Utils;
+ï»¿unit Schema2Delphi.Utils;
 
 interface
 
@@ -18,8 +18,8 @@ var
   LIdValue: TJSONValue;
   LBuilder: TStringBuilder;
 begin
-  // A URI base é crucial para resolver referências corretamente
-  LBaseURI := 'urn:uuid:' + TGuid.NewGuid.ToString; // Gera uma URI anônima
+  // A URI base ï¿½ crucial para resolver referï¿½ncias corretamente
+  LBaseURI := 'urn:uuid:' + TGuid.NewGuid.ToString; // Gera uma URI anï¿½nima
   if (ASchema is TJSONObject) and ASchema.TryGetValue('$id', LIdValue) and (LIdValue is TJSONString) then
   begin
     LBaseURI := (LIdValue as TJSONString).Value;
@@ -28,7 +28,7 @@ begin
   // --- PASSO 1: Criar e popular o Registry ---
   LRegistry := TRegistryVisitor.Create(ASchema, nil, LBaseURI);
 
-  // --- PASSO 2: Instanciar e executar o gerador de código ---
+  // --- PASSO 2: Instanciar e executar o gerador de cï¿½digo ---
   LCodeGenerator := TJsonSchemaCodeGenerator.Create(LRegistry);
   try
     LBuilder := TStringBuilder.Create;
@@ -37,10 +37,10 @@ begin
       LBuilder.AppendLine;
       LBuilder.AppendLine('interface');
       LBuilder.AppendLine;
-      LBuilder.AppendLine('uses STS.API.Utils, STS.API.Types, Rest.JsonReflect;'); // Adicionar units necessárias
+      LBuilder.AppendLine('uses STS.API.Utils, STS.API.Types, Rest.JsonReflect;'); // Adicionar units necessï¿½rias
       LBuilder.AppendLine;
       LBuilder.AppendLine('type');
-      // A chamada ao GenerateCode agora orquestra todo o processo de geração
+      // A chamada ao GenerateCode agora orquestra todo o processo de geraï¿½ï¿½o
       LBuilder.AppendLine(LCodeGenerator.GenerateCode(ASchema, 'T' + AClassName, LBaseURI).TrimRight);
       LBuilder.AppendLine;
       LBuilder.AppendLine('end.');

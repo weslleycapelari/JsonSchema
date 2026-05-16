@@ -1,4 +1,4 @@
-unit JsonSchema.Registry.Uri;
+﻿unit JsonSchema.Registry.Uri;
 
 interface
 
@@ -22,7 +22,7 @@ type
     /// <param name="AURIString">A string da URI a ser parseada.</param>
     /// <param name="AEncoding">A codifica��o da string (padr�o 'utf-8').</param>
     /// <returns>Uma inst�ncia de TURIReference preenchida.</returns>
-    class function From(const AURIString: string; const AEncoding: string = 'utf-8'): TURIReference; static;
+    class function From(const pURIString: string; const pEncoding: string = 'utf-8'): TURIReference; static;
 
     /// <summary>Recomp�e os componentes da URI em uma �nica string.</summary>
     /// <returns>A string completa da URI.</returns>
@@ -43,18 +43,18 @@ type
     /// <param name="ABaseURI">A URI base absoluta para a resolu��o.</param>
     /// <returns>Uma nova inst�ncia de TURIReference representando a URI resolvida.</returns>
     /// <remarks>Refer�ncia RFC 3986: Se��o 5.2.</remarks>
-    function ResolveWith(const ABaseURI: TURIReference): TURIReference;
+    function ResolveWith(const pBaseURI: TURIReference): TURIReference;
 
     /// <summary>Cria uma c�pia desta refer�ncia, substituindo os componentes especificados.</summary>
-    function CopyWith(const AScheme, AAuthority, APath, AQuery, AFragment: string): TURIReference;
+    function CopyWith(const pScheme, pAuthority, pPath, pQuery, pFragment: string): TURIReference;
 
     /// <summary>Indica se esta URI e a parametrizada possui a mesma origem</summary>
-    function IsSameOrigin(const AURI: TURIReference): Boolean;
+    function IsSameOrigin(const pURI: TURIReference): Boolean;
 
-    class operator Equal(const A, B: TURIReference): Boolean;
-    class operator NotEqual(const A, B: TURIReference): Boolean;
+    class operator Equal(const pA, pB: TURIReference): Boolean;
+    class operator NotEqual(const pA, pB: TURIReference): Boolean;
 
-    class function New(const AURIString: string): TURIReference; static;
+    class function New(const pURIString: string): TURIReference; static;
 
     /// <summary>O componente 'scheme' da URI (ex: 'http', 'ftp').</summary>
     property Scheme: string read FScheme write FScheme;
@@ -87,33 +87,33 @@ uses
 
 { TURIReference }
 
-function TURIReference.CopyWith(const AScheme, AAuthority, APath, AQuery, AFragment: string): TURIReference;
+function TURIReference.CopyWith(const pScheme, pAuthority, pPath, pQuery, pFragment: string): TURIReference;
 begin
-  Result.FScheme := AScheme;
-  Result.FAuthority := AAuthority;
-  Result.FPath := APath;
-  Result.FQuery := AQuery;
-  Result.FFragment := AFragment;
+  Result.FScheme := pScheme;
+  Result.FAuthority := pAuthority;
+  Result.FPath := pPath;
+  Result.FQuery := pQuery;
+  Result.FFragment := pFragment;
   Result.FEncoding := Self.FEncoding;
 end;
 
-class operator TURIReference.Equal(const A, B: TURIReference): Boolean;
+class operator TURIReference.Equal(const pA, pB: TURIReference): Boolean;
 var
   NormA, NormB: TURIReference;
 begin
   // Compara��o simples
-  Result := (A.FScheme = B.FScheme) and
-            (A.FAuthority = B.FAuthority) and
-            (A.FPath = B.FPath) and
-            (A.FQuery = B.FQuery) and
-            (A.FFragment = B.FFragment);
+  Result := (pA.FScheme = pB.FScheme) and
+            (pA.FAuthority = pB.FAuthority) and
+            (pA.FPath = pB.FPath) and
+            (pA.FQuery = pB.FQuery) and
+            (pA.FFragment = pB.FFragment);
 
   if Result then
     Exit;
 
   // Compara��o normalizada (RFC 6.2.2)
-  NormA := A.Normalize;
-  NormB := B.Normalize;
+  NormA := pA.Normalize;
+  NormB := pB.Normalize;
   Result := (NormA.FScheme = NormB.FScheme) and
             (NormA.FAuthority = NormB.FAuthority) and
             (NormA.FPath = NormB.FPath) and
@@ -121,40 +121,40 @@ begin
             (NormA.FFragment = NormB.FFragment);
 end;
 
-class function TURIReference.From(const AURIString, AEncoding: string): TURIReference;
+class function TURIReference.From(const pURIString, pEncoding: string): TURIReference;
 var
-  LMatch: TMatch;
+  lMatch: TMatch;
 
-  function GetGroupValue(const AName: string): string;
+  function GetGroupValue(const pName: string): string;
   begin
-    if not LMatch.Groups.ContainsNamedGroup(AName) then
+    if not lMatch.Groups.ContainsNamedGroup(pName) then
       Exit;
 
-    Result := LMatch.Groups[AName].Value;
+    Result := lMatch.Groups[pName].Value;
   end;
 begin
-  if AURIString.IsEmpty then
+  if pURIString.IsEmpty then
     Exit;
 
-  LMatch := TRegEx.Create(URI_PATTERN).Match(AURIString);
+  lMatch := TRegEx.Create(URI_PATTERN).Match(pURIString);
 
-  if not LMatch.Success then
-    raise ERFC3986Exception.CreateFmt('Invalid URI string: "%s"', [AURIString]);
+  if not lMatch.Success then
+    raise ERFC3986Exception.CreateFmt('Invalid URI string: "%s"', [pURIString]);
 
   Result.FScheme    := GetGroupValue('scheme');
   Result.FAuthority := GetGroupValue('authority');
   Result.FPath      := GetGroupValue('path');
   Result.FQuery     := GetGroupValue('query');
   Result.FFragment  := GetGroupValue('fragment');
-  Result.FEncoding  := AEncoding;
+  Result.FEncoding  := pEncoding;
 end;
 
 function TURIReference.Host: string;
 var
-  LUserInfo, LHost, LPort: string;
+  lUserInfo, lHost, lPort: string;
 begin
-  TURIUtils.ParseAuthority(Self.FAuthority, LUserInfo, LHost, LPort);
-  Result := LHost;
+  TURIUtils.ParseAuthority(Self.FAuthority, lUserInfo, lHost, lPort);
+  Result := lHost;
 end;
 
 function TURIReference.IsAbsolute: Boolean;
@@ -163,36 +163,36 @@ begin
   Result := (FScheme <> '') and (FFragment = '');
 end;
 
-function TURIReference.IsSameOrigin(const AURI: TURIReference): Boolean;
+function TURIReference.IsSameOrigin(const pURI: TURIReference): Boolean;
 var
   NormA, NormB: TURIReference;
 begin
   // Compara��o simples
-  Result := (Self.FScheme = AURI.FScheme) and
-            (Self.FAuthority = AURI.FAuthority){ and
-            (Self.FPath = AURI.FPath)};
+  Result := (Self.FScheme = pURI.FScheme) and
+            (Self.FAuthority = pURI.FAuthority){ and
+            (Self.FPath = pURI.FPath)};
 
   if Result then
     Exit;
 
   // Compara��o normalizada (RFC 6.2.2)
   NormA := Self.Normalize;
-  NormB := AURI.Normalize;
+  NormB := pURI.Normalize;
   Result := (NormA.FScheme = NormB.FScheme) and
             (NormA.FAuthority = NormB.FAuthority){ and
             (NormA.FPath = NormB.FPath)};
 end;
 
-class function TURIReference.New(const AURIString: string): TURIReference;
+class function TURIReference.New(const pURIString: string): TURIReference;
 begin
   // Delega a chamada diretamente para o m�todo 'From' do record TURIReference.
-  Result := TURIReference.From(AURIString);
+  Result := TURIReference.From(pURIString);
 end;
 
 function TURIReference.Normalize: TURIReference;
 var
-  LUserInfo, LHost, LPort, LUsername, LPassword: string;
-  LAuthorityBuilder: TStringBuilder;
+  lUserInfo, lHost, lPort, lUsername, lPassword: string;
+  lAuthorityBuilder: TStringBuilder;
 begin
   // 1. Normaliza o Scheme (lowercase)
   Result.FScheme := TURIUtils.NormalizeScheme(Self.FScheme);
@@ -201,40 +201,40 @@ begin
   if Self.FAuthority <> '' then
   begin
     // 2a. Decomp�e a autoridade em suas partes
-    TURIUtils.ParseAuthority(Self.FAuthority, LUserInfo, LHost, LPort);
-    TURIUtils.ParseUserInfo(LUserInfo, LUsername, LPassword);
+    TURIUtils.ParseAuthority(Self.FAuthority, lUserInfo, lHost, lPort);
+    TURIUtils.ParseUserInfo(lUserInfo, lUsername, lPassword);
 
     // 2b. Normaliza cada subcomponente individualmente
-    LHost := LHost.ToLower;
-    // A porta (LPort) n�o possui normaliza��o de sintaxe (apenas de esquema, como remover a porta 80 para http)
+    lHost := lHost.ToLower;
+    // A porta (lPort) n�o possui normaliza��o de sintaxe (apenas de esquema, como remover a porta 80 para http)
 
     // 2c. Reconstr�i a string da autoridade a partir das partes normalizadas
-    LAuthorityBuilder := TStringBuilder.Create;
+    lAuthorityBuilder := TStringBuilder.Create;
     try
-      if not LUserInfo.IsEmpty then
+      if not lUserInfo.IsEmpty then
       begin
-        if not LUsername.IsEmpty then
-          LAuthorityBuilder.Append(TURIUtils.EncodingUserInfo(LUsername));
+        if not lUsername.IsEmpty then
+          lAuthorityBuilder.Append(TURIUtils.EncodingUserInfo(lUsername));
 
-        if not LPassword.IsEmpty then
+        if not lPassword.IsEmpty then
         begin
-          LAuthorityBuilder.Append(':');
-          LAuthorityBuilder.Append(TURIUtils.EncodingUserInfo(LPassword));
+          lAuthorityBuilder.Append(':');
+          lAuthorityBuilder.Append(TURIUtils.EncodingUserInfo(lPassword));
         end;
 
-        LAuthorityBuilder.Append('@');
+        lAuthorityBuilder.Append('@');
       end;
 
-      LAuthorityBuilder.Append(LHost);
+      lAuthorityBuilder.Append(lHost);
 
-      if not LPort.IsEmpty then
+      if not lPort.IsEmpty then
       begin
-        LAuthorityBuilder.Append(':');
-        LAuthorityBuilder.Append(LPort);
+        lAuthorityBuilder.Append(':');
+        lAuthorityBuilder.Append(lPort);
       end;
-      Result.FAuthority := LAuthorityBuilder.ToString;
+      Result.FAuthority := lAuthorityBuilder.ToString;
     finally
-      LAuthorityBuilder.Free;
+      lAuthorityBuilder.Free;
     end;
   end
   else
@@ -251,26 +251,26 @@ begin
   Result.FEncoding := Self.FEncoding;
 end;
 
-class operator TURIReference.NotEqual(const A, B: TURIReference): Boolean;
+class operator TURIReference.NotEqual(const pA, pB: TURIReference): Boolean;
 begin
-  Result := not (A = B);
+  Result := not (pA = pB);
 end;
 
 function TURIReference.Port: string;
 var
-  LUserInfo, LHost, LPort: string;
+  lUserInfo, lHost, lPort: string;
 begin
-  TURIUtils.ParseAuthority(Self.FAuthority, LUserInfo, LHost, LPort);
-  Result := LPort;
+  TURIUtils.ParseAuthority(Self.FAuthority, lUserInfo, lHost, lPort);
+  Result := lPort;
 end;
 
-function TURIReference.ResolveWith(const ABaseURI: TURIReference): TURIReference;
+function TURIReference.ResolveWith(const pBaseURI: TURIReference): TURIReference;
 begin
   // Implementa��o do algoritmo da RFC 3986, Se��o 5.2.2.
-  //if not ABaseURI.IsAbsolute then
+  //if not pBaseURI.IsAbsolute then
   //  raise EResolutionError.Create('Base URI must be an absolute URI.');
 
-  // R = Self, Base = ABaseURI, T = Result
+  // R = Self, Base = pBaseURI, T = Result
   if Self.FScheme <> '' then
   begin
     Result.FScheme    := Self.FScheme;
@@ -290,11 +290,11 @@ begin
     begin
       if Self.FPath = '' then
       begin
-        Result.FPath := ABaseURI.FPath;
+        Result.FPath := pBaseURI.FPath;
         if Self.FQuery <> '' then
           Result.FQuery := Self.FQuery
         else
-          Result.FQuery := ABaseURI.FQuery;
+          Result.FQuery := pBaseURI.FQuery;
       end
       else
       begin
@@ -303,17 +303,17 @@ begin
         else
         begin
           var LMergedPath: string;
-          if (ABaseURI.FAuthority <> '') and (ABaseURI.FPath = '') then
+          if (pBaseURI.FAuthority <> '') and (pBaseURI.FPath = '') then
             LMergedPath := '/' + Self.FPath
           else
-            LMergedPath := TURIUtils.MergePaths(ABaseURI.FPath, Self.FPath);
+            LMergedPath := TURIUtils.MergePaths(pBaseURI.FPath, Self.FPath);
           Result.FPath := TURIUtils.RemoveDotSegments(LMergedPath);
         end;
         Result.FQuery := Self.FQuery;
       end;
-      Result.FAuthority := ABaseURI.FAuthority;
+      Result.FAuthority := pBaseURI.FAuthority;
     end;
-    Result.FScheme := ABaseURI.FScheme;
+    Result.FScheme := pBaseURI.FScheme;
   end;
 
   Result.FFragment := Self.FFragment;
@@ -363,10 +363,10 @@ end;
 
 function TURIReference.UserInfo: string;
 var
-  LUserInfo, LHost, LPort: string;
+  lUserInfo, lHost, lPort: string;
 begin
-  TURIUtils.ParseAuthority(Self.FAuthority, LUserInfo, LHost, LPort);
-  Result := LUserInfo;
+  TURIUtils.ParseAuthority(Self.FAuthority, lUserInfo, lHost, lPort);
+  Result := lUserInfo;
 end;
 
 end.

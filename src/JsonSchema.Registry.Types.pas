@@ -1,4 +1,4 @@
-unit JsonSchema.Registry.Types;
+﻿unit JsonSchema.Registry.Types;
 
 interface
 

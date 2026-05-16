@@ -1,4 +1,4 @@
-unit JsonSchema.Validation.Types;
+﻿unit JsonSchema.Validation.Types;
 
 interface
 

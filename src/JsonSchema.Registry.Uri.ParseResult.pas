@@ -1,10 +1,10 @@
-unit JsonSchema.Registry.Uri.ParseResult;
+ï»¿unit JsonSchema.Registry.Uri.ParseResult;
 
 interface
 
 type
-  /// <summary>Representa o resultado de um parse de URI, compatível com a função 'urlparse' de outras linguagens.</summary>
-  /// <remarks>Oferece uma visão mais detalhada dos subcomponentes da autoridade. Referência RFC 3986: Apêndice B.</remarks>
+  /// <summary>Representa o resultado de um parse de URI, compatï¿½vel com a funï¿½ï¿½o 'urlparse' de outras linguagens.</summary>
+  /// <remarks>Oferece uma visï¿½o mais detalhada dos subcomponentes da autoridade. Referï¿½ncia RFC 3986: Apï¿½ndice B.</remarks>
   TURIParseResult = record
     Scheme: string;
     UserInfo: string;
@@ -39,10 +39,10 @@ var
   LPortInt: Integer;
   LUserInfo, LUsername, LPassword: string;
 begin
-  // 1. Reutilizamos o parser principal para obter os 5 componentes genéricos.
+  // 1. Reutilizamos o parser principal para obter os 5 componentes genï¿½ricos.
   LURI := TURIReference.From(AURIString, AEncoding);
 
-  // 2. Atribuímos os componentes que são mapeados diretamente.
+  // 2. Atribuï¿½mos os componentes que sï¿½o mapeados diretamente.
   Result.Scheme   := LURI.Scheme;
   Result.Path     := LURI.Path;
   Result.Query    := LURI.Query;
@@ -61,14 +61,14 @@ begin
       Result.UserInfo := Result.UserInfo + ':' + TURIUtils.EncodingUserInfo(LPassword);
   end;
 
-  // 4. Convertemos a string da porta para Word, com validação.
+  // 4. Convertemos a string da porta para Word, com validaï¿½ï¿½o.
   if LPortStr <> '' then
   begin
-    // Usamos TryStrToInt para evitar exceções em casos de formato inválido.
+    // Usamos TryStrToInt para evitar exceï¿½ï¿½es em casos de formato invï¿½lido.
     if not TryStrToInt(LPortStr, LPortInt) then
       raise EInvalidAuthority.CreateFmt('Invalid port value in authority component: "%s"', [LPortStr]);
 
-    // Validamos se a porta está no range válido (0-65535).
+    // Validamos se a porta estï¿½ no range vï¿½lido (0-65535).
     if (LPortInt < 0) or (LPortInt > High(Word)) then
       raise EInvalidAuthority.CreateFmt('Port value out of range (0-65535): %d', [LPortInt]);
 
@@ -90,7 +90,7 @@ function TURIParseResult.Netloc: string;
 var
   LBuilder: TStringBuilder;
 begin
-  // Não faz sentido ter uma autoridade sem um host.
+  // Nï¿½o faz sentido ter uma autoridade sem um host.
   if Self.Host = '' then
     Exit('');
 
