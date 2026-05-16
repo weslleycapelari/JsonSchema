@@ -6,9 +6,11 @@ program TestJsonSchema;
 
 uses
   DUnitTestRunner,
-  TestJsonSchema.Paths in '..\src\TestJsonSchema.Paths.pas',
-  TestJsonSchema.RunDrafts in '..\src\TestJsonSchema.RunDrafts.pas',
-  TestJsonSchema.RemoteFiles in '..\src\TestJsonSchema.RemoteFiles.pas',
+  TestJsonSchema.Mock.HttpServer in '..\src\TestJsonSchema.Mock.HttpServer.pas',
+  TestJsonSchema.Runner.DUnit in '..\src\TestJsonSchema.Runner.DUnit.pas',
+  TestJsonSchema.Types in '..\src\TestJsonSchema.Types.pas',
+  TestJsonSchema.Utils.DraftResolver in '..\src\TestJsonSchema.Utils.DraftResolver.pas',
+  TestJsonSchema.Utils.Paths in '..\src\TestJsonSchema.Utils.Paths.pas',
   JsonSchema.Common.Utils in '..\..\src\JsonSchema.Common.Utils.pas',
   JsonSchema in '..\..\src\JsonSchema.pas',
   JsonSchema.Translate.enUS in '..\..\src\JsonSchema.Translate.enUS.pas',
@@ -39,7 +41,25 @@ uses
 
 {$R *.RES}
 
+const
+  PORTA_SERVIDOR_REMOTO = 1234;
+
+var
+  lServer: TMockHttpServer;
+
 begin
-  TJsonSchemaValidationTest.RegisterDefaultDrafts;
-  DUnitTestRunner.RunRegisteredTests;
+  { Inicialização da Infraestrutura de Mock (Mocks para testes remotos) }
+  lServer := TMockHttpServer.Create;
+  try
+    lServer.Start(PORTA_SERVIDOR_REMOTO);
+
+    { Registro dos Drafts seguindo o padrão Builder / Fluente (KISS) }
+    TJsonSchemaValidationTest.RegisterDefaultDrafts;
+
+    { Dispara a interface do DUnit (GUI ou Console dependendo da compilação) }
+    DUnitTestRunner.RunRegisteredTests;
+  finally
+    lServer.Stop;
+    lServer.Free;
+  end;
 end.
