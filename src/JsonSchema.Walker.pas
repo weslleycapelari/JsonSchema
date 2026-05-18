@@ -1,4 +1,4 @@
-﻿unit JsonSchema.Walker;
+unit JsonSchema.Walker;
 
 interface
 
@@ -42,6 +42,7 @@ implementation
 uses
   System.Rtti,
   System.SysUtils,
+  System.TypInfo,
   JsonSchema.Common.Utils,
   JsonSchema.Validation.Base,
   JsonSchema.Validation.Draft6,
@@ -84,6 +85,7 @@ var
   LMethodPtr: TMethod;
   LAttribute: TCustomAttribute;
   LParameters: TArray<TRttiParameter>;
+  LKeyword: string;
 begin
   LContext := TRttiContext.Create;
   LObjects := [
@@ -100,6 +102,10 @@ begin
       Continue;
 
     LType := LContext.GetType(LObject.ClassType);
+
+    // GetMethods retorna metodos na ordem VMT: base primeiro, derivados (reintroduce) depois.
+    // Usando AddOrSetValue (ultimo vence), o metodo derivado (reintroduce) ganha
+    // precedencia sobre o metodo da classe base com o mesmo keyword.
     for LMethod in LType.GetMethods do
     begin
       for LAttribute in LMethod.GetAttributes do
@@ -107,7 +113,9 @@ begin
         if not (LAttribute is VisitorKeywordAttribute) then
           Continue;
 
-        if VisitorKeywordAttribute(LAttribute).Name.IsEmpty then
+        LKeyword := VisitorKeywordAttribute(LAttribute).Name;
+
+        if LKeyword.IsEmpty then
           Continue;
 
         LParameters := LMethod.GetParameters;
@@ -119,7 +127,7 @@ begin
         LMethodPtr.Code := LMethod.CodeAddress;
         LMethodPtr.Data := LObject;
 
-        FVisitorMethod.AddOrSetValue(VisitorKeywordAttribute(LAttribute).Name, TVisitorProc(LMethodPtr));
+        FVisitorMethod.AddOrSetValue(LKeyword, TVisitorProc(LMethodPtr));
       end;
     end;
   end;

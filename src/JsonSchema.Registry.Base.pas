@@ -45,6 +45,8 @@ type
     procedure VisitRef(const pValue: TJSONString);
     [VisitorKeyword('$anchor')]
     procedure VisitAnchor(const pValue: TJSONString);
+    [VisitorKeyword('$dynamicAnchor')]
+    procedure VisitDynamicAnchor(const pValue: TJSONString);
     [VisitorKeyword('definitions')]
     [VisitorKeyword('$defs')]
     procedure VisitDefinitions(const pValue: TJSONObject);
@@ -220,6 +222,12 @@ begin
   else if (lCanonicalURI = 'http://json-schema.org/draft/2019-09/schema') or
           (lCanonicalURI = 'https://json-schema.org/draft/2019-09/schema') then
     lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\schema.json')
+  else if (lCanonicalURI = 'https://json-schema.org/draft/2020-12/schema') then
+    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2020-12\schema.json')
+  else if lCanonicalURI.EndsWith('/draft2020-12/baseurichangefolder/baseurichangefolder/folderinteger.json') then
+    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2020-12\baseUriChangeFolder\folderInteger.json')
+  else if lCanonicalURI.EndsWith('/draft2020-12/baseurichangefolderinsubschema/baseurichangefolderinsubschema/folderinteger.json') then
+    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2020-12\baseUriChangeFolderInSubschema\folderInteger.json')
   else if lCanonicalURI.EndsWith('/draft2019-09/baseurichangefolder/baseurichangefolder/folderinteger.json') then
       lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolder\folderInteger.json')
     else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/core') then
@@ -238,6 +246,25 @@ begin
     lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolderInSubschema\folderInteger.json')
   else
   begin
+    if lCanonicalURI.StartsWith('http://test.json-schema.org/') or
+       lCanonicalURI.StartsWith('https://test.json-schema.org/') then
+    begin
+      lRelativeRemotePath := pRemoteURI;
+      lRelativeRemotePath := StringReplace(lRelativeRemotePath, 'http://test.json-schema.org/', '', [rfIgnoreCase]);
+      lRelativeRemotePath := StringReplace(lRelativeRemotePath, 'https://test.json-schema.org/', '', [rfIgnoreCase]);
+      lRelativeRemotePath := StringReplace(lRelativeRemotePath, '/', PathDelim, [rfReplaceAll]);
+
+      lCandidatePath := TPath.Combine(lRepoRootPath, TPath.Combine('test\schemas\remotes\draft2020-12', lRelativeRemotePath));
+      if not FileExists(lCandidatePath) and not lCandidatePath.EndsWith('.json') then
+        lCandidatePath := lCandidatePath + '.json';
+
+      if FileExists(lCandidatePath) then
+      begin
+        pMappedFilePath := lCandidatePath;
+        Exit(True);
+      end;
+    end;
+
     if IsLocalTestServerURI(pRemoteURI) then
     begin
       lRelativeRemotePath := StringReplace(pRemoteURI, 'http://localhost:1234/', '', [rfIgnoreCase]);
@@ -500,6 +527,21 @@ begin
       lResource.AddAnchor(lAbsoluteAnchor, lScope.SchemaNode);
     end;
   end;
+end;
+
+procedure TBaseRegistryCoreVisitor.VisitDynamicAnchor(const pValue: TJSONString);
+var
+  lScope: TScope;
+  lResource: TResource;
+  lAnchorName: string;
+begin
+  lScope := Visitor.CurrentScope;
+  lAnchorName := pValue.Value;
+  if lAnchorName.StartsWith('#') then
+    lAnchorName := lAnchorName.Substring(1);
+
+  if Visitor.TryFindResource(lScope.BaseURI, lResource) and (not lAnchorName.IsEmpty) then
+    lResource.AddDynamicAnchor(lAnchorName, lScope.SchemaNode);
 end;
 
 procedure TBaseRegistryCoreVisitor.VisitBooleanSchema(const pValue: TJSONBool);

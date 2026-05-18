@@ -14,12 +14,14 @@ type
   TValidationResult = class(TInterfacedPersistent, IValidationResult)
   private
     FErrors: TArray<IError>;
+    FAnnotations: THashSet<string>;
     FEvaluatedProperties: THashSet<string>;
   public
     constructor Create;
     destructor Destroy; override;
     function Errors: TArray<IError>;
     function AddError(const AError: IError): IValidationResult;
+    function AddAnnotation(const AKeyword, AValue: string): IValidationResult;
     function AddEvaluatedProperty(const AProperty: string): IValidationResult;
     function IsValid: Boolean;
     function EvaluatedProperties: TEnumerable<string>;
@@ -64,18 +66,49 @@ type
 implementation
 
 uses
-  System.SysUtils;
+  System.SysUtils,
+  System.StrUtils;
+
+function NormalizeEvaluatedPath(const APath: string): string;
+begin
+  Result := Trim(APath);
+
+  if Result.IsEmpty or (Result = '#') then
+    Exit('/');
+
+  if Result.StartsWith('##') then
+    Result := Result.Substring(1);
+
+  if Result.StartsWith('#/') then
+    Result := Result.Substring(1)
+  else if Result.StartsWith('#.') then
+    Result := '/' + StringReplace(Result.Substring(2), '.', '/', [rfReplaceAll])
+  else if Result.StartsWith('.') then
+    Result := '/' + StringReplace(Result.Substring(1), '.', '/', [rfReplaceAll])
+  else if Result.StartsWith('#') then
+    Result := '/' + Result.Substring(1)
+  else if not Result.StartsWith('/') then
+    Result := '/' + Result;
+
+  while Pos('//', Result) > 0 do
+    Result := StringReplace(Result, '//', '/', [rfReplaceAll]);
+
+  if Result.EndsWith('/') and (Result <> '/') then
+    Delete(Result, Length(Result), 1);
+end;
 
 { TValidationResult }
 
 constructor TValidationResult.Create;
 begin
   inherited;
+  FAnnotations := THashSet<string>.Create;
   FEvaluatedProperties := THashSet<string>.Create;
 end;
 
 destructor TValidationResult.Destroy;
 begin
+  FAnnotations.Free;
   FEvaluatedProperties.Free;
   inherited;
 end;
@@ -87,11 +120,23 @@ begin
   FErrors[Length(FErrors) - 1] := AError;
 end;
 
+function TValidationResult.AddAnnotation(const AKeyword, AValue: string): IValidationResult;
+begin
+  Result := Self;
+  if not AKeyword.IsEmpty then
+    FAnnotations.Add(AKeyword + #0 + AValue);
+end;
+
 function TValidationResult.AddEvaluatedProperty(const AProperty: string): IValidationResult;
+var
+  LCanonicalPath: string;
 begin
   Result := Self;
   if not AProperty.IsEmpty then
-    FEvaluatedProperties.Add(AProperty);
+  begin
+    LCanonicalPath := NormalizeEvaluatedPath(AProperty);
+    FEvaluatedProperties.Add(LCanonicalPath);
+  end;
 end;
 
 function TValidationResult.EvaluatedProperties: TEnumerable<string>;

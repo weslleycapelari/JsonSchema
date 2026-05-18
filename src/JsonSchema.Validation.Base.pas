@@ -18,6 +18,13 @@ uses
 
 type
   // Interface por GUID para evitar dependência direta do unit de draft.
+  IDraftFormatAssertionMode = interface(IInterface)
+    ['{1E9E0329-00E8-47F6-AB75-A0A33A3774E4}']
+    function IsFormatAssertionEnabled: Boolean;
+    procedure SetFormatAssertionEnabled(const AValue: Boolean);
+  end;
+
+  // Interface por GUID para evitar dependência direta do unit de draft.
   IDraft2019_09ValidationVocabularyMode = interface(IInterface)
     ['{7D1B6A0D-31EA-4F2F-9A45-77A2D65A8E5B}']
     function IsValidationVocabularySilent: Boolean;
@@ -496,6 +503,7 @@ var
   LItemIndex: Integer;
   LPrecedenceKey: string;
   LCurrentHandlesNewDrafts: Boolean;
+  LCurrentDraftVersion: TDraftVersion;
   LResultEvaluatedBefore: THashSet<string>;
 begin
   if not Supports(Visitor, IValidationVisitor<T>, LValidationVisitor) then
@@ -553,16 +561,24 @@ begin
     // Verifica se o visitor atual j\u00e1 suporta nativamente os drafts 2019-09/2020-12.
     // Se sim, n\u00e3o usar o caminho cross-draft para refs do mesmo draft (preserva o dynamic scope chain).
     LCurrentHandlesNewDrafts := False;
+    LCurrentDraftVersion := TDraftVersion.dvUnknown;
     for LPrecedenceKey in Visitor.KeywordPrecedence do
-      if (LPrecedenceKey = '$recursiveRef') or (LPrecedenceKey = '$dynamicRef') then
+      if LPrecedenceKey = '$dynamicRef' then
       begin
         LCurrentHandlesNewDrafts := True;
+        LCurrentDraftVersion := TDraftVersion.dvDraft2020_12;
+        Break;
+      end
+      else if LPrecedenceKey = '$recursiveRef' then
+      begin
+        LCurrentHandlesNewDrafts := True;
+        LCurrentDraftVersion := TDraftVersion.dvDraft2019_09;
         Break;
       end;
 
     if ((LTargetDraftVersion = TDraftVersion.dvDraft7) and LCurrentHandlesNewDrafts) or
        ((LTargetDraftVersion in [TDraftVersion.dvDraft2019_09, TDraftVersion.dvDraft2020_12]) and
-        not LCurrentHandlesNewDrafts) then
+        ((not LCurrentHandlesNewDrafts) or (LCurrentDraftVersion <> LTargetDraftVersion))) then
     begin
       LCrossDraftResult := TJsonSchema.Validate(LTargetSchema, LScope.InstanceNode, LTargetDraftVersion);
 
@@ -598,9 +614,13 @@ begin
         LValidationVisitor.Result.AddEvaluatedProperty(LNormalizedEvaluatedProperty);
 
         // Em modo cross-draft, reconstrói cobertura local para unevaluated* do visitor pai.
-        if LNormalizedEvaluatedProperty.StartsWith(LScope.InstancePath + '/') then
+        if ((LScope.InstancePath = '#') and LNormalizedEvaluatedProperty.StartsWith('/')) or
+           ((LScope.InstancePath <> '#') and LNormalizedEvaluatedProperty.StartsWith(LScope.InstancePath + '/')) then
         begin
-          LRelativePath := LNormalizedEvaluatedProperty.Substring((LScope.InstancePath + '/').Length);
+          if LScope.InstancePath = '#' then
+            LRelativePath := LNormalizedEvaluatedProperty.Substring(1)
+          else
+            LRelativePath := LNormalizedEvaluatedProperty.Substring((LScope.InstancePath + '/').Length);
           LSegmentSeparator := Pos('/', LRelativePath);
           if LSegmentSeparator > 0 then
             LFirstSegment := Copy(LRelativePath, 1, LSegmentSeparator - 1)
@@ -758,9 +778,13 @@ begin
           LValidationVisitor.Result.AddEvaluatedProperty(LNormalizedEvaluatedProperty);
 
           // Em refs no mesmo draft, reconstruí cobertura local para unevaluated* no escopo pai.
-          if LNormalizedEvaluatedProperty.StartsWith(LScope.InstancePath + '/') then
+          if ((LScope.InstancePath = '#') and LNormalizedEvaluatedProperty.StartsWith('/')) or
+             ((LScope.InstancePath <> '#') and LNormalizedEvaluatedProperty.StartsWith(LScope.InstancePath + '/')) then
           begin
-            LRelativePath := LNormalizedEvaluatedProperty.Substring((LScope.InstancePath + '/').Length);
+            if LScope.InstancePath = '#' then
+              LRelativePath := LNormalizedEvaluatedProperty.Substring(1)
+            else
+              LRelativePath := LNormalizedEvaluatedProperty.Substring((LScope.InstancePath + '/').Length);
             LSegmentSeparator := Pos('/', LRelativePath);
             if LSegmentSeparator > 0 then
               LFirstSegment := Copy(LRelativePath, 1, LSegmentSeparator - 1)
@@ -884,6 +908,7 @@ var
   LInstance: TJSONArray;
   LMinContainsNode: TJSONValue;
   LMinimumContains: Integer;
+  LItemPath: string;
 begin
   LScope := Visitor.CurrentScope;
   if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
@@ -892,7 +917,17 @@ begin
   if AValue is TJSONBool then
   begin
     if TJSONBool(AValue).AsBoolean and (TJSONArray(LScope.InstanceNode).Count > 0) then
+    begin
+      LInstance := TJSONArray(LScope.InstanceNode);
+      for LCount := 0 to LInstance.Count - 1 do
+      begin
+        TUtils.AddArray<Integer>(LScope.CoveredItems, LCount);
+        LItemPath := Format('%s/%d', [LScope.InstancePath, LCount]);
+        Visitor.Result.AddEvaluatedProperty(LItemPath);
+      end;
+      Visitor.UpdateScope(LScope);
       Exit;
+    end;
 
     if not TJSONBool(AValue).AsBoolean then
     begin
@@ -924,7 +959,12 @@ begin
     end;
 
     if LVisitor.Result.IsValid then
+    begin
       Inc(LScope.ContainsCount);
+      TUtils.AddArray<Integer>(LScope.CoveredItems, LCount);
+      LItemPath := Format('%s/%d', [LScope.InstancePath, LCount]);
+      Visitor.Result.AddEvaluatedProperty(LItemPath);
+    end;
   end;
 
   Visitor.UpdateScope(LScope);
@@ -1107,6 +1147,7 @@ end;
 
 procedure TBaseValidationVisitor<T>.VisitFormat(const AValue: TJSONString);
 var
+  LFormatMode: IDraftFormatAssertionMode;
   LScope: TScope;
   LFormatName: string;
   LInstanceValue: string;
@@ -1152,6 +1193,10 @@ var
   LHasKatakanaMiddleDot: Boolean;
   LHasKanaHanContent: Boolean;
 begin
+  if Supports(Visitor, IDraftFormatAssertionMode, LFormatMode) and
+     (not LFormatMode.IsFormatAssertionEnabled) then
+    Exit;
+
   LScope := Visitor.CurrentScope;
 
   if TUtils.JsonGetType(LScope.InstanceNode) <> 'string' then
@@ -3064,4 +3109,3 @@ begin
 end;
 
 end.
-

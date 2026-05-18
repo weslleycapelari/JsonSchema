@@ -34,6 +34,7 @@ type
 
   IDraft2019_09ApplicatorVisitor = interface(IBaseApplicatorVisitor<TDraft2019_09Visitor>)
     ['{44142A26-AC72-414C-BB83-75DA511A0A36}']
+    procedure VisitPrefixItems(const AValue: TJSONArray);
     procedure VisitDependentSchemas(const AValue: TJSONObject);
     procedure VisitUnevaluatedItems(const AValue: TJSONValue);
     procedure VisitUnevaluatedProperties(const AValue: TJSONValue);
@@ -72,6 +73,8 @@ type
   TDraft2019_09ApplicatorVisitor = class(TBaseApplicatorVisitor<TDraft2019_09Visitor>, IDraft2019_09ApplicatorVisitor)
     [VisitorKeyword('$defs')]
     procedure VisitDefs(const AValue: TJSONObject);
+    [VisitorKeyword('prefixItems')]
+    procedure VisitPrefixItems(const AValue: TJSONArray);
     [VisitorKeyword('dependentSchemas')]
     procedure VisitDependentSchemas(const AValue: TJSONObject);
     [VisitorKeyword('unevaluatedItems')]
@@ -689,6 +692,7 @@ var
   lCount: Integer;
   lWalker: IWalker;
   lSchema: TJSONNumber;
+  lMaxSchema: TJSONNumber;
   lVisitor: TDraft2019_09Visitor;
   lNewScope: TScope;
   lInstance: TJSONArray;
@@ -745,8 +749,8 @@ begin
   try
     VisitMinContains(lSchema);
 
-    if lScope.SchemaNode.TryGetValue('maxContains', lSchema) then
-      VisitMaxContains(lSchema);
+    if lScope.SchemaNode.TryGetValue('maxContains', lMaxSchema) then
+      VisitMaxContains(lMaxSchema);
   finally
     if lMinCreated then
       lSchema.Free;
@@ -963,6 +967,11 @@ begin
   end;
 
   Visitor.UpdateScope(LScope);
+end;
+
+procedure TDraft2019_09ApplicatorVisitor.VisitPrefixItems(const AValue: TJSONArray);
+begin
+  // prefixItems e desconhecido em 2019-09 e deve ser ignorado.
 end;
 
 procedure TDraft2019_09ApplicatorVisitor.VisitUnevaluatedItems(const AValue: TJSONValue);

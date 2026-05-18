@@ -1,0 +1,29 @@
+{
+  "$id": "https://json-schema.org/draft/2020-12/schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$dynamicAnchor": "meta",
+  "type": ["object", "boolean"],
+  "properties": {
+    "$defs": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#" }
+    },
+    "$ref": {
+      "type": "string"
+    },
+    "type": {
+      "anyOf": [
+        { "type": "string" },
+        {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      ]
+    },
+    "minLength": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "additionalProperties": true
+}
