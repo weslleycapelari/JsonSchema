@@ -1,4 +1,4 @@
-﻿unit JsonSchema.Registry.Utils;
+unit JsonSchema.Registry.Utils;
 
 interface
 
@@ -6,54 +6,46 @@ uses
   System.JSON;
 
 type
+  /// <summary>Utility methods for URI normalization, validation, percent-encoding, and JSON Pointer evaluation.</summary>
   TURIUtils = class
-    /// <summary>
-    ///   Fun��o de conveni�ncia para parsear uma string em uma TURIReference.
-    /// </summary>
-    //function URIReference(const AURIString: string): TURIReference;
-
-    /// <summary>Fun��o de conveni�ncia para normalizar uma URI.</summary>
-    /// <returns>A string da URI normalizada.</returns>
+    /// <summary>Normalizes a URI string by parsing and reassembling its components.</summary>
     class function NormalizeURI(const pURIString: string): string; static;
 
-    /// <summary>Fun��o de conveni�ncia para validar uma URI de forma r�pida.</summary>
-    /// <remarks>Realiza uma valida��o gen�rica de sintaxe. Para regras customizadas, utilize a classe TValidator.</remarks>
+    /// <summary>Returns True if pURIString is a syntactically valid absolute URI.</summary>
     class function IsValidURI(const pURIString: string): Boolean; static;
 
-    /// <summary>
-    ///   Fun��o de conveni�ncia para parsear uma URI no formato TParseResult.
-    /// </summary>
-    /// <remarks>
-    ///   An�loga � fun��o 'urlparse' da biblioteca padr�o do Python.
-    /// </remarks>
-    //function URIParse(const AURIString: string): TParseResult;
-
-    /// <summary>Junta o path de uma URI base com um path relativo. RFC 3986, Se��o 5.2.3.</summary>
+    /// <summary>Merges a base path with a relative path per RFC 3986, Section 5.2.3.</summary>
     class function MergePaths(const pBasePath, pRelativePath: string): string; static;
 
+    /// <summary>Splits an authority component into userInfo, host and port sub-components.</summary>
     class procedure ParseAuthority(const pAuthority: string; out pUserInfo, pHost, pPort: string); static;
 
+    /// <summary>Splits a userInfo string into username and password sub-components.</summary>
     class procedure ParseUserInfo(const pUserInfo: string; out pUsername, pPassword: string); static;
 
-    /// <summary>Remove os segmentos '.' e '..'. RFC 3986, Se��o 5.2.4.</summary>
+    /// <summary>Removes '.' and '..' segments from a path per RFC 3986, Section 5.2.4.</summary>
     class function RemoveDotSegments(const pPath: string): string; static;
 
-    /// <summary>Normaliza os caracteres de percent-encoding para uppercase. RFC 3986, Se��o 6.2.2.2.</summary>
+    /// <summary>Normalizes percent-encoding sequences to uppercase per RFC 3986, Section 6.2.2.2.</summary>
     class function NormalizePercentEncoding(const pValue: string): string; static;
 
-    /// <summary>Normaliza o scheme para lowercase. RFC 3986, Se��o 6.2.2.1.</summary>
+    /// <summary>Normalizes the scheme to lowercase per RFC 3986, Section 6.2.2.1.</summary>
     class function NormalizeScheme(const pScheme: string): string; static;
 
+    /// <summary>Encodes a string value applying percent-encoding rules for the given set of unreserved characters.</summary>
     class function Encoding(const pValue, pCustomUnreserved: string): string; static;
 
     /// <summary>
-    ///   Codifica uma string para ser usada no userinfo (username ou password), seguindo as regras da RFC 3986, Se��o 3.2.1.
+    /// Encodes a string for use in the userinfo sub-component per RFC 3986, Section 3.2.1.
+    /// Unreserved characters, sub-delims and ':' are preserved; all others are percent-encoded.
     /// </summary>
-    /// <remarks>Caracteres permitidos s�o: unreserved / sub-delims / ":" Todos os outros, incluindo '@', devem ser codificados.</remarks>
     class function EncodingUserInfo(const pValue: string): string; static;
 
+    /// <summary>Navigates a JSON document using an RFC 6901 JSON Pointer and returns the referenced node.</summary>
     class function EvaluateJsonPointer(const pRootNode: TJSONValue; const pPointer: string): TJSONValue; static;
+    /// <summary>Returns True if the supplied string is a syntactically valid RFC 6901 JSON Pointer.</summary>
     class function IsValidJsonPointer(const pPointer: string): Boolean; static;
+    /// <summary>Returns True if the supplied string is a syntactically valid URI-reference.</summary>
     class function IsValidURIReference(const pURIString: string): Boolean; static;
   end;
 
@@ -99,22 +91,14 @@ begin
         lHex := pValue.Substring(lCount, 2);
         if TryStrToInt('$' + lHex, lByte) then
         begin
-          // � um percent-encoding v�lido
           if not IsReserved(Char(lByte)) then
-          begin
-            // Decodifica se for um caractere n�o reservado
-            lBuilder.Append(Char(lByte));
-          end
+            lBuilder.Append(Char(lByte))
           else
-          begin
-            // Mant�m codificado, mas com hex em mai�sculo
             lBuilder.Append('%' + lHex.ToUpper);
-          end;
           Inc(lCount, 3);
         end
         else
         begin
-          // Sequ�ncia inv�lida, apenas anexa
           lBuilder.Append(pValue[lCount]);
           Inc(lCount);
         end;
@@ -152,48 +136,34 @@ begin
   if not Assigned(pRootNode) then
     Exit(nil);
 
-  // Um ponteiro vazio refere-se ao documento inteiro.
   if pPointer.IsEmpty then
     Exit(pRootNode);
 
-  // Um ponteiro JSON deve come�ar com '/'.
   if not pPointer.StartsWith('/') then
-    Exit(nil); // Ou raise uma exce��o, dependendo da sua estrat�gia de erro.
+    Exit(nil); // Returns nil rather than raising; callers check for nil.
 
   lCurrentNode := pRootNode;
-  lSegments := pPointer.Substring(1).Split(['/']); // Pula o primeiro '/'
+  lSegments := pPointer.Substring(1).Split(['/']);
 
   for lSegment in lSegments do
   begin
     if not Assigned(lCurrentNode) then
-      Exit(nil); // N�o � poss�vel navegar mais fundo.
+      Exit(nil);
 
     if not TUtils.DecodeJsonPointerSegment(lSegment, lSegmentStr) then
       Exit(nil);
 
     if lCurrentNode is TJSONObject then
-    begin
-      // Tenta obter o valor da propriedade. GetValue retorna nil se n�o encontrar.
-      lCurrentNode := (lCurrentNode as TJSONObject).GetValue(lSegmentStr);
-    end
+      lCurrentNode := (lCurrentNode as TJSONObject).GetValue(lSegmentStr)
     else if lCurrentNode is TJSONArray then
     begin
-      // Tenta converter o segmento para um �ndice de array.
       if TryStrToInt(lSegmentStr, lIndex) and (lIndex >= 0) and (lIndex < (lCurrentNode as TJSONArray).Count) then
-      begin
-        lCurrentNode := (lCurrentNode as TJSONArray).Items[lIndex];
-      end
+        lCurrentNode := (lCurrentNode as TJSONArray).Items[lIndex]
       else
-      begin
-        // �ndice inv�lido ou fora do intervalo.
         Exit(nil);
-      end;
     end
     else
-    begin
-      // N�o � poss�vel navegar dentro de tipos primitivos (string, number, etc.).
       Exit(nil);
-    end;
   end;
 
   Result := lCurrentNode;
@@ -238,7 +208,7 @@ var
   lURI: TURIReference;
   lChar: Char;
 begin
-  // Espa�os e controles n�o s�o permitidos em URI/URI-reference sem percent-encoding.
+  // Spaces and control characters are not allowed in a URI without percent-encoding.
   for lChar in pURIString do
     if (Ord(lChar) <= 32) or (Ord(lChar) = 127) then
       Exit(False);
@@ -305,22 +275,14 @@ begin
         lHex := pValue.Substring(lCount, 2);
         if TryStrToInt('$' + lHex, lByte) then
         begin
-          // � um percent-encoding v�lido
           if Pos(Char(lByte), UNRESERVED_CHARS) > 0 then
-          begin
-            // Decodifica se for um caractere n�o reservado
-            lBuilder.Append(Char(lByte));
-          end
+            lBuilder.Append(Char(lByte))
           else
-          begin
-            // Mant�m codificado, mas com hex em mai�sculo
             lBuilder.Append('%' + lHex.ToUpper);
-          end;
           Inc(lCount, 3);
         end
         else
         begin
-          // Sequ�ncia inv�lida, apenas anexa
           lBuilder.Append(pValue[lCount]);
           Inc(lCount);
         end;
@@ -346,11 +308,8 @@ class function TURIUtils.NormalizeURI(const pURIString: string): string;
 var
   lURI, lNormalizedURI: TURIReference;
 begin
-  // 1. Parseia a string para obter a estrutura TURIReference.
   lURI := TURIReference.From(pURIString);
-  // 2. Chama o m�todo de normaliza��o, que retorna uma nova inst�ncia.
   lNormalizedURI := lURI.Normalize;
-  // 3. Recomp�e a URI normalizada de volta para uma string.
   Result := lNormalizedURI.Unsplit;
 end;
 
@@ -377,7 +336,7 @@ begin
     lRest := lRest.Substring(lAtPos + 1);
   end;
 
-  // Trata hosts IPv6 literais [::1]
+  // Handle IPv6 literal hosts, e.g. [::1].
   lBracketPos := lRest.LastIndexOf(']');
   if lRest.StartsWith('[') and (lBracketPos > 0) then
   begin
@@ -436,24 +395,20 @@ begin
   lInput := TStringList.Create;
   lOutput := TStringList.Create;
   try
-    // Divide o path em segmentos
     lInput.Text := pPath.Replace('/', sLineBreak);
 
     for lCount := 0 to lInput.Count - 1 do
     begin
-      if lInput[lCount] = '.' then
-        Continue
-      else if lInput[lCount] = '..' then
+      if lInput[lCount] = '..' then
       begin
         if lOutput.Count > 0 then
           lOutput.Delete(lOutput.Count - 1);
       end
-      else
+      else if lInput[lCount] <> '.' then
         lOutput.Add(lInput[lCount]);
     end;
 
     Result := lOutput.Text.TrimRight.Replace(sLineBreak, '/');
-
 
     if pPath.StartsWith('/') and (Result <> '') and not Result.StartsWith('/') then
       Result := '/' + Result;

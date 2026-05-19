@@ -1,10 +1,13 @@
-﻿unit JsonSchema.Registry.Uri.ParseResult;
+unit JsonSchema.Registry.Uri.ParseResult;
 
 interface
 
 type
-  /// <summary>Representa o resultado de um parse de URI, compat�vel com a fun��o 'urlparse' de outras linguagens.</summary>
-  /// <remarks>Oferece uma vis�o mais detalhada dos subcomponentes da autoridade. Refer�ncia RFC 3986: Ap�ndice B.</remarks>
+  /// <summary>
+  /// Parsed representation of a URI, offering access to all RFC 3986 components
+  /// including the sub-parts of the authority (userinfo, host, port).
+  /// Equivalent to Python's urlparse result.
+  /// </summary>
   TURIParseResult = record
     Scheme: string;
     UserInfo: string;
@@ -14,11 +17,16 @@ type
     Query: string;
     Fragment: string;
 
-    class function From(const AURIString: string; const AEncoding: string = 'utf-8'): TURIParseResult; static;
+    /// <summary>
+    /// Parses a URI string into its components.
+    /// </summary>
+    /// <param name="pURIString">The URI string to parse.</param>
+    /// <param name="pEncoding">Character encoding hint (default: utf-8).</param>
+    class function From(const pURIString: string; const pEncoding: string = 'utf-8'): TURIParseResult; static;
 
-    /// <summary>Propriedade de compatibilidade para 'netloc'.</summary>
+    /// <summary>Returns the netloc (authority) string combining userinfo, host, and port.</summary>
     function Netloc: string;
-    /// <summary>Propriedade de compatibilidade para 'hostname'.</summary>
+    /// <summary>Returns the host component, for compatibility with Python's urlparse.</summary>
     function Hostname: string;
   end;
 
@@ -32,53 +40,44 @@ uses
 
 { TURIParseResult }
 
-class function TURIParseResult.From(const AURIString, AEncoding: string): TURIParseResult;
+class function TURIParseResult.From(const pURIString, pEncoding: string): TURIParseResult;
 var
-  LURI: TURIReference;
-  LPortStr: string;
-  LPortInt: Integer;
-  LUserInfo, LUsername, LPassword: string;
+  lURI: TURIReference;
+  lPortStr: string;
+  lPortInt: Integer;
+  lUserInfo, lUsername, lPassword: string;
 begin
-  // 1. Reutilizamos o parser principal para obter os 5 componentes gen�ricos.
-  LURI := TURIReference.From(AURIString, AEncoding);
+  lURI := TURIReference.From(pURIString, pEncoding);
 
-  // 2. Atribu�mos os componentes que s�o mapeados diretamente.
-  Result.Scheme   := LURI.Scheme;
-  Result.Path     := LURI.Path;
-  Result.Query    := LURI.Query;
-  Result.Fragment := LURI.Fragment;
+  Result.Scheme   := lURI.Scheme;
+  Result.Path     := lURI.Path;
+  Result.Query    := lURI.Query;
+  Result.Fragment := lURI.Fragment;
 
-  // 3. Decompomos o componente 'Authority' em suas subpartes usando o helper.
-  TURIUtils.ParseAuthority(LURI.Authority, LUserInfo, Result.Host, LPortStr);
-  TURIUtils.ParseUserInfo(LUserInfo, LUsername, LPassword);
+  TURIUtils.ParseAuthority(lURI.Authority, lUserInfo, Result.Host, lPortStr);
+  TURIUtils.ParseUserInfo(lUserInfo, lUsername, lPassword);
 
-  if not LUserInfo.IsEmpty then
+  if not lUserInfo.IsEmpty then
   begin
-    if not LUsername.IsEmpty then
-      Result.UserInfo := TURIUtils.EncodingUserInfo(LUsername);
+    if not lUsername.IsEmpty then
+      Result.UserInfo := TURIUtils.EncodingUserInfo(lUsername);
 
-    if not LPassword.IsEmpty then
-      Result.UserInfo := Result.UserInfo + ':' + TURIUtils.EncodingUserInfo(LPassword);
+    if not lPassword.IsEmpty then
+      Result.UserInfo := Result.UserInfo + ':' + TURIUtils.EncodingUserInfo(lPassword);
   end;
 
-  // 4. Convertemos a string da porta para Word, com valida��o.
-  if LPortStr <> '' then
+  if lPortStr <> '' then
   begin
-    // Usamos TryStrToInt para evitar exce��es em casos de formato inv�lido.
-    if not TryStrToInt(LPortStr, LPortInt) then
-      raise EInvalidAuthority.CreateFmt('Invalid port value in authority component: "%s"', [LPortStr]);
+    if not TryStrToInt(lPortStr, lPortInt) then
+      raise EInvalidAuthority.CreateFmt('Invalid port value in authority component: "%s"', [lPortStr]);
 
-    // Validamos se a porta est� no range v�lido (0-65535).
-    if (LPortInt < 0) or (LPortInt > High(Word)) then
-      raise EInvalidAuthority.CreateFmt('Port value out of range (0-65535): %d', [LPortInt]);
+    if (lPortInt < 0) or (lPortInt > High(Word)) then
+      raise EInvalidAuthority.CreateFmt('Port value out of range (0-65535): %d', [lPortInt]);
 
-    Result.Port := Word(LPortInt);
+    Result.Port := Word(lPortInt);
   end
   else
-  begin
-    // Usamos 0 para indicar que nenhuma porta foi especificada.
     Result.Port := 0;
-  end;
 end;
 
 function TURIParseResult.Hostname: string;
@@ -88,32 +87,30 @@ end;
 
 function TURIParseResult.Netloc: string;
 var
-  LBuilder: TStringBuilder;
+  lBuilder: TStringBuilder;
 begin
-  // N�o faz sentido ter uma autoridade sem um host.
   if Self.Host = '' then
     Exit('');
 
-  LBuilder := TStringBuilder.Create;
+  lBuilder := TStringBuilder.Create;
   try
     if Self.UserInfo <> '' then
     begin
-      LBuilder.Append(Self.UserInfo);
-      LBuilder.Append('@');
+      lBuilder.Append(Self.UserInfo);
+      lBuilder.Append('@');
     end;
 
-    LBuilder.Append(Self.Host);
+    lBuilder.Append(Self.Host);
 
-    // Adiciona a porta apenas se ela foi explicitamente definida (maior que 0).
     if Self.Port > 0 then
     begin
-      LBuilder.Append(':');
-      LBuilder.Append(Self.Port.ToString);
+      lBuilder.Append(':');
+      lBuilder.Append(Self.Port.ToString);
     end;
 
-    Result := LBuilder.ToString;
+    Result := lBuilder.ToString;
   finally
-    LBuilder.Free;
+    lBuilder.Free;
   end;
 end;
 

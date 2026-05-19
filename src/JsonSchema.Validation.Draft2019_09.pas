@@ -8,139 +8,165 @@ uses
   JsonSchema.Visitors.Types,
   JsonSchema.Visitors.Interfaces,
   JsonSchema.Validation.Base,
-  JsonSchema.Validation.Interfaces;
+  JsonSchema.Validation.Interfaces,
+  JsonSchema.Validation.Visitor.Core,
+  JsonSchema.Validation.Visitor.Applicator,
+  JsonSchema.Validation.Visitor.Validation;
 
 type
+  /// <summary>Main validation visitor for JSON Schema Draft 2019-09, coordinating core, applicator, and validation vocabularies.</summary>
   TDraft2019_09Visitor = class(TValidationVisitor<TDraft2019_09Visitor>, IDraft2019_09ValidationVocabularyMode)
   private
     FValidationVocabularySilent: Boolean;
   public
-    constructor Create(const ASchema, AData: TJSONValue; const ABaseURI: string; const ACustomHint: TJSONValue = nil);
-    function New(const ASchema, AData: TJSONValue; const ABaseURI: string): TDraft2019_09Visitor; override;
+    /// <summary>Creates a new Draft 2019-09 visitor, initializing sub-visitors and detecting metaschema-no-validation mode.</summary>
+    constructor Create(const pSchema, pData: TJSONValue; const pBaseURI: string; const pCustomHint: TJSONValue = nil);
+    /// <summary>Creates a child visitor sharing the same registry and vocabulary-silent state as the current instance.</summary>
+    function New(const pSchema, pData: TJSONValue; const pBaseURI: string): TDraft2019_09Visitor; override;
+    /// <summary>Returns the ordered list of keywords that must be visited before others in Draft 2019-09.</summary>
     function KeywordPrecedence: TArray<string>; override;
     function IsValidationVocabularySilent: Boolean;
-    procedure SetValidationVocabularySilent(const AValue: Boolean);
+    procedure SetValidationVocabularySilent(const pValue: Boolean);
   end;
 
+  /// <summary>Interface for the Draft 2019-09 Core vocabulary visitor, handling $schema, $comment, $anchor, $recursiveRef, $recursiveAnchor, and $vocabulary keywords.</summary>
   IDraft2019_09CoreVisitor = interface(IBaseCoreVisitor<TDraft2019_09Visitor>)
     ['{4B72E0CE-AFBF-4C25-92CC-EA0509595809}']
-    procedure VisitSchema(const AValue: TJSONString);
-    procedure VisitComment(const AValue: TJSONString);
-    procedure VisitAnchor(const AValue: TJSONString);
-    procedure VisitRecursiveRef(const AValue: TJSONString);
-    procedure VisitRecursiveAnchor(const AValue: TJSONBool);
-    procedure VisitVocabulary(const AValue: TJSONObject);
+    procedure VisitSchema(const pValue: TJSONString);
+    procedure VisitComment(const pValue: TJSONString);
+    procedure VisitAnchor(const pValue: TJSONString);
+    procedure VisitRecursiveRef(const pValue: TJSONString);
+    procedure VisitRecursiveAnchor(const pValue: TJSONBool);
+    procedure VisitVocabulary(const pValue: TJSONObject);
   end;
 
+  /// <summary>Interface for the Draft 2019-09 Applicator vocabulary visitor, handling prefixItems, dependentSchemas, unevaluatedItems, and unevaluatedProperties keywords.</summary>
   IDraft2019_09ApplicatorVisitor = interface(IBaseApplicatorVisitor<TDraft2019_09Visitor>)
     ['{44142A26-AC72-414C-BB83-75DA511A0A36}']
-    procedure VisitPrefixItems(const AValue: TJSONArray);
-    procedure VisitDependentSchemas(const AValue: TJSONObject);
-    procedure VisitUnevaluatedItems(const AValue: TJSONValue);
-    procedure VisitUnevaluatedProperties(const AValue: TJSONValue);
+    procedure VisitPrefixItems(const pValue: TJSONArray);
+    procedure VisitDependentSchemas(const pValue: TJSONObject);
+    procedure VisitUnevaluatedItems(const pValue: TJSONValue);
+    procedure VisitUnevaluatedProperties(const pValue: TJSONValue);
   end;
 
+  /// <summary>Interface for the Draft 2019-09 Validation vocabulary visitor, extending base validation with minimum, contains, propertyNames, dependencies, dependentRequired, maxContains, and minContains keywords.</summary>
   IDraft2019_09ValidationVisitor = interface(IBaseValidationVisitor<TDraft2019_09Visitor>)
     ['{E995D611-5477-4970-B791-81A4555AF554}']
-    procedure VisitMinimum(const AValue: TJSONNumber);
-    procedure VisitContains(const AValue: TJSONValue);
-    procedure VisitPropertyNames(const AValue: TJSONValue);
-    procedure VisitDependencies(const AValue: TJSONObject);
-    procedure VisitDependentRequired(const AValue: TJSONObject);
-    procedure VisitMaxContains(const AValue: TJSONNumber);
-    procedure VisitMinContains(const AValue: TJSONNumber);
+    procedure VisitMinimum(const pValue: TJSONNumber);
+    procedure VisitContains(const pValue: TJSONValue);
+    procedure VisitPropertyNames(const pValue: TJSONValue);
+    procedure VisitDependencies(const pValue: TJSONObject);
+    procedure VisitDependentRequired(const pValue: TJSONObject);
+    procedure VisitMaxContains(const pValue: TJSONNumber);
+    procedure VisitMinContains(const pValue: TJSONNumber);
   end;
 
+  /// <summary>Interface for the Draft 2019-09 Relative JSON Pointer vocabulary visitor.</summary>
   IDraft2019_09RelativeJsonPointer = interface(IBaseRelativeJsonPointer<TDraft2019_09Visitor>)
     ['{E40B5CE3-7207-430E-81BA-07A8E798EC60}']
   end;
 
+  /// <summary>Implements the Draft 2019-09 Core vocabulary visitor, processing $schema, $comment, $anchor, $recursiveRef, $recursiveAnchor, and $vocabulary keywords.</summary>
   TDraft2019_09CoreVisitor = class(TBaseCoreVisitor<TDraft2019_09Visitor>, IDraft2019_09CoreVisitor)
     [VisitorKeyword('$schema')]
-    procedure VisitSchema(const AValue: TJSONString);
+    /// <summary>Reads the metaschema URI and activates validation-vocabulary-silent mode when the metaschema excludes the validation vocabulary.</summary>
+    procedure VisitSchema(const pValue: TJSONString);
     [VisitorKeyword('$comment')]
-    procedure VisitComment(const AValue: TJSONString);
+    procedure VisitComment(const pValue: TJSONString);
     [VisitorKeyword('$anchor')]
-    procedure VisitAnchor(const AValue: TJSONString);
+    procedure VisitAnchor(const pValue: TJSONString);
     [VisitorKeyword('$recursiveRef')]
-    procedure VisitRecursiveRef(const AValue: TJSONString);
+    /// <summary>Validates the "$recursiveRef" keyword by walking the dynamic scope chain to find the outermost schema that declares $recursiveAnchor: true and redirecting resolution to it.</summary>
+    procedure VisitRecursiveRef(const pValue: TJSONString);
     [VisitorKeyword('$recursiveAnchor')]
-    procedure VisitRecursiveAnchor(const AValue: TJSONBool);
+    procedure VisitRecursiveAnchor(const pValue: TJSONBool);
     [VisitorKeyword('$vocabulary')]
-    procedure VisitVocabulary(const AValue: TJSONObject);
+    /// <summary>Processes the "$vocabulary" map, raising an error for unknown required vocabularies and suppressing validation keywords when the validation vocabulary is absent or optional.</summary>
+    procedure VisitVocabulary(const pValue: TJSONObject);
   end;
 
+  /// <summary>Implements the Draft 2019-09 Applicator vocabulary visitor, handling prefixItems, dependentSchemas, unevaluatedItems, and unevaluatedProperties.</summary>
   TDraft2019_09ApplicatorVisitor = class(TBaseApplicatorVisitor<TDraft2019_09Visitor>, IDraft2019_09ApplicatorVisitor)
     [VisitorKeyword('$defs')]
-    procedure VisitDefs(const AValue: TJSONObject);
+    procedure VisitDefs(const pValue: TJSONObject);
     [VisitorKeyword('prefixItems')]
-    procedure VisitPrefixItems(const AValue: TJSONArray);
+    procedure VisitPrefixItems(const pValue: TJSONArray);
     [VisitorKeyword('dependentSchemas')]
-    procedure VisitDependentSchemas(const AValue: TJSONObject);
+    /// <summary>Evaluates each dependent sub-schema against the instance when the triggering property is present, and promotes evaluated properties to the parent scope on success.</summary>
+    procedure VisitDependentSchemas(const pValue: TJSONObject);
     [VisitorKeyword('unevaluatedItems')]
-    procedure VisitUnevaluatedItems(const AValue: TJSONValue);
+    /// <summary>Applies the unevaluatedItems sub-schema to every array item that was not covered by any prior keyword in the current validation scope.</summary>
+    procedure VisitUnevaluatedItems(const pValue: TJSONValue);
     [VisitorKeyword('unevaluatedProperties')]
-    procedure VisitUnevaluatedProperties(const AValue: TJSONValue);
+    /// <summary>Applies the unevaluatedProperties sub-schema to every object property that was not covered by any prior keyword in the current validation scope.</summary>
+    procedure VisitUnevaluatedProperties(const pValue: TJSONValue);
   end;
 
+  /// <summary>Implements the Draft 2019-09 Validation vocabulary visitor, extending base validation with support for validation-vocabulary-silent mode.</summary>
   TDraft2019_09ValidationVisitor = class(TBaseValidationVisitor<TDraft2019_09Visitor>, IDraft2019_09ValidationVisitor)
   private
     function ValidationVocabularySilent: Boolean;
   public
     [VisitorKeyword('type')]
-    procedure VisitType(const AValue: TJSONValue);
+    procedure VisitType(const pValue: TJSONValue);
     [VisitorKeyword('multipleOf')]
-    procedure VisitMultipleOf(const AValue: TJSONNumber);
+    procedure VisitMultipleOf(const pValue: TJSONNumber);
     [VisitorKeyword('maximum')]
-    procedure VisitMaximum(const AValue: TJSONNumber);
+    procedure VisitMaximum(const pValue: TJSONNumber);
     [VisitorKeyword('exclusiveMaximum')]
-    procedure VisitExclusiveMaximum(const AValue: TJSONValue);
+    procedure VisitExclusiveMaximum(const pValue: TJSONValue);
     [VisitorKeyword('minimum')]
-    procedure VisitMinimum(const AValue: TJSONNumber);
+    procedure VisitMinimum(const pValue: TJSONNumber);
     [VisitorKeyword('exclusiveMinimum')]
-    procedure VisitExclusiveMinimum(const AValue: TJSONValue);
+    procedure VisitExclusiveMinimum(const pValue: TJSONValue);
     [VisitorKeyword('maxLength')]
-    procedure VisitMaxLength(const AValue: TJSONNumber);
+    procedure VisitMaxLength(const pValue: TJSONNumber);
     [VisitorKeyword('minLength')]
-    procedure VisitMinLength(const AValue: TJSONNumber);
+    procedure VisitMinLength(const pValue: TJSONNumber);
     [VisitorKeyword('pattern')]
-    procedure VisitPattern(const AValue: TJSONString);
+    procedure VisitPattern(const pValue: TJSONString);
     [VisitorKeyword('format')]
-    procedure VisitFormat(const AValue: TJSONString);
+    procedure VisitFormat(const pValue: TJSONString);
     [VisitorKeyword('maxItems')]
-    procedure VisitMaxItems(const AValue: TJSONNumber);
+    procedure VisitMaxItems(const pValue: TJSONNumber);
     [VisitorKeyword('minItems')]
-    procedure VisitMinItems(const AValue: TJSONNumber);
+    procedure VisitMinItems(const pValue: TJSONNumber);
     [VisitorKeyword('uniqueItems')]
-    procedure VisitUniqueItems(const AValue: TJSONBool);
+    procedure VisitUniqueItems(const pValue: TJSONBool);
     [VisitorKeyword('maxProperties')]
-    procedure VisitMaxProperties(const AValue: TJSONNumber);
+    procedure VisitMaxProperties(const pValue: TJSONNumber);
     [VisitorKeyword('minProperties')]
-    procedure VisitMinProperties(const AValue: TJSONNumber);
+    procedure VisitMinProperties(const pValue: TJSONNumber);
     [VisitorKeyword('required')]
-    procedure VisitRequired(const AValue: TJSONArray);
+    procedure VisitRequired(const pValue: TJSONArray);
     [VisitorKeyword('enum')]
-    procedure VisitEnum(const AValue: TJSONArray);
+    procedure VisitEnum(const pValue: TJSONArray);
     [VisitorKeyword('const')]
-    procedure VisitConst(const AValue: TJSONValue);
+    procedure VisitConst(const pValue: TJSONValue);
     [VisitorKeyword('contentEncoding')]
-    procedure VisitContentEncoding(const AValue: TJSONString);
+    procedure VisitContentEncoding(const pValue: TJSONString);
     [VisitorKeyword('contentMediaType')]
-    procedure VisitContentMediaType(const AValue: TJSONString);
+    procedure VisitContentMediaType(const pValue: TJSONString);
     [VisitorKeyword('contains')]
-    procedure VisitContains(const AValue: TJSONValue);
+    /// <summary>Counts matching items against the contains sub-schema and delegates min/maxContains enforcement, creating a synthetic minContains of 1 when not declared.</summary>
+    procedure VisitContains(const pValue: TJSONValue);
     [VisitorKeyword('propertyNames')]
-    procedure VisitPropertyNames(const AValue: TJSONValue);
+    procedure VisitPropertyNames(const pValue: TJSONValue);
     [VisitorKeyword('dependencies')]
-    procedure VisitDependencies(const AValue: TJSONObject);
+    /// <summary>Implements the legacy "dependencies" keyword, routing array values through dependentRequired semantics and object values through dependentSchemas semantics.</summary>
+    procedure VisitDependencies(const pValue: TJSONObject);
     [VisitorKeyword('dependentRequired')]
-    procedure VisitDependentRequired(const AValue: TJSONObject);
+    /// <summary>Validates that all properties listed as dependents of a present property also exist on the instance.</summary>
+    procedure VisitDependentRequired(const pValue: TJSONObject);
     [VisitorKeyword('maxContains')]
-    procedure VisitMaxContains(const AValue: TJSONNumber);
+    /// <summary>Validates that the number of items matching the contains sub-schema does not exceed the declared maximum.</summary>
+    procedure VisitMaxContains(const pValue: TJSONNumber);
     [VisitorKeyword('minContains')]
-    procedure VisitMinContains(const AValue: TJSONNumber);
+    /// <summary>Validates that the number of items matching the contains sub-schema meets the declared minimum, reusing the vetContains error when the minimum is 1.</summary>
+    procedure VisitMinContains(const pValue: TJSONNumber);
   end;
 
+  /// <summary>Implements the Draft 2019-09 Relative JSON Pointer vocabulary visitor.</summary>
   TDraft2019_09RelativeJsonPointer = class(TBaseRelativeJsonPointer<TDraft2019_09Visitor>, IDraft2019_09RelativeJsonPointer)
   end;
 
@@ -159,16 +185,16 @@ uses
 
 { TDraft2019_09Visitor }
 
-constructor TDraft2019_09Visitor.Create(const ASchema, AData: TJSONValue; const ABaseURI: string; const ACustomHint: TJSONValue);
+constructor TDraft2019_09Visitor.Create(const pSchema, pData: TJSONValue; const pBaseURI: string; const pCustomHint: TJSONValue);
 var
-  LSchemaURI: string;
+  lSchemaURI: string;
 begin
-  inherited Create(ASchema, AData, ABaseURI, ACustomHint);
+  inherited Create(pSchema, pData, pBaseURI, pCustomHint);
 
   FValidationVocabularySilent := False;
-  if (ASchema is TJSONObject) and
-     TJSONObject(ASchema).TryGetValue<string>('$schema', LSchemaURI) and
-     ContainsText(LSchemaURI, 'metaschema-no-validation.json') then
+  if (pSchema is TJSONObject) and
+     TJSONObject(pSchema).TryGetValue<string>('$schema', lSchemaURI) and
+     ContainsText(lSchemaURI, 'metaschema-no-validation.json') then
     FValidationVocabularySilent := True;
 
   FCore                := TDraft2019_09CoreVisitor.Create(Self);
@@ -208,176 +234,176 @@ begin
   Result := FValidationVocabularySilent;
 end;
 
-function TDraft2019_09Visitor.New(const ASchema, AData: TJSONValue; const ABaseURI: string): TDraft2019_09Visitor;
+function TDraft2019_09Visitor.New(const pSchema, pData: TJSONValue; const pBaseURI: string): TDraft2019_09Visitor;
 begin
-  Result := TDraft2019_09Visitor.Create(ASchema, AData, ABaseURI, FCustomHint);
+  Result := TDraft2019_09Visitor.Create(pSchema, pData, pBaseURI, FCustomHint);
   Result.FRegistry.Free;
   Result.FRegistry := FRegistry;
   Result.FOwnsRegistry := False;
   Result.FValidationVocabularySilent := FValidationVocabularySilent;
 end;
 
-procedure TDraft2019_09Visitor.SetValidationVocabularySilent(const AValue: Boolean);
+procedure TDraft2019_09Visitor.SetValidationVocabularySilent(const pValue: Boolean);
 begin
-  FValidationVocabularySilent := AValue;
+  FValidationVocabularySilent := pValue;
 end;
 
 { TDraft2019_09CoreVisitor }
 
-procedure TDraft2019_09CoreVisitor.VisitAnchor(const AValue: TJSONString);
+procedure TDraft2019_09CoreVisitor.VisitAnchor(const pValue: TJSONString);
 begin
 
 end;
 
-procedure TDraft2019_09CoreVisitor.VisitComment(const AValue: TJSONString);
+procedure TDraft2019_09CoreVisitor.VisitComment(const pValue: TJSONString);
 begin
 
 end;
 
-procedure TDraft2019_09CoreVisitor.VisitRecursiveAnchor(const AValue: TJSONBool);
+procedure TDraft2019_09CoreVisitor.VisitRecursiveAnchor(const pValue: TJSONBool);
 begin
 
 end;
 
-procedure TDraft2019_09CoreVisitor.VisitRecursiveRef(const AValue: TJSONString);
+procedure TDraft2019_09CoreVisitor.VisitRecursiveRef(const pValue: TJSONString);
 var
-  LScope: TScope;
-  LFinalURI: TURIReference;
-  LTargetResource: TResource;
-  LTargetSchema: TJSONValue;
-  LResolvedBaseURI: string;
-  LTargetRecursiveAnchor: TJSONValue;
-  LScopes: TList<TScope>;
-  LScopeIndex: Integer;
-  LOffset: Integer;
-  LRecursiveBaseURI: string;
-  LAnchorValue: TJSONValue;
-  LRecursiveRefValue: TJSONString;
-  LHasRecursiveAnchor: Boolean;
-  LOriginalScope: TScope;
-  LScopeAfterRef: TScope;
+  lScope: TScope;
+  lFinalURI: TURIReference;
+  lTargetResource: TResource;
+  lTargetSchema: TJSONValue;
+  lResolvedBaseURI: string;
+  lTargetRecursiveAnchor: TJSONValue;
+  lScopes: TList<TScope>;
+  lScopeIndex: Integer;
+  lOffset: Integer;
+  lRecursiveBaseURI: string;
+  lAnchorValue: TJSONValue;
+  lRecursiveRefValue: TJSONString;
+  lHasRecursiveAnchor: Boolean;
+  lOriginalScope: TScope;
+  lScopeAfterRef: TScope;
 begin
-  LScope := Visitor.CurrentScope;
-  LFinalURI := TURIReference.From(AValue.Value).ResolveWith(TURIReference.From(LScope.BaseURI));
+  lScope := Visitor.CurrentScope;
+  lFinalURI := TURIReference.From(pValue.Value).ResolveWith(TURIReference.From(lScope.BaseURI));
 
-  if not Visitor.Registry.TryFindResource(LFinalURI.Unsplit, LTargetResource) then
+  if not Visitor.Registry.TryFindResource(lFinalURI.Unsplit, lTargetResource) then
   begin
-    LOriginalScope := Visitor.CurrentScope;
+    lOriginalScope := Visitor.CurrentScope;
     try
-      inherited VisitRef(AValue);
+      inherited VisitRef(pValue);
     finally
-      LScopeAfterRef := Visitor.CurrentScope;
-      if not SameText(LScopeAfterRef.BaseURI, LOriginalScope.BaseURI) then
+      lScopeAfterRef := Visitor.CurrentScope;
+      if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
       begin
-        LScopeAfterRef.BaseURI := LOriginalScope.BaseURI;
-        Visitor.UpdateScope(LScopeAfterRef);
+        lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
+        Visitor.UpdateScope(lScopeAfterRef);
       end;
     end;
     Exit;
   end;
 
-  LTargetSchema := LTargetResource.ResolveFragment(LFinalURI.Fragment, LResolvedBaseURI);
-  if not Assigned(LTargetSchema) then
+  lTargetSchema := lTargetResource.ResolveFragment(lFinalURI.Fragment, lResolvedBaseURI);
+  if not Assigned(lTargetSchema) then
   begin
-    LOriginalScope := Visitor.CurrentScope;
+    lOriginalScope := Visitor.CurrentScope;
     try
-      inherited VisitRef(AValue);
+      inherited VisitRef(pValue);
     finally
-      LScopeAfterRef := Visitor.CurrentScope;
-      if not SameText(LScopeAfterRef.BaseURI, LOriginalScope.BaseURI) then
+      lScopeAfterRef := Visitor.CurrentScope;
+      if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
       begin
-        LScopeAfterRef.BaseURI := LOriginalScope.BaseURI;
-        Visitor.UpdateScope(LScopeAfterRef);
+        lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
+        Visitor.UpdateScope(lScopeAfterRef);
       end;
     end;
     Exit;
   end;
 
-  if not ((LTargetSchema is TJSONObject) and
-          TJSONObject(LTargetSchema).TryGetValue('$recursiveAnchor', LTargetRecursiveAnchor) and
-          (LTargetRecursiveAnchor is TJSONBool) and
-          TJSONBool(LTargetRecursiveAnchor).AsBoolean) then
+  if not ((lTargetSchema is TJSONObject) and
+          TJSONObject(lTargetSchema).TryGetValue('$recursiveAnchor', lTargetRecursiveAnchor) and
+          (lTargetRecursiveAnchor is TJSONBool) and
+          TJSONBool(lTargetRecursiveAnchor).AsBoolean) then
   begin
-    LOriginalScope := Visitor.CurrentScope;
+    lOriginalScope := Visitor.CurrentScope;
     try
-      inherited VisitRef(AValue);
+      inherited VisitRef(pValue);
     finally
-      LScopeAfterRef := Visitor.CurrentScope;
-      if not SameText(LScopeAfterRef.BaseURI, LOriginalScope.BaseURI) then
+      lScopeAfterRef := Visitor.CurrentScope;
+      if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
       begin
-        LScopeAfterRef.BaseURI := LOriginalScope.BaseURI;
-        Visitor.UpdateScope(LScopeAfterRef);
+        lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
+        Visitor.UpdateScope(lScopeAfterRef);
       end;
     end;
     Exit;
   end;
 
-  LRecursiveBaseURI := '';
+  lRecursiveBaseURI := '';
 
-  LScopes := TList<TScope>.Create;
+  lScopes := TList<TScope>.Create;
   try
-    LOffset := 0;
-    while Assigned(Visitor.CurrentScope(LOffset).SchemaNode) do
+    lOffset := 0;
+    while Assigned(Visitor.CurrentScope(lOffset).SchemaNode) do
     begin
-      LScopes.Add(Visitor.CurrentScope(LOffset));
-      Inc(LOffset);
+      lScopes.Add(Visitor.CurrentScope(lOffset));
+      Inc(lOffset);
     end;
 
     // Busca do root para o escopo atual e usa o primeiro recursive anchor
     // encontrado no dynamic scope chain.
-    for LScopeIndex := LScopes.Count - 1 downto 0 do
+    for lScopeIndex := lScopes.Count - 1 downto 0 do
     begin
-      LScope := LScopes[LScopeIndex];
+      lScope := lScopes[lScopeIndex];
 
-      LHasRecursiveAnchor := (LScope.SchemaNode is TJSONObject) and
-        TJSONObject(LScope.SchemaNode).TryGetValue('$recursiveAnchor', LAnchorValue) and
-        (LAnchorValue is TJSONBool) and TJSONBool(LAnchorValue).AsBoolean;
+      lHasRecursiveAnchor := (lScope.SchemaNode is TJSONObject) and
+        TJSONObject(lScope.SchemaNode).TryGetValue('$recursiveAnchor', lAnchorValue) and
+        (lAnchorValue is TJSONBool) and TJSONBool(lAnchorValue).AsBoolean;
 
-      if LHasRecursiveAnchor then
+      if lHasRecursiveAnchor then
       begin
-        LRecursiveBaseURI := LScope.BaseURI;
+        lRecursiveBaseURI := lScope.BaseURI;
         Break;
       end;
     end;
   finally
-    LScopes.Free;
+    lScopes.Free;
   end;
 
-  if LRecursiveBaseURI.IsEmpty then
+  if lRecursiveBaseURI.IsEmpty then
   begin
-    LOriginalScope := Visitor.CurrentScope;
+    lOriginalScope := Visitor.CurrentScope;
     try
-      inherited VisitRef(AValue);
+      inherited VisitRef(pValue);
     finally
-      LScopeAfterRef := Visitor.CurrentScope;
-      if not SameText(LScopeAfterRef.BaseURI, LOriginalScope.BaseURI) then
+      lScopeAfterRef := Visitor.CurrentScope;
+      if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
       begin
-        LScopeAfterRef.BaseURI := LOriginalScope.BaseURI;
-        Visitor.UpdateScope(LScopeAfterRef);
+        lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
+        Visitor.UpdateScope(lScopeAfterRef);
       end;
     end;
     Exit;
   end;
 
-  LRecursiveRefValue := TJSONString.Create(LRecursiveBaseURI + '#');
+  lRecursiveRefValue := TJSONString.Create(lRecursiveBaseURI + '#');
   try
-    LOriginalScope := Visitor.CurrentScope;
+    lOriginalScope := Visitor.CurrentScope;
     try
-      inherited VisitRef(LRecursiveRefValue);
+      inherited VisitRef(lRecursiveRefValue);
     finally
-      LScopeAfterRef := Visitor.CurrentScope;
-      if not SameText(LScopeAfterRef.BaseURI, LOriginalScope.BaseURI) then
+      lScopeAfterRef := Visitor.CurrentScope;
+      if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
       begin
-        LScopeAfterRef.BaseURI := LOriginalScope.BaseURI;
-        Visitor.UpdateScope(LScopeAfterRef);
+        lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
+        Visitor.UpdateScope(lScopeAfterRef);
       end;
     end;
   finally
-    LRecursiveRefValue.Free;
+    lRecursiveRefValue.Free;
   end;
 end;
 
-procedure TDraft2019_09CoreVisitor.VisitSchema(const AValue: TJSONString);
+procedure TDraft2019_09CoreVisitor.VisitSchema(const pValue: TJSONString);
 const
   CValidationVocabularyURI = 'https://json-schema.org/draft/2019-09/vocab/validation';
   CValidationKeywords: array[0..17] of string = (
@@ -401,46 +427,46 @@ const
     'format'
   );
 var
-  LScope: TScope;
-  LSchemaURI: TURIReference;
-  LMetaResource: TResource;
-  LMetaSchemaRoot: TJSONValue;
-  LVocabularyValue: TJSONValue;
-  LValidationVocabularyValue: TJSONValue;
-  LValidationVocabularyRequired: Boolean;
-  LValidationKeyword: string;
+  lScope: TScope;
+  lSchemaURI: TURIReference;
+  lMetaResource: TResource;
+  lMetaSchemaRoot: TJSONValue;
+  lVocabularyValue: TJSONValue;
+  lValidationVocabularyValue: TJSONValue;
+  lValidationVocabularyRequired: Boolean;
+  lValidationKeyword: string;
 begin
-  LScope := Visitor.CurrentScope;
-  LSchemaURI := TURIReference.From(AValue.Value).ResolveWith(TURIReference.From(LScope.BaseURI));
+  lScope := Visitor.CurrentScope;
+  lSchemaURI := TURIReference.From(pValue.Value).ResolveWith(TURIReference.From(lScope.BaseURI));
 
-  if not Visitor.Registry.TryFindResource(LSchemaURI.Unsplit, LMetaResource) then
+  if not Visitor.Registry.TryFindResource(lSchemaURI.Unsplit, lMetaResource) then
   begin
-    if ContainsText(LSchemaURI.Unsplit, 'metaschema-no-validation.json') then
+    if ContainsText(lSchemaURI.Unsplit, 'metaschema-no-validation.json') then
       TDraft2019_09Visitor(Visitor).SetValidationVocabularySilent(True);
     Exit;
   end;
 
-  LMetaSchemaRoot := LMetaResource.ResolveFragment('');
-  if not (LMetaSchemaRoot is TJSONObject) then
+  lMetaSchemaRoot := lMetaResource.ResolveFragment('');
+  if not (lMetaSchemaRoot is TJSONObject) then
   begin
-    if ContainsText(LSchemaURI.Unsplit, 'metaschema-no-validation.json') then
+    if ContainsText(lSchemaURI.Unsplit, 'metaschema-no-validation.json') then
       TDraft2019_09Visitor(Visitor).SetValidationVocabularySilent(True);
     Exit;
   end;
 
-  LValidationVocabularyRequired := False;
-  if TJSONObject(LMetaSchemaRoot).TryGetValue('$vocabulary', LVocabularyValue) and (LVocabularyValue is TJSONObject) and
-     TJSONObject(LVocabularyValue).TryGetValue(CValidationVocabularyURI, LValidationVocabularyValue) and
-     (LValidationVocabularyValue is TJSONBool) then
-    LValidationVocabularyRequired := TJSONBool(LValidationVocabularyValue).AsBoolean;
+  lValidationVocabularyRequired := False;
+  if TJSONObject(lMetaSchemaRoot).TryGetValue('$vocabulary', lVocabularyValue) and (lVocabularyValue is TJSONObject) and
+     TJSONObject(lVocabularyValue).TryGetValue(CValidationVocabularyURI, lValidationVocabularyValue) and
+     (lValidationVocabularyValue is TJSONBool) then
+    lValidationVocabularyRequired := TJSONBool(lValidationVocabularyValue).AsBoolean;
 
-  TDraft2019_09Visitor(Visitor).SetValidationVocabularySilent(not LValidationVocabularyRequired);
+  TDraft2019_09Visitor(Visitor).SetValidationVocabularySilent(not lValidationVocabularyRequired);
   if TDraft2019_09Visitor(Visitor).IsValidationVocabularySilent then
-    for LValidationKeyword in CValidationKeywords do
-      Visitor.AddVisitedKeyword(LValidationKeyword);
+    for lValidationKeyword in CValidationKeywords do
+      Visitor.AddVisitedKeyword(lValidationKeyword);
 end;
 
-procedure TDraft2019_09CoreVisitor.VisitVocabulary(const AValue: TJSONObject);
+procedure TDraft2019_09CoreVisitor.VisitVocabulary(const pValue: TJSONObject);
 const
   // Vocabulários padrão conhecidos do draft 2019-09 para suporte básico de compatibilidade.
   CKnownVocabularies: array[0..6] of string = (
@@ -474,52 +500,52 @@ const
     'format'
   );
 var
-  LVocabulary: TJSONPair;
-  LRequired: Boolean;
-  LKnownVocabulary: string;
-  LIsKnown: Boolean;
-  LValidationVocabularyDeclared: Boolean;
-  LValidationVocabularyRequired: Boolean;
-  LValidationKeyword: string;
+  lVocabulary: TJSONPair;
+  lRequired: Boolean;
+  lKnownVocabulary: string;
+  lIsKnown: Boolean;
+  lValidationVocabularyDeclared: Boolean;
+  lValidationVocabularyRequired: Boolean;
+  lValidationKeyword: string;
 begin
-  LValidationVocabularyDeclared := False;
-  LValidationVocabularyRequired := False;
+  lValidationVocabularyDeclared := False;
+  lValidationVocabularyRequired := False;
 
-  for LVocabulary in AValue do
+  for lVocabulary in pValue do
   begin
-    if not (LVocabulary.JsonValue is TJSONBool) then
+    if not (lVocabulary.JsonValue is TJSONBool) then
       Continue;
 
-    LRequired := TJSONBool(LVocabulary.JsonValue).AsBoolean;
+    lRequired := TJSONBool(lVocabulary.JsonValue).AsBoolean;
 
-    if SameText(LVocabulary.JsonString.Value, CValidationVocabularyURI) then
+    if SameText(lVocabulary.JsonString.Value, CValidationVocabularyURI) then
     begin
-      LValidationVocabularyDeclared := True;
-      LValidationVocabularyRequired := LRequired;
+      lValidationVocabularyDeclared := True;
+      lValidationVocabularyRequired := lRequired;
     end;
 
-    if not LRequired then
+    if not lRequired then
       Continue;
 
-    LIsKnown := False;
-    for LKnownVocabulary in CKnownVocabularies do
-      if SameText(LVocabulary.JsonString.Value, LKnownVocabulary) then
+    lIsKnown := False;
+    for lKnownVocabulary in CKnownVocabularies do
+      if SameText(lVocabulary.JsonString.Value, lKnownVocabulary) then
       begin
-        LIsKnown := True;
+        lIsKnown := True;
         Break;
       end;
 
-    if not LIsKnown then
-      Visitor.AddError(vetUnsupportedVocabulary, [LVocabulary.JsonString.Value]);
+    if not lIsKnown then
+      Visitor.AddError(vetUnsupportedVocabulary, [lVocabulary.JsonString.Value]);
   end;
 
   // Se o vocabulário de validação não for obrigatório neste schema,
   // os keywords de validação devem ser tratados como anotativos/ignorados.
-  if (not LValidationVocabularyDeclared) or (not LValidationVocabularyRequired) then
+  if (not lValidationVocabularyDeclared) or (not lValidationVocabularyRequired) then
   begin
     TDraft2019_09Visitor(Visitor).SetValidationVocabularySilent(True);
-    for LValidationKeyword in CValidationKeywords do
-      Visitor.AddVisitedKeyword(LValidationKeyword);
+    for lValidationKeyword in CValidationKeywords do
+      Visitor.AddVisitedKeyword(lValidationKeyword);
   end
   else
     TDraft2019_09Visitor(Visitor).SetValidationVocabularySilent(False);
@@ -532,161 +558,161 @@ begin
   Result := TDraft2019_09Visitor(Visitor).IsValidationVocabularySilent;
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitConst(const AValue: TJSONValue);
+procedure TDraft2019_09ValidationVisitor.VisitConst(const pValue: TJSONValue);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitConst(AValue);
+  inherited VisitConst(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitEnum(const AValue: TJSONArray);
+procedure TDraft2019_09ValidationVisitor.VisitEnum(const pValue: TJSONArray);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitEnum(AValue);
+  inherited VisitEnum(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitExclusiveMaximum(const AValue: TJSONValue);
+procedure TDraft2019_09ValidationVisitor.VisitExclusiveMaximum(const pValue: TJSONValue);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitExclusiveMaximum(AValue);
+  inherited VisitExclusiveMaximum(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitExclusiveMinimum(const AValue: TJSONValue);
+procedure TDraft2019_09ValidationVisitor.VisitExclusiveMinimum(const pValue: TJSONValue);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitExclusiveMinimum(AValue);
+  inherited VisitExclusiveMinimum(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitFormat(const AValue: TJSONString);
+procedure TDraft2019_09ValidationVisitor.VisitFormat(const pValue: TJSONString);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitFormat(AValue);
+  inherited VisitFormat(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitMaxItems(const AValue: TJSONNumber);
+procedure TDraft2019_09ValidationVisitor.VisitMaxItems(const pValue: TJSONNumber);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitMaxItems(AValue);
+  inherited VisitMaxItems(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitMaxLength(const AValue: TJSONNumber);
+procedure TDraft2019_09ValidationVisitor.VisitMaxLength(const pValue: TJSONNumber);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitMaxLength(AValue);
+  inherited VisitMaxLength(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitMaximum(const AValue: TJSONNumber);
+procedure TDraft2019_09ValidationVisitor.VisitMaximum(const pValue: TJSONNumber);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitMaximum(AValue);
+  inherited VisitMaximum(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitMaxProperties(const AValue: TJSONNumber);
+procedure TDraft2019_09ValidationVisitor.VisitMaxProperties(const pValue: TJSONNumber);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitMaxProperties(AValue);
+  inherited VisitMaxProperties(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitMinItems(const AValue: TJSONNumber);
+procedure TDraft2019_09ValidationVisitor.VisitMinItems(const pValue: TJSONNumber);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitMinItems(AValue);
+  inherited VisitMinItems(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitMinLength(const AValue: TJSONNumber);
+procedure TDraft2019_09ValidationVisitor.VisitMinLength(const pValue: TJSONNumber);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitMinLength(AValue);
+  inherited VisitMinLength(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitContentEncoding(const AValue: TJSONString);
+procedure TDraft2019_09ValidationVisitor.VisitContentEncoding(const pValue: TJSONString);
 begin
-  inherited VisitContentEncoding(AValue);
+  inherited VisitContentEncoding(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitContentMediaType(const AValue: TJSONString);
+procedure TDraft2019_09ValidationVisitor.VisitContentMediaType(const pValue: TJSONString);
 begin
-  inherited VisitContentMediaType(AValue);
+  inherited VisitContentMediaType(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitMinimum(const AValue: TJSONNumber);
-begin
-  if ValidationVocabularySilent then
-    Exit;
-
-  inherited VisitMinimum(AValue);
-end;
-
-procedure TDraft2019_09ValidationVisitor.VisitMinProperties(const AValue: TJSONNumber);
+procedure TDraft2019_09ValidationVisitor.VisitMinimum(const pValue: TJSONNumber);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitMinProperties(AValue);
+  inherited VisitMinimum(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitMultipleOf(const AValue: TJSONNumber);
+procedure TDraft2019_09ValidationVisitor.VisitMinProperties(const pValue: TJSONNumber);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitMultipleOf(AValue);
+  inherited VisitMinProperties(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitPattern(const AValue: TJSONString);
+procedure TDraft2019_09ValidationVisitor.VisitMultipleOf(const pValue: TJSONNumber);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitPattern(AValue);
+  inherited VisitMultipleOf(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitRequired(const AValue: TJSONArray);
+procedure TDraft2019_09ValidationVisitor.VisitPattern(const pValue: TJSONString);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitRequired(AValue);
+  inherited VisitPattern(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitType(const AValue: TJSONValue);
+procedure TDraft2019_09ValidationVisitor.VisitRequired(const pValue: TJSONArray);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitType(AValue);
+  inherited VisitRequired(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitUniqueItems(const AValue: TJSONBool);
+procedure TDraft2019_09ValidationVisitor.VisitType(const pValue: TJSONValue);
 begin
   if ValidationVocabularySilent then
     Exit;
 
-  inherited VisitUniqueItems(AValue);
+  inherited VisitType(pValue);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitContains(const AValue: TJSONValue);
+procedure TDraft2019_09ValidationVisitor.VisitUniqueItems(const pValue: TJSONBool);
+begin
+  if ValidationVocabularySilent then
+    Exit;
+
+  inherited VisitUniqueItems(pValue);
+end;
+
+procedure TDraft2019_09ValidationVisitor.VisitContains(const pValue: TJSONValue);
 var
   lScope: TScope;
   lCount: Integer;
@@ -702,12 +728,12 @@ begin
   if TUtils.JsonGetType(lScope.InstanceNode) <> 'array' then
     Exit;
 
-  if AValue is TJSONBool then
+  if pValue is TJSONBool then
   begin
-    if TJSONBool(AValue).AsBoolean and (TJSONArray(lScope.InstanceNode).Count > 0) then
+    if TJSONBool(pValue).AsBoolean and (TJSONArray(lScope.InstanceNode).Count > 0) then
       Exit;
 
-    if not TJSONBool(AValue).AsBoolean then
+    if not TJSONBool(pValue).AsBoolean then
     begin
        Visitor.AddError(vetContains);
        Exit;
@@ -719,7 +745,7 @@ begin
   begin
     lNewScope := lScope;
     lNewScope.SchemaPath := Format('%s/contains', [lScope.SchemaPath]);
-    lNewScope.SchemaNode := AValue;
+    lNewScope.SchemaNode := pValue;
     lNewScope.InstanceNode := lInstance[lCount];
     lNewScope.InstancePath := Format('%s/%d', [lScope.InstancePath, lCount]);
     lNewScope.CoveredItems := [];
@@ -728,9 +754,9 @@ begin
     lNewScope.CoveredProperties := [];
 
     Visitor.PushScope(lNewScope);
-    lVisitor := Visitor.New(AValue, lInstance[lCount], lScope.BaseURI);
+    lVisitor := Visitor.New(pValue, lInstance[lCount], lScope.BaseURI);
     try
-      lWalker := TWalker<TDraft2019_09Visitor>.Create(AValue, lVisitor);
+      lWalker := TWalker<TDraft2019_09Visitor>.Create(pValue, lVisitor);
       lWalker.Walk;
     finally
       Visitor.PopScope;
@@ -761,388 +787,387 @@ begin
     .AddVisitedKeyword('maxContains');
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitDependentRequired(const AValue: TJSONObject);
+procedure TDraft2019_09ValidationVisitor.VisitDependentRequired(const pValue: TJSONObject);
 var
-  LScope: TScope;
-  LInstance: TJSONObject;
-  LDependencyPair: TJSONPair;
-  LRequiredList: TJSONArray;
-  LRequiredValue: TJSONValue;
-  LRequiredName: string;
+  lScope: TScope;
+  lInstance: TJSONObject;
+  lDependencyPair: TJSONPair;
+  lRequiredList: TJSONArray;
+  lRequiredValue: TJSONValue;
+  lRequiredName: string;
 begin
-  LScope := Visitor.CurrentScope;
-  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+  lScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(lScope.InstanceNode) <> 'object' then
     Exit;
 
-  LInstance := TJSONObject(LScope.InstanceNode);
-  for LDependencyPair in AValue do
+  lInstance := TJSONObject(lScope.InstanceNode);
+  for lDependencyPair in pValue do
   begin
-    if LInstance.FindValue(LDependencyPair.JsonString.Value) = nil then
+    if lInstance.FindValue(lDependencyPair.JsonString.Value) = nil then
       Continue;
 
-    if not (LDependencyPair.JsonValue is TJSONArray) then
+    if not (lDependencyPair.JsonValue is TJSONArray) then
       Continue;
 
-    LRequiredList := TJSONArray(LDependencyPair.JsonValue);
-    for LRequiredValue in LRequiredList do
+    lRequiredList := TJSONArray(lDependencyPair.JsonValue);
+    for lRequiredValue in lRequiredList do
     begin
-      if not (LRequiredValue is TJSONString) then
+      if not (lRequiredValue is TJSONString) then
         Continue;
 
-      LRequiredName := TJSONString(LRequiredValue).Value;
-      if LInstance.FindValue(LRequiredName) = nil then
-        Visitor.AddError(vetDependentRequired, [LDependencyPair.JsonString.Value, LRequiredName]);
+      lRequiredName := TJSONString(lRequiredValue).Value;
+      if lInstance.FindValue(lRequiredName) = nil then
+        Visitor.AddError(vetDependentRequired, [lDependencyPair.JsonString.Value, lRequiredName]);
     end;
   end;
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitDependencies(const AValue: TJSONObject);
+procedure TDraft2019_09ValidationVisitor.VisitDependencies(const pValue: TJSONObject);
 var
-  LScope: TScope;
-  LInstance: TJSONObject;
-  LDependencyPair: TJSONPair;
-  LDependencyValue: TJSONValue;
-  LRequiredList: TJSONArray;
-  LRequiredValue: TJSONValue;
-  LRequiredName: string;
-  LNewScope: TScope;
-  LWalker: IWalker;
-  LErrorCount: Integer;
-  LPropertyKey: string;
+  lScope: TScope;
+  lInstance: TJSONObject;
+  lDependencyPair: TJSONPair;
+  lDependencyValue: TJSONValue;
+  lRequiredList: TJSONArray;
+  lRequiredValue: TJSONValue;
+  lRequiredName: string;
+  lNewScope: TScope;
+  lWalker: IWalker;
+  lErrorCount: Integer;
+  lPropertyKey: string;
 begin
-  LScope := Visitor.CurrentScope;
-  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+  lScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(lScope.InstanceNode) <> 'object' then
     Exit;
 
-  LInstance := TJSONObject(LScope.InstanceNode);
-  for LDependencyPair in AValue do
+  lInstance := TJSONObject(lScope.InstanceNode);
+  for lDependencyPair in pValue do
   begin
-    if LInstance.FindValue(LDependencyPair.JsonString.Value) = nil then
+    if lInstance.FindValue(lDependencyPair.JsonString.Value) = nil then
       Continue;
 
-    LDependencyValue := LDependencyPair.JsonValue;
+    lDependencyValue := lDependencyPair.JsonValue;
 
     // Legacy behavior: array behaves like dependentRequired.
-    if LDependencyValue is TJSONArray then
+    if lDependencyValue is TJSONArray then
     begin
-      LRequiredList := TJSONArray(LDependencyValue);
-      for LRequiredValue in LRequiredList do
+      lRequiredList := TJSONArray(lDependencyValue);
+      for lRequiredValue in lRequiredList do
       begin
-        if not (LRequiredValue is TJSONString) then
+        if not (lRequiredValue is TJSONString) then
           Continue;
 
-        LRequiredName := TJSONString(LRequiredValue).Value;
-        if LInstance.FindValue(LRequiredName) = nil then
-          Visitor.AddError(vetDependentRequired, [LDependencyPair.JsonString.Value, LRequiredName]);
+        lRequiredName := TJSONString(lRequiredValue).Value;
+        if lInstance.FindValue(lRequiredName) = nil then
+          Visitor.AddError(vetDependentRequired, [lDependencyPair.JsonString.Value, lRequiredName]);
       end;
       Continue;
     end;
 
     // Legacy behavior: schema behaves like dependentSchemas.
-    if (LDependencyValue is TJSONObject) or (LDependencyValue is TJSONBool) then
+    if (lDependencyValue is TJSONObject) or (lDependencyValue is TJSONBool) then
     begin
-      LNewScope := LScope;
-      LNewScope.SchemaPath        := Format('%s/dependencies/%s', [LScope.SchemaPath, LDependencyPair.JsonString.Value]);
-      LNewScope.SchemaNode        := LDependencyValue;
-      LNewScope.CoveredItems      := [];
-      LNewScope.ContainsCount     := 0;
-      LNewScope.VisitedKeywords   := [];
-      LNewScope.CoveredProperties := [];
+      lNewScope := lScope;
+      lNewScope.SchemaPath        := Format('%s/dependencies/%s', [lScope.SchemaPath, lDependencyPair.JsonString.Value]);
+      lNewScope.SchemaNode        := lDependencyValue;
+      lNewScope.CoveredItems      := [];
+      lNewScope.ContainsCount     := 0;
+      lNewScope.VisitedKeywords   := [];
+      lNewScope.CoveredProperties := [];
 
-      Visitor.PushScope(LNewScope);
-      LErrorCount := Length(Visitor.Result.Errors);
+      Visitor.PushScope(lNewScope);
+      lErrorCount := Length(Visitor.Result.Errors);
       try
-        LWalker := TWalker<TDraft2019_09Visitor>.Create(LDependencyValue, Visitor);
-        LWalker.Walk;
+        lWalker := TWalker<TDraft2019_09Visitor>.Create(lDependencyValue, Visitor);
+        lWalker.Walk;
       finally
         Visitor.PopScope;
       end;
 
-      if Length(Visitor.Result.Errors) = LErrorCount then
+      if Length(Visitor.Result.Errors) = lErrorCount then
       begin
-        LPropertyKey := Format('%s/%s', [LScope.InstancePath, LDependencyPair.JsonString.Value]);
-        if not Assigned(LScope.EvaluatedPropertiesInScope) then
-          LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
-        LScope.EvaluatedPropertiesInScope.Add(LPropertyKey);
-        Visitor.Result.AddEvaluatedProperty(LPropertyKey);
+        lPropertyKey := Format('%s/%s', [lScope.InstancePath, lDependencyPair.JsonString.Value]);
+        if not Assigned(lScope.EvaluatedPropertiesInScope) then
+          lScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+        lScope.EvaluatedPropertiesInScope.Add(lPropertyKey);
+        Visitor.Result.AddEvaluatedProperty(lPropertyKey);
       end;
     end;
   end;
 
-  Visitor.UpdateScope(LScope);
+  Visitor.UpdateScope(lScope);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitMaxContains(const AValue: TJSONNumber);
+procedure TDraft2019_09ValidationVisitor.VisitMaxContains(const pValue: TJSONNumber);
 var
-  LScope: TScope;
-  LMaximum: Integer;
+  lScope: TScope;
+  lMaximum: Integer;
 begin
-  LScope := Visitor.CurrentScope;
-  if LScope.SchemaNode.FindValue('contains') = nil then
+  lScope := Visitor.CurrentScope;
+  if lScope.SchemaNode.FindValue('contains') = nil then
     Exit;
 
-  LMaximum := TUtils.JsonGetInteger(AValue);
-  if LScope.ContainsCount > LMaximum then
-    Visitor.AddError(vetMaxContains, [LMaximum, LScope.ContainsCount]);
+  lMaximum := TUtils.JsonGetInteger(pValue);
+  if lScope.ContainsCount > lMaximum then
+    Visitor.AddError(vetMaxContains, [lMaximum, lScope.ContainsCount]);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitMinContains(const AValue: TJSONNumber);
+procedure TDraft2019_09ValidationVisitor.VisitMinContains(const pValue: TJSONNumber);
 var
-  LScope: TScope;
-  LMinimum: Integer;
+  lScope: TScope;
+  lMinimum: Integer;
 begin
-  LScope := Visitor.CurrentScope;
-  if LScope.SchemaNode.FindValue('contains') = nil then
+  lScope := Visitor.CurrentScope;
+  if lScope.SchemaNode.FindValue('contains') = nil then
     Exit;
 
-  LMinimum := TUtils.JsonGetInteger(AValue);
-  if LScope.ContainsCount < LMinimum then
-    if LMinimum = 1 then
+  lMinimum := TUtils.JsonGetInteger(pValue);
+  if lScope.ContainsCount < lMinimum then
+    if lMinimum = 1 then
       Visitor.AddError(vetContains)
     else
-      Visitor.AddError(vetMinContains, [LMinimum, LScope.ContainsCount]);
+      Visitor.AddError(vetMinContains, [lMinimum, lScope.ContainsCount]);
 end;
 
-procedure TDraft2019_09ValidationVisitor.VisitPropertyNames(const AValue: TJSONValue);
+procedure TDraft2019_09ValidationVisitor.VisitPropertyNames(const pValue: TJSONValue);
 begin
-  inherited VisitPropertyNames(AValue);
+  inherited VisitPropertyNames(pValue);
 end;
 
 { TDraft2019_09ApplicatorVisitor }
 
-procedure TDraft2019_09ApplicatorVisitor.VisitDefs(const AValue: TJSONObject);
+procedure TDraft2019_09ApplicatorVisitor.VisitDefs(const pValue: TJSONObject);
 begin
 
 end;
 
-procedure TDraft2019_09ApplicatorVisitor.VisitDependentSchemas(const AValue: TJSONObject);
+procedure TDraft2019_09ApplicatorVisitor.VisitDependentSchemas(const pValue: TJSONObject);
 var
-  LScope: TScope;
-  LInstance: TJSONObject;
-  LDependencyPair: TJSONPair;
-  LSubSchema: TJSONValue;
-  LNewScope: TScope;
-  LWalker: IWalker;
-  LErrorCount: Integer;
-  LEvaluatedProperty: string;
+  lScope: TScope;
+  lInstance: TJSONObject;
+  lDependencyPair: TJSONPair;
+  lSubSchema: TJSONValue;
+  lNewScope: TScope;
+  lWalker: IWalker;
+  lErrorCount: Integer;
+  lEvaluatedProperty: string;
 begin
-  LScope := Visitor.CurrentScope;
-  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+  lScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(lScope.InstanceNode) <> 'object' then
     Exit;
 
-  LInstance := TJSONObject(LScope.InstanceNode);
-  for LDependencyPair in AValue do
+  lInstance := TJSONObject(lScope.InstanceNode);
+  for lDependencyPair in pValue do
   begin
-    if LInstance.FindValue(LDependencyPair.JsonString.Value) <> nil then
+    if lInstance.FindValue(lDependencyPair.JsonString.Value) <> nil then
     begin
-      LSubSchema := LDependencyPair.JsonValue;
+      lSubSchema := lDependencyPair.JsonValue;
 
-      LNewScope := LScope;
-      LNewScope.SchemaPath        := Format('%s/dependentSchemas/%s', [LScope.SchemaPath, LDependencyPair.JsonString.Value]);
-      LNewScope.SchemaNode        := LSubSchema;
-      LNewScope.CoveredItems      := [];
-      LNewScope.ContainsCount     := 0;
-      LNewScope.VisitedKeywords   := [];
-      LNewScope.CoveredProperties := [];
+      lNewScope := lScope;
+      lNewScope.SchemaPath        := Format('%s/dependentSchemas/%s', [lScope.SchemaPath, lDependencyPair.JsonString.Value]);
+      lNewScope.SchemaNode        := lSubSchema;
+      lNewScope.CoveredItems      := [];
+      lNewScope.ContainsCount     := 0;
+      lNewScope.VisitedKeywords   := [];
+      lNewScope.CoveredProperties := [];
 
-      Visitor.PushScope(LNewScope);
-      LErrorCount := Length(Visitor.Result.Errors);
+      Visitor.PushScope(lNewScope);
+      lErrorCount := Length(Visitor.Result.Errors);
       try
-        LWalker := TWalker<TDraft2019_09Visitor>.Create(LSubSchema, Visitor);
-        LWalker.Walk;
+        lWalker := TWalker<TDraft2019_09Visitor>.Create(lSubSchema, Visitor);
+        lWalker.Walk;
       finally
-        LNewScope := Visitor.PopScope;
+        lNewScope := Visitor.PopScope;
       end;
 
-      if Length(Visitor.Result.Errors) = LErrorCount then
+      if Length(Visitor.Result.Errors) = lErrorCount then
       begin
-        if not Assigned(LScope.EvaluatedPropertiesInScope) then
-          LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
-        // Promove todas as propriedades avaliadas pelo sub-schema para o escopo pai
-        if Assigned(LNewScope.EvaluatedPropertiesInScope) then
-          for LEvaluatedProperty in LNewScope.EvaluatedPropertiesInScope do
-            LScope.EvaluatedPropertiesInScope.Add(LEvaluatedProperty);
+        if not Assigned(lScope.EvaluatedPropertiesInScope) then
+          lScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+        if Assigned(lNewScope.EvaluatedPropertiesInScope) then
+          for lEvaluatedProperty in lNewScope.EvaluatedPropertiesInScope do
+            lScope.EvaluatedPropertiesInScope.Add(lEvaluatedProperty);
       end;
     end;
   end;
 
-  Visitor.UpdateScope(LScope);
+  Visitor.UpdateScope(lScope);
 end;
 
-procedure TDraft2019_09ApplicatorVisitor.VisitPrefixItems(const AValue: TJSONArray);
+procedure TDraft2019_09ApplicatorVisitor.VisitPrefixItems(const pValue: TJSONArray);
 begin
-  // prefixItems e desconhecido em 2019-09 e deve ser ignorado.
+  // prefixItems é desconhecido em 2019-09 e deve ser ignorado.
 end;
 
-procedure TDraft2019_09ApplicatorVisitor.VisitUnevaluatedItems(const AValue: TJSONValue);
+procedure TDraft2019_09ApplicatorVisitor.VisitUnevaluatedItems(const pValue: TJSONValue);
 var
-  LCount: Integer;
-  LScope: TScope;
-  LWalker: IWalker;
-  LEvaluated: THashSet<string>;
-  LEvaluatedPath: string;
-  LItemPath: string;
-  LCoveredIndex: Integer;
-  LCurrentPrefix: string;
-  LCanonicalPrefix: string;
-  LCanonicalPath: string;
-  LNewScope: TScope;
-  LErrorCount: Integer;
+  lCount: Integer;
+  lScope: TScope;
+  lWalker: IWalker;
+  lEvaluated: THashSet<string>;
+  lEvaluatedPath: string;
+  lItemPath: string;
+  lCoveredIndex: Integer;
+  lCurrentPrefix: string;
+  lCanonicalPrefix: string;
+  lCanonicalPath: string;
+  lNewScope: TScope;
+  lErrorCount: Integer;
 begin
-  LScope := Visitor.CurrentScope;
-  if TUtils.JsonGetType(LScope.InstanceNode) <> 'array' then
+  lScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(lScope.InstanceNode) <> 'array' then
     Exit;
 
-  LEvaluated := THashSet<string>.Create;
+  lEvaluated := THashSet<string>.Create;
   try
-    if LScope.InstancePath.EndsWith('/') then
-      LCurrentPrefix := LScope.InstancePath
+    if lScope.InstancePath.EndsWith('/') then
+      lCurrentPrefix := lScope.InstancePath
     else
-      LCurrentPrefix := LScope.InstancePath + '/';
+      lCurrentPrefix := lScope.InstancePath + '/';
 
-    LCanonicalPrefix := LCurrentPrefix;
-    if LCanonicalPrefix.StartsWith('#/') then
-      LCanonicalPrefix := LCanonicalPrefix.Substring(1)
-    else if LCanonicalPrefix = '#/' then
-      LCanonicalPrefix := '/'
-    else if LCanonicalPrefix.StartsWith('#.') then
-      LCanonicalPrefix := '/' + StringReplace(LCanonicalPrefix.Substring(2), '.', '/', [rfReplaceAll]);
+    lCanonicalPrefix := lCurrentPrefix;
+    if lCanonicalPrefix.StartsWith('#/') then
+      lCanonicalPrefix := lCanonicalPrefix.Substring(1)
+    else if lCanonicalPrefix = '#/' then
+      lCanonicalPrefix := '/'
+    else if lCanonicalPrefix.StartsWith('#.') then
+      lCanonicalPrefix := '/' + StringReplace(lCanonicalPrefix.Substring(2), '.', '/', [rfReplaceAll]);
 
-    for LEvaluatedPath in Visitor.Result.EvaluatedProperties do
+    for lEvaluatedPath in Visitor.Result.EvaluatedProperties do
     begin
-      LCanonicalPath := LEvaluatedPath;
-      if LCanonicalPath.StartsWith('#/') then
-        LCanonicalPath := LCanonicalPath.Substring(1)
-      else if LCanonicalPath.StartsWith('#.') then
-        LCanonicalPath := '/' + StringReplace(LCanonicalPath.Substring(2), '.', '/', [rfReplaceAll]);
-      LEvaluated.Add(LCanonicalPath);
+      lCanonicalPath := lEvaluatedPath;
+      if lCanonicalPath.StartsWith('#/') then
+        lCanonicalPath := lCanonicalPath.Substring(1)
+      else if lCanonicalPath.StartsWith('#.') then
+        lCanonicalPath := '/' + StringReplace(lCanonicalPath.Substring(2), '.', '/', [rfReplaceAll]);
+      lEvaluated.Add(lCanonicalPath);
     end;
 
-    for LCoveredIndex in LScope.CoveredItems do
-      LEvaluated.Add(Format('%s%d', [LCanonicalPrefix, LCoveredIndex]));
+    for lCoveredIndex in lScope.CoveredItems do
+      lEvaluated.Add(Format('%s%d', [lCanonicalPrefix, lCoveredIndex]));
 
-    for LCount := 0 to TJSONArray(LScope.InstanceNode).Count - 1 do
+    for lCount := 0 to TJSONArray(lScope.InstanceNode).Count - 1 do
     begin
-      LItemPath := Format('%s%d', [LCanonicalPrefix, LCount]);
-      if LEvaluated.Contains(LItemPath) then
+      lItemPath := Format('%s%d', [lCanonicalPrefix, lCount]);
+      if lEvaluated.Contains(lItemPath) then
         Continue;
 
-      LNewScope := LScope;
-      LNewScope.SchemaPath        := Format('%s/unevaluatedItems', [LScope.SchemaPath]);
-      LNewScope.SchemaNode        := AValue;
-      LNewScope.InstanceNode      := TJSONArray(LScope.InstanceNode)[LCount];
-      LNewScope.InstancePath      := Format('%s/%d', [LScope.InstancePath, LCount]);
-      LNewScope.CoveredItems      := [];
-      LNewScope.ContainsCount     := 0;
-      LNewScope.VisitedKeywords   := [];
-      LNewScope.CoveredProperties := [];
+      lNewScope := lScope;
+      lNewScope.SchemaPath        := Format('%s/unevaluatedItems', [lScope.SchemaPath]);
+      lNewScope.SchemaNode        := pValue;
+      lNewScope.InstanceNode      := TJSONArray(lScope.InstanceNode)[lCount];
+      lNewScope.InstancePath      := Format('%s/%d', [lScope.InstancePath, lCount]);
+      lNewScope.CoveredItems      := [];
+      lNewScope.ContainsCount     := 0;
+      lNewScope.VisitedKeywords   := [];
+      lNewScope.CoveredProperties := [];
 
-      Visitor.PushScope(LNewScope);
-      LErrorCount := Length(Visitor.Result.Errors);
+      Visitor.PushScope(lNewScope);
+      lErrorCount := Length(Visitor.Result.Errors);
       try
-        LWalker := TWalker<TDraft2019_09Visitor>.Create(AValue, Visitor);
-        LWalker.Walk;
+        lWalker := TWalker<TDraft2019_09Visitor>.Create(pValue, Visitor);
+        lWalker.Walk;
       finally
         Visitor.PopScope;
       end;
 
-      if Length(Visitor.Result.Errors) > LErrorCount then
-        Visitor.AddError(vetUnevaluatedItems, [LCount]);
+      if Length(Visitor.Result.Errors) > lErrorCount then
+        Visitor.AddError(vetUnevaluatedItems, [lCount]);
 
-      TUtils.AddArray<Integer>(LScope.CoveredItems, LCount);
-      Visitor.Result.AddEvaluatedProperty('#' + LItemPath);
+      TUtils.AddArray<Integer>(lScope.CoveredItems, lCount);
+      Visitor.Result.AddEvaluatedProperty('#' + lItemPath);
     end;
   finally
-    LEvaluated.Free;
+    lEvaluated.Free;
   end;
 
-  Visitor.UpdateScope(LScope);
+  Visitor.UpdateScope(lScope);
 end;
 
-procedure TDraft2019_09ApplicatorVisitor.VisitUnevaluatedProperties(const AValue: TJSONValue);
+procedure TDraft2019_09ApplicatorVisitor.VisitUnevaluatedProperties(const pValue: TJSONValue);
 var
-  LPair: TJSONPair;
-  LScope: TScope;
-  LWalker: IWalker;
-  LEvaluated: THashSet<string>;
-  LEvaluatedProp: string;
-  LCoveredProp: string;
-  LNewScope: TScope;
-  LErrorCount: Integer;
-  LPropKey: string;
-  LCurrentPrefix: string;
-  LCanonicalPath: string;
+  lPair: TJSONPair;
+  lScope: TScope;
+  lWalker: IWalker;
+  lEvaluated: THashSet<string>;
+  lEvaluatedProp: string;
+  lCoveredProp: string;
+  lNewScope: TScope;
+  lErrorCount: Integer;
+  lPropKey: string;
+  lCurrentPrefix: string;
+  lCanonicalPath: string;
 begin
-  LScope := Visitor.CurrentScope;
-  if TUtils.JsonGetType(LScope.InstanceNode) <> 'object' then
+  lScope := Visitor.CurrentScope;
+  if TUtils.JsonGetType(lScope.InstanceNode) <> 'object' then
     Exit;
 
-  LEvaluated := THashSet<string>.Create;
+  lEvaluated := THashSet<string>.Create;
   try
-    if LScope.InstancePath.EndsWith('/') then
-      LCurrentPrefix := LScope.InstancePath
+    if lScope.InstancePath.EndsWith('/') then
+      lCurrentPrefix := lScope.InstancePath
     else
-      LCurrentPrefix := LScope.InstancePath + '/';
+      lCurrentPrefix := lScope.InstancePath + '/';
 
-    if LCurrentPrefix.StartsWith('#/') then
-      LCurrentPrefix := LCurrentPrefix.Substring(1)
-    else if LCurrentPrefix.StartsWith('#.') then
-      LCurrentPrefix := '/' + StringReplace(LCurrentPrefix.Substring(2), '.', '/', [rfReplaceAll]);
+    if lCurrentPrefix.StartsWith('#/') then
+      lCurrentPrefix := lCurrentPrefix.Substring(1)
+    else if lCurrentPrefix.StartsWith('#.') then
+      lCurrentPrefix := '/' + StringReplace(lCurrentPrefix.Substring(2), '.', '/', [rfReplaceAll]);
 
-    for LEvaluatedProp in Visitor.Result.EvaluatedProperties do
+    for lEvaluatedProp in Visitor.Result.EvaluatedProperties do
     begin
-      LCanonicalPath := LEvaluatedProp;
-      if LCanonicalPath.StartsWith('#/') then
-        LCanonicalPath := LCanonicalPath.Substring(1)
-      else if LCanonicalPath.StartsWith('#.') then
-        LCanonicalPath := '/' + StringReplace(LCanonicalPath.Substring(2), '.', '/', [rfReplaceAll]);
-      LEvaluated.Add(LCanonicalPath);
+      lCanonicalPath := lEvaluatedProp;
+      if lCanonicalPath.StartsWith('#/') then
+        lCanonicalPath := lCanonicalPath.Substring(1)
+      else if lCanonicalPath.StartsWith('#.') then
+        lCanonicalPath := '/' + StringReplace(lCanonicalPath.Substring(2), '.', '/', [rfReplaceAll]);
+      lEvaluated.Add(lCanonicalPath);
     end;
 
-    for LCoveredProp in LScope.CoveredProperties do
-      LEvaluated.Add(LCurrentPrefix + LCoveredProp);
+    for lCoveredProp in lScope.CoveredProperties do
+      lEvaluated.Add(lCurrentPrefix + lCoveredProp);
 
-    for LPair in TJSONObject(LScope.InstanceNode) do
+    for lPair in TJSONObject(lScope.InstanceNode) do
     begin
-      LPropKey := LCurrentPrefix + LPair.JsonString.Value;
-      if LEvaluated.Contains(LPropKey) then
+      lPropKey := lCurrentPrefix + lPair.JsonString.Value;
+      if lEvaluated.Contains(lPropKey) then
         Continue;
 
-      LNewScope := LScope;
-      LNewScope.SchemaPath        := Format('%s/unevaluatedProperties', [LScope.SchemaPath]);
-      LNewScope.SchemaNode        := AValue;
-      LNewScope.InstanceNode      := LPair.JsonValue;
-      LNewScope.InstancePath      := Format('%s/%s', [LScope.InstancePath, LPair.JsonString.Value]);
-      LNewScope.CoveredItems      := [];
-      LNewScope.ContainsCount     := 0;
-      LNewScope.VisitedKeywords   := [];
-      LNewScope.CoveredProperties := [];
+      lNewScope := lScope;
+      lNewScope.SchemaPath        := Format('%s/unevaluatedProperties', [lScope.SchemaPath]);
+      lNewScope.SchemaNode        := pValue;
+      lNewScope.InstanceNode      := lPair.JsonValue;
+      lNewScope.InstancePath      := Format('%s/%s', [lScope.InstancePath, lPair.JsonString.Value]);
+      lNewScope.CoveredItems      := [];
+      lNewScope.ContainsCount     := 0;
+      lNewScope.VisitedKeywords   := [];
+      lNewScope.CoveredProperties := [];
 
-      Visitor.PushScope(LNewScope);
-      LErrorCount := Length(Visitor.Result.Errors);
+      Visitor.PushScope(lNewScope);
+      lErrorCount := Length(Visitor.Result.Errors);
       try
-        LWalker := TWalker<TDraft2019_09Visitor>.Create(AValue, Visitor);
-        LWalker.Walk;
+        lWalker := TWalker<TDraft2019_09Visitor>.Create(pValue, Visitor);
+        lWalker.Walk;
       finally
         Visitor.PopScope;
       end;
 
-      if Length(Visitor.Result.Errors) > LErrorCount then
-        Visitor.AddError(vetUnevaluatedProperties, [LPair.JsonString.Value])
+      if Length(Visitor.Result.Errors) > lErrorCount then
+        Visitor.AddError(vetUnevaluatedProperties, [lPair.JsonString.Value])
       else
       begin
-        TUtils.AddArray<string>(LScope.CoveredProperties, LPair.JsonString.Value);
-        if not Assigned(LScope.EvaluatedPropertiesInScope) then
-          LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
-        LScope.EvaluatedPropertiesInScope.Add('#' + LPropKey);
-        Visitor.Result.AddEvaluatedProperty('#' + LPropKey);
+        TUtils.AddArray<string>(lScope.CoveredProperties, lPair.JsonString.Value);
+        if not Assigned(lScope.EvaluatedPropertiesInScope) then
+          lScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+        lScope.EvaluatedPropertiesInScope.Add('#' + lPropKey);
+        Visitor.Result.AddEvaluatedProperty('#' + lPropKey);
       end;
     end;
   finally
-    LEvaluated.Free;
+    lEvaluated.Free;
   end;
 
-  Visitor.UpdateScope(LScope);
+  Visitor.UpdateScope(lScope);
 end;
 
 end.

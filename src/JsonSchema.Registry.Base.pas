@@ -1,13 +1,10 @@
-﻿unit JsonSchema.Registry.Base;
+unit JsonSchema.Registry.Base;
 
 interface
 
 uses
   System.JSON,
   System.Generics.Collections,
-  JsonSchema.Translate.Types,
-  JsonSchema.Translate.Interfaces,
-  JsonSchema.Translate.Utils,
   JsonSchema.Visitors.Interfaces,
   JsonSchema.Visitors.Base,
   JsonSchema.Visitors.Types,
@@ -16,6 +13,7 @@ uses
   JsonSchema.Registry.Uri;
 
 type
+  /// <summary>Visitor that traverses a JSON Schema graph to discover and register all sub-schema resources, anchors, and remote references.</summary>
   TRegistryVisitor = class(TBaseVisitor<TRegistryVisitor>, IVisitor<TRegistryVisitor>)
   private
     FResources: TObjectDictionary<string, TResource>;
@@ -28,61 +26,115 @@ type
     class function IsLocalTestServerURI(const pURI: string): Boolean; static;
     procedure TryLoadRemoteResource(const pTargetURI: TURIReference);
   public
+    /// <summary>Initializes the registry visitor, seeds the resource table with the root schema, and wires up all subordinate visitor handlers.</summary>
+    /// <param name="pSchema">The root JSON Schema value to register.</param>
+    /// <param name="pData">The JSON data instance being validated (may be nil).</param>
+    /// <param name="pBaseURI">The absolute base URI that identifies the root schema resource.</param>
     constructor Create(const pSchema, pData: TJSONValue; const pBaseURI: string);
     destructor Destroy; override;
+    /// <summary>Creates and returns a new TRegistryVisitor, satisfying the abstract factory contract of TBaseVisitor.</summary>
+    /// <param name="pSchema">The root JSON Schema value for the new visitor.</param>
+    /// <param name="pData">The JSON data instance for the new visitor.</param>
+    /// <param name="pBaseURI">The base URI for the new visitor.</param>
+    /// <returns>A newly constructed TRegistryVisitor.</returns>
     function New(const pSchema, pData: TJSONValue; const pBaseURI: string): TRegistryVisitor; override;
+    /// <summary>Returns the ordered list of keywords that must be processed before all others during schema traversal.</summary>
+    /// <returns>An array of keyword strings in priority order.</returns>
     function KeywordPrecedence: TArray<string>; override;
+    /// <summary>Attempts to locate a registered TResource by its base URI, triggering a remote fetch if the resource has not yet been loaded.</summary>
+    /// <param name="pBaseURI">The URI whose resource is being looked up.</param>
+    /// <param name="pResource">Receives the found TResource when the function returns True.</param>
+    /// <returns>True if the resource was found (locally or after a remote load); False otherwise.</returns>
     function TryFindResource(const pBaseURI: string; var pResource: TResource): Boolean;
   end;
 
+  /// <summary>Registry phase handler for core JSON Schema keywords ($schema, $id, id, $ref, $anchor, $dynamicAnchor, $defs, definitions); populates the resource registry during schema traversal.</summary>
   TBaseRegistryCoreVisitor = class(TBase<TRegistryVisitor>, IBaseCoreVisitor<TRegistryVisitor>)
     [VisitorKeyword('$schema')]
     procedure VisitSchema(const pValue: TJSONString);
+    /// <summary>Handles the id/$id keyword: resolves the new base URI, registers the schema node as a resource, and records fragment-based anchors for older draft compatibility.</summary>
+    /// <param name="pValue">The JSON string value of the id or $id keyword.</param>
     [VisitorKeyword('id')]
     [VisitorKeyword('$id')]
     procedure VisitId(const pValue: TJSONString);
+    /// <summary>Handles the $ref keyword: resolves the reference URI against the current base and triggers loading of any unregistered remote resource it targets.</summary>
+    /// <param name="pValue">The JSON string value of the $ref keyword.</param>
     [VisitorKeyword('$ref')]
     procedure VisitRef(const pValue: TJSONString);
+    /// <summary>Handles the $anchor keyword: registers the named anchor and its absolute URI form against the current base resource.</summary>
+    /// <param name="pValue">The JSON string value of the $anchor keyword.</param>
     [VisitorKeyword('$anchor')]
     procedure VisitAnchor(const pValue: TJSONString);
+    /// <summary>Handles the $dynamicAnchor keyword: registers the named dynamic anchor in the current base resource to support late-binding reference resolution.</summary>
+    /// <param name="pValue">The JSON string value of the $dynamicAnchor keyword.</param>
     [VisitorKeyword('$dynamicAnchor')]
     procedure VisitDynamicAnchor(const pValue: TJSONString);
+    /// <summary>Handles the definitions/$defs keyword: recurses into each sub-schema value to discover and register nested resources and anchors.</summary>
+    /// <param name="pValue">The JSON object whose values are sub-schemas to traverse.</param>
     [VisitorKeyword('definitions')]
     [VisitorKeyword('$defs')]
     procedure VisitDefinitions(const pValue: TJSONObject);
     procedure VisitBooleanSchema(const pValue: TJSONBool);
   end;
 
+  /// <summary>Registry phase handler for applicator keywords; recursively traverses sub-schemas referenced by combinators, conditionals, and structural keywords to register all reachable resources.</summary>
   TBaseRegistryApplicatorVisitor = class(TBase<TRegistryVisitor>, IBaseApplicatorVisitor<TRegistryVisitor>)
+    /// <summary>Registers resources reachable through each property sub-schema.</summary>
+    /// <param name="pValue">The JSON object whose values are property sub-schemas.</param>
     [VisitorKeyword('properties')]
     procedure VisitProperties(const pValue: TJSONObject);
+    /// <summary>Registers resources reachable through the items keyword, dispatching on whether the value is a single schema object or an array of schemas.</summary>
+    /// <param name="pValue">The JSON value representing either a single schema or an array of schemas.</param>
     [VisitorKeyword('items')]
     procedure VisitItems(const pValue: TJSONValue);
 
+    /// <summary>Registers resources reachable through every sub-schema in the allOf array.</summary>
+    /// <param name="pValue">The JSON array of sub-schemas that must all apply.</param>
     [VisitorKeyword('allOf')]
     procedure VisitAllOf(const pValue: TJSONArray);
+    /// <summary>Registers resources reachable through every sub-schema in the anyOf array.</summary>
+    /// <param name="pValue">The JSON array of sub-schemas of which at least one must apply.</param>
     [VisitorKeyword('anyOf')]
     procedure VisitAnyOf(const pValue: TJSONArray);
+    /// <summary>Registers resources reachable through every sub-schema in the oneOf array.</summary>
+    /// <param name="pValue">The JSON array of sub-schemas of which exactly one must apply.</param>
     [VisitorKeyword('oneOf')]
     procedure VisitOneOf(const pValue: TJSONArray);
+    /// <summary>Registers resources reachable through the not sub-schema.</summary>
+    /// <param name="pValue">The JSON value representing the negated sub-schema.</param>
     [VisitorKeyword('not')]
     procedure VisitNot(const pValue: TJSONValue);
+    /// <summary>Registers resources reachable through the if sub-schema.</summary>
+    /// <param name="pValue">The JSON value representing the condition sub-schema.</param>
     [VisitorKeyword('if')]
     procedure VisitIf(const pValue: TJSONValue);
+    /// <summary>Registers resources reachable through the then sub-schema.</summary>
+    /// <param name="pValue">The JSON value representing the sub-schema applied when the if condition succeeds.</param>
     [VisitorKeyword('then')]
     procedure VisitThen(const pValue: TJSONValue);
+    /// <summary>Registers resources reachable through the else sub-schema.</summary>
+    /// <param name="pValue">The JSON value representing the sub-schema applied when the if condition fails.</param>
     [VisitorKeyword('else')]
     procedure VisitElse(const pValue: TJSONValue);
+    /// <summary>Registers resources reachable through each patternProperties sub-schema.</summary>
+    /// <param name="pValue">The JSON object whose values are pattern-keyed sub-schemas.</param>
     [VisitorKeyword('patternProperties')]
     procedure VisitPatternProperties(const pValue: TJSONObject);
+    /// <summary>Registers resources reachable through the additionalProperties sub-schema.</summary>
+    /// <param name="pValue">The JSON value representing the sub-schema for additional properties.</param>
     [VisitorKeyword('additionalProperties')]
     procedure VisitAdditionalProperties(const pValue: TJSONValue);
+    /// <summary>Registers resources reachable through the additionalItems sub-schema.</summary>
+    /// <param name="pValue">The JSON value representing the sub-schema for additional items.</param>
     [VisitorKeyword('additionalItems')]
     procedure VisitAdditionalItems(const pValue: TJSONValue);
+    /// <summary>Registers resources reachable through every sub-schema in the prefixItems array.</summary>
+    /// <param name="pValue">The JSON array of positional item sub-schemas.</param>
     [VisitorKeyword('prefixItems')]
     procedure VisitPrefixItems(const pValue: TJSONArray);
   end;
 
+  /// <summary>Registry phase stub handler for JSON Hyper-Schema keywords; all methods are no-ops during the resource-discovery phase.</summary>
   TBaseRegistryHyperSchemaVisitor = class(TBase<TRegistryVisitor>, IBaseHyperSchemaVisitor<TRegistryVisitor>)
     procedure VisitBase(const pValue: TJSONString);
     procedure VisitLinks(const pValue: TJSONArray);
@@ -92,6 +144,7 @@ type
     procedure VisitHrefSchema(const pValue: TJSONValue);
   end;
 
+  /// <summary>Registry phase stub handler for validation keywords; all methods are no-ops during the resource-discovery phase.</summary>
   TBaseRegistryValidationVisitor = class(TBase<TRegistryVisitor>, IBaseValidationVisitor<TRegistryVisitor>)
     procedure VisitType(const pValue: TJSONValue);
     procedure VisitEnum(const pValue: TJSONArray);
@@ -113,6 +166,7 @@ type
     procedure VisitRequired(const pValue: TJSONArray);
   end;
 
+  /// <summary>Registry phase stub handler for the relative JSON Pointer vocabulary; no-ops during the resource-discovery phase.</summary>
   TBaseRegistryRelativeJsonPointer = class(TBase<TRegistryVisitor>, IBaseRelativeJsonPointer<TRegistryVisitor>)
   end;
 
@@ -188,8 +242,7 @@ begin
 
   PushScope(lNewScope);
   try
-  // Apenas objetos e booleanos s�o schemas v�lidos para percorrer.
-    if Assigned(pJsonValue) and ((pJsonValue is TJSONObject) or (pJsonValue is TJSONBool)) then
+  if Assigned(pJsonValue) and ((pJsonValue is TJSONObject) or (pJsonValue is TJSONBool)) then
       TWalker<TRegistryVisitor>.Create(pJsonValue, Self).Walk;
   finally
     PopScope;
@@ -466,7 +519,6 @@ end;
 
 procedure TBaseRegistryApplicatorVisitor.VisitItems(const pValue: TJSONValue);
 begin
-  // A l�gica de `items` pode ter um schema (objeto) ou um array de schemas.
   if pValue is TJSONObject then
     Visitor.DiscoverInSingleSchema(pValue)
   else if pValue is TJSONArray then
@@ -495,7 +547,6 @@ end;
 
 procedure TBaseRegistryApplicatorVisitor.VisitProperties(const pValue: TJSONObject);
 begin
-  // A l�gica � id�ntica a VisitDefinitions: percorrer os valores do objeto.
   Visitor.DiscoverInObjectOfSchemas(pValue);
 end;
 
@@ -573,7 +624,7 @@ begin
   lNewBaseURI := TURIReference.From(pValue.Value).ResolveWith(TURIReference.From(lScope.BaseURI));
   lScope.BaseURI := lNewBaseURI.Unsplit;
 
-  // Atualiza o escopo na pilha ANTES de continuar a recurs�o.
+  // Update the scope in the stack BEFORE continuing the recursion.
   Visitor.FScopeStack.List[Visitor.FScopeStack.Count - 1] := lScope;
 
   lResourceURI := lNewBaseURI;
@@ -581,7 +632,6 @@ begin
   lResourceURI.Fragment := '';
   lResourceKeyURI := TURIUtils.NormalizeURI(lResourceURI.Unsplit);
 
-  // Se o recurso base ainda nгo existe, adiciona-o.
   if not Visitor.FResources.ContainsKey(lResourceKeyURI) then
     Visitor.FResources.Add(lResourceKeyURI, TResource.Create(lResourceURI, lScope.SchemaNode));
 
@@ -589,8 +639,7 @@ begin
   if (lNewBaseURI.Fragment <> '') and Visitor.FResources.TryGetValue(lResourceKeyURI, lResource) then
     lResource.AddAnchor(lNewBaseURI.Fragment, lScope.SchemaNode);
 
-  // Marca a palavra-chave como visitada para que o Walker n�o a processe duas vezes
-  // se a preced�ncia for usada.
+  // Mark $id and id as visited so the Walker does not dispatch them again during precedence processing.
   Visitor.AddVisitedKeyword('$id');
   Visitor.AddVisitedKeyword('id');
 end;
@@ -634,8 +683,7 @@ begin
   lResourceRef.Fragment := '';
   lResourceURI := TURIUtils.NormalizeURI(lResourceRef.Unsplit);
 
-  // Se o recurso referenciado ainda n�o est� no registro, e � "busc�vel" (ex: http),
-  // o registro tentar� carreg�-lo.
+  // If the referenced resource is not yet in the registry and the URI is fetchable (e.g. http), attempt to load it.
   if not Visitor.FResources.ContainsKey(lResourceURI) then
     Visitor.TryLoadRemoteResource(lTargetURI);
 end;

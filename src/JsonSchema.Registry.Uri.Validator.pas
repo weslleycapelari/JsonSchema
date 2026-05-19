@@ -1,4 +1,4 @@
-﻿unit JsonSchema.Registry.Uri.Validator;
+unit JsonSchema.Registry.Uri.Validator;
 
 interface
 
@@ -9,13 +9,9 @@ uses
 
 type
   /// <summary>
-  ///   Classe para configurar e executar a valida��o de uma TURIReference.
+  /// Configures and executes validation rules against a TURIReference.
+  /// Build rules fluently, then call Validate to enforce them.
   /// </summary>
-  /// <remarks>
-  ///   Permite definir um conjunto de regras (ex: esquemas permitidos,
-  ///   componentes obrigat�rios) e aplic�-las a uma URI.
-  ///   Refer�ncia RFC 3986: Se��es 3 e 7.
-  /// </remarks>
   TURIValidator = class
   private
     FRequiredComponents: TURIComponents;
@@ -26,17 +22,19 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    function RequirePresenceOf(const AComponents: TURIComponents): TURIValidator;
-    function AllowSchemes(const ASchemes: array of string): TURIValidator;
-    function AllowHosts(const AHosts: array of string): TURIValidator;
+    /// <summary>Requires the specified components to be non-empty in the validated URI.</summary>
+    function RequirePresenceOf(const pComponents: TURIComponents): TURIValidator;
+    /// <summary>Restricts the URI to one of the specified schemes (case-insensitive).</summary>
+    function AllowSchemes(const pSchemes: array of string): TURIValidator;
+    /// <summary>Restricts the URI to one of the specified hosts (case-insensitive).</summary>
+    function AllowHosts(const pHosts: array of string): TURIValidator;
+    /// <summary>Fails validation when the URI contains a password in the userinfo component.</summary>
     function ForbidPassword: TURIValidator;
 
-    /// <summary>
-    ///   Executa a valida��o na URI fornecida.
-    /// </summary>
-    /// <param name="AURI">A inst�ncia de TURIReference a ser validada.</param>
-    /// <exception cref="EValidationError">Lan�ada se a URI falhar na valida��o.</exception>
-    procedure Validate(const AURI: TURIReference);
+    /// <summary>Validates the URI against all configured rules.</summary>
+    /// <param name="pURI">The TURIReference to validate.</param>
+    /// <exception cref="EValidationError">Raised when the URI fails any configured rule.</exception>
+    procedure Validate(const pURI: TURIReference);
   end;
 
 implementation
@@ -46,29 +44,23 @@ uses
 
 { TURIValidator }
 
-function TURIValidator.AllowHosts(const AHosts: array of string): TURIValidator;
+function TURIValidator.AllowHosts(const pHosts: array of string): TURIValidator;
 var
-  LHost: string;
+  lHost: string;
 begin
   FAllowedHosts.Clear;
-  for LHost in AHosts do
-  begin
-    // Armazena os hosts j� normalizados (lowercase) para compara��o eficiente.
-    FAllowedHosts.Add(LHost.ToLower);
-  end;
+  for lHost in pHosts do
+    FAllowedHosts.Add(lHost.ToLower);
   Result := Self;
 end;
 
-function TURIValidator.AllowSchemes(const ASchemes: array of string): TURIValidator;
+function TURIValidator.AllowSchemes(const pSchemes: array of string): TURIValidator;
 var
-  LScheme: string;
+  lScheme: string;
 begin
   FAllowedSchemes.Clear;
-  for LScheme in ASchemes do
-  begin
-    // Armazena os schemes j� normalizados (lowercase) para compara��o eficiente.
-    FAllowedSchemes.Add(LScheme.ToLower);
-  end;
+  for lScheme in pSchemes do
+    FAllowedSchemes.Add(lScheme.ToLower);
   Result := Self;
 end;
 
@@ -76,9 +68,9 @@ constructor TURIValidator.Create;
 begin
   inherited Create;
   FRequiredComponents := [];
-  FAllowedSchemes := TStringList.Create;
-  FAllowedHosts := TStringList.Create;
-  FForbidPassword := False;
+  FAllowedSchemes     := TStringList.Create;
+  FAllowedHosts       := TStringList.Create;
+  FForbidPassword     := False;
 end;
 
 destructor TURIValidator.Destroy;
@@ -94,77 +86,64 @@ begin
   Result := Self;
 end;
 
-function TURIValidator.RequirePresenceOf(const AComponents: TURIComponents): TURIValidator;
+function TURIValidator.RequirePresenceOf(const pComponents: TURIComponents): TURIValidator;
 begin
-  FRequiredComponents := FRequiredComponents + AComponents;
+  FRequiredComponents := FRequiredComponents + pComponents;
   Result := Self;
 end;
 
-procedure TURIValidator.Validate(const AURI: TURIReference);
+procedure TURIValidator.Validate(const pURI: TURIReference);
 var
-  LComponent: TURIComponent;
-  LRequiredComponents: TURIComponents;
-  LMissingComponents: string;
-  LUserInfo: string;
+  lComponent: TURIComponent;
+  lRequiredComponents: TURIComponents;
+  lMissingComponents: string;
+  lUserInfo: string;
 begin
-  LRequiredComponents := FRequiredComponents;
-  if SameText(AURI.Scheme, 'urn') then
-    LRequiredComponents := LRequiredComponents - [uricAuthority];
+  lRequiredComponents := FRequiredComponents;
+  // URN URIs do not have an authority component.
+  if SameText(pURI.Scheme, 'urn') then
+    lRequiredComponents := lRequiredComponents - [uricAuthority];
 
-  // 1. Validar componentes obrigat�rios
-  LMissingComponents := '';
-  if LRequiredComponents <> [] then
+  lMissingComponents := '';
+  if lRequiredComponents <> [] then
   begin
-    for LComponent in LRequiredComponents do
+    for lComponent in lRequiredComponents do
     begin
-      case LComponent of
-        uricScheme:    if AURI.Scheme = '' then LMissingComponents := LMissingComponents + 'Scheme, ';
-        uricAuthority: if AURI.Authority = '' then LMissingComponents := LMissingComponents + 'Authority, ';
-        uricUserInfo:  if AURI.UserInfo = '' then LMissingComponents := LMissingComponents + 'UserInfo, ';
-        uricHost:      if AURI.Host = '' then LMissingComponents := LMissingComponents + 'Host, ';
-        uricPath:      if AURI.Path = '' then LMissingComponents := LMissingComponents + 'Path, ';
-        // Query e Fragment podem ser vazios mas presentes ('?'), ent�o a verifica��o
-        // de aus�ncia (nil na lib python) � mais complexa e aqui checamos apenas o conte�do.
-        uricQuery:     if AURI.Query = '' then LMissingComponents := LMissingComponents + 'Query, ';
-        uricFragment:  if AURI.Fragment = '' then LMissingComponents := LMissingComponents + 'Fragment, ';
+      case lComponent of
+        uricScheme:    if pURI.Scheme = ''    then lMissingComponents := lMissingComponents + 'Scheme, ';
+        uricAuthority: if pURI.Authority = '' then lMissingComponents := lMissingComponents + 'Authority, ';
+        uricUserInfo:  if pURI.UserInfo = ''  then lMissingComponents := lMissingComponents + 'UserInfo, ';
+        uricHost:      if pURI.Host = ''      then lMissingComponents := lMissingComponents + 'Host, ';
+        uricPath:      if pURI.Path = ''      then lMissingComponents := lMissingComponents + 'Path, ';
+        // Query and Fragment may be empty yet present (e.g. "a.com?"); only content presence is checked.
+        uricQuery:     if pURI.Query = ''    then lMissingComponents := lMissingComponents + 'Query, ';
+        uricFragment:  if pURI.Fragment = '' then lMissingComponents := lMissingComponents + 'Fragment, ';
       end;
     end;
 
-    if LMissingComponents <> '' then
+    if lMissingComponents <> '' then
     begin
-      // Remove a v�rgula e o espa�o do final
-      LMissingComponents := LMissingComponents.Substring(0, LMissingComponents.Length - 2);
+      lMissingComponents := lMissingComponents.Substring(0, lMissingComponents.Length - 2);
       raise EMissingComponentError.CreateFmt(
-        'Required URI component(s) are missing: [%s]', [LMissingComponents]);
+        'Required URI component(s) are missing: [%s]', [lMissingComponents]);
     end;
   end;
 
-  // 2. Validar schemes permitidos
-  if (FAllowedSchemes.Count > 0) and (FAllowedSchemes.IndexOf(AURI.Scheme.ToLower) = -1) then
-  begin
+  if (FAllowedSchemes.Count > 0) and (FAllowedSchemes.IndexOf(pURI.Scheme.ToLower) = -1) then
     raise EValidationError.CreateFmt(
-      'Scheme "%s" is not in the list of allowed schemes.', [AURI.Scheme]);
-  end;
+      'Scheme "%s" is not in the list of allowed schemes.', [pURI.Scheme]);
 
-  // 3. Validar hosts permitidos
-  if (FAllowedHosts.Count > 0) and (FAllowedHosts.IndexOf(AURI.Host.ToLower) = -1) then
-  begin
+  if (FAllowedHosts.Count > 0) and (FAllowedHosts.IndexOf(pURI.Host.ToLower) = -1) then
     raise EValidationError.CreateFmt(
-      'Host "%s" is not in the list of allowed hosts.', [AURI.Host]);
-  end;
+      'Host "%s" is not in the list of allowed hosts.', [pURI.Host]);
 
-  // 4. Validar se a senha � proibida
   if FForbidPassword then
   begin
-    LUserInfo := AURI.UserInfo;
-    // Se 'userinfo' existe e cont�m ':' (indicando uma senha), lan�a a exce��o.
-    if (LUserInfo <> '') and (LUserInfo.IndexOf(':') > -1) then
-    begin
+    lUserInfo := pURI.UserInfo;
+    // A ':' in userinfo signals a password sub-component (RFC 3986, Section 3.2.1).
+    if (lUserInfo <> '') and (lUserInfo.IndexOf(':') > -1) then
       raise EValidationError.Create('URI contains a password, which is forbidden by the validator.');
-    end;
   end;
-
-  // Se todas as valida��es passaram, o m�todo termina sem exce��es.
 end;
 
 end.

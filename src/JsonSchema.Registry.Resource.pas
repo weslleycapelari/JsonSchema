@@ -1,4 +1,4 @@
-﻿unit JsonSchema.Registry.Resource;
+unit JsonSchema.Registry.Resource;
 
 interface
 
@@ -8,6 +8,10 @@ uses
   JsonSchema.Registry.Uri;
 
 type
+  /// <summary>
+  /// Represents a single JSON Schema resource identified by a base URI.
+  /// Holds the root schema node and all anchors discovered during registry population.
+  /// </summary>
   TResource = class
   private
     FBaseURI: TURIReference;
@@ -15,13 +19,27 @@ type
     FRootSchema: TJSONValue;
     FDynamicAnchors: TDictionary<string, TJSONValue>;
   public
+    /// <summary>Initializes a new resource with the given base URI and root schema node.</summary>
     constructor Create(const pBaseURI: TURIReference; const pSchema: TJSONValue);
     destructor Destroy; override;
 
+    /// <summary>Registers a named anchor pointing to a schema sub-node.</summary>
     procedure AddAnchor(const pAnchor: string; const pSchemaNode: TJSONValue);
+    /// <summary>Registers a dynamic anchor pointing to a schema sub-node.</summary>
     procedure AddDynamicAnchor(const pAnchor: string; const pSchemaNode: TJSONValue);
 
+    /// <summary>
+    /// Resolves a URI fragment to a schema node within this resource.
+    /// Supports empty (root), JSON Pointer (/...) and named anchor formats.
+    /// </summary>
     function ResolveFragment(const pFragment: string): TJSONValue; overload;
+    /// <summary>
+    /// Resolves a URI fragment to a schema node within this resource and
+    /// returns the effective base URI at the resolved node via pResolvedBaseURI.
+    /// </summary>
+    /// <param name="pFragment">The URI fragment to resolve.</param>
+    /// <param name="pResolvedBaseURI">Receives the base URI of the resolved node.</param>
+    /// <returns>The resolved JSON schema node, or nil if the fragment is not found.</returns>
     function ResolveFragment(const pFragment: string; out pResolvedBaseURI: string): TJSONValue; overload;
 
     property BaseURI: TURIReference read FBaseURI;
@@ -82,19 +100,16 @@ var
 begin
   pResolvedBaseURI := FBaseURI.Unsplit;
 
-  // Caso 1: Fragmento vazio ou raiz, retorna o schema inteiro do recurso.
+  // Case 1: empty fragment or root — return the entire resource schema.
   if pFragment.IsEmpty then
     Exit(FRootSchema);
 
-  lPointerPath := pFragment;
-
-  // Decodifica a string do fragmento antes de interpret�-la
-  lPointerPath := TNetEncoding.URL.Decode(lPointerPath);
+  lPointerPath := TNetEncoding.URL.Decode(pFragment);
 
   if lPointerPath.StartsWith('#') then
     lPointerPath := lPointerPath.Substring(1);
 
-  // Caso 2: Fragmento � um JSON Pointer.
+  // Case 2: JSON Pointer fragment.
   if lPointerPath.StartsWith('/') then
   begin
     lCurrentNode := FRootSchema;
@@ -108,16 +123,12 @@ begin
       if (lCurrentNode is TJSONObject) and
          TJSONObject(lCurrentNode).TryGetValue<string>('$id', lDecodedId) and
          (lDecodedId <> '') then
-      begin
         pResolvedBaseURI := TURIReference.From(lDecodedId).ResolveWith(TURIReference.From(pResolvedBaseURI)).Unsplit;
-      end;
 
       if (lCurrentNode is TJSONObject) and
          TJSONObject(lCurrentNode).TryGetValue<string>('id', lLegacyId) and
          (lLegacyId <> '') then
-      begin
         pResolvedBaseURI := TURIReference.From(lLegacyId).ResolveWith(TURIReference.From(pResolvedBaseURI)).Unsplit;
-      end;
 
       if not TUtils.DecodeJsonPointerSegment(lSegment, lDecodedSegment) then
         Exit(nil);
@@ -139,21 +150,14 @@ begin
 
     Result := lCurrentNode;
     Exit;
-  end
-  // Caso 3: Fragmento � uma �ncora de nome simples.
-  else
-  begin
-    FAnchors.TryGetValue(lPointerPath, Result);
-    if not Assigned(Result) then
-      FAnchors.TryGetValue(FBaseURI.Unsplit + '#' + lPointerPath, Result);
-    // Se n�o encontrou em �ncoras normais, tente as din�micas (para o caso de $ref as usar)
-    if not Assigned(Result) then
-      FDynamicAnchors.TryGetValue(lPointerPath, Result);
-    Exit;
   end;
 
-  // Se o fragmento n�o come�ar com '#', � inv�lido neste contexto.
-  Result := nil;
+  // Case 3: named anchor fragment.
+  FAnchors.TryGetValue(lPointerPath, Result);
+  if not Assigned(Result) then
+    FAnchors.TryGetValue(FBaseURI.Unsplit + '#' + lPointerPath, Result);
+  if not Assigned(Result) then
+    FDynamicAnchors.TryGetValue(lPointerPath, Result);
 end;
 
 end.

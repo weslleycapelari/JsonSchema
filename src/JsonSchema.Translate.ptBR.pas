@@ -7,88 +7,49 @@ uses
   JsonSchema.Translate.Interfaces;
 
 type
+  /// <summary>
+  /// Provides Portuguese (pt-BR) validation error messages.
+  /// </summary>
   TTranslate_ptBR = class(TInterfacedObject, ITranslate)
-    // --- Erros de Tipo e Valor ---
-    [TranslateError(vetInvalidType)]
+  private
     function TranslateInvalidType: TErrorMessage;
-    [TranslateError(vetEnumValueMismatch)]
     function TranslateEnumValueMismatch: TErrorMessage;
-    [TranslateError(vetConstValueMismatch)]
     function TranslateConstValueMismatch: TErrorMessage;
-
-    // --- Erros Num�ricos ---
-    [TranslateError(vetMultipleOf)]
     function TranslateMultipleOf: TErrorMessage;
-    [TranslateError(vetMaximum)]
     function TranslateMaximum: TErrorMessage;
-    [TranslateError(vetExclusiveMaximum)]
     function TranslateExclusiveMaximum: TErrorMessage;
-    [TranslateError(vetMinimum)]
     function TranslateMinimum: TErrorMessage;
-    [TranslateError(vetExclusiveMinimum)]
     function TranslateExclusiveMinimum: TErrorMessage;
-
-    // --- Erros de String ---
-    [TranslateError(vetMaxLength)]
     function TranslateMaxLength: TErrorMessage;
-    [TranslateError(vetMinLength)]
     function TranslateMinLength: TErrorMessage;
-    [TranslateError(vetPattern)]
     function TranslatePattern: TErrorMessage;
-    [TranslateError(vetInvalidFormat)]
     function TranslateInvalidFormat: TErrorMessage;
-
-    // --- Erros de Array ---
-    [TranslateError(vetMaxItems)]
     function TranslateMaxItems: TErrorMessage;
-    [TranslateError(vetMinItems)]
     function TranslateMinItems: TErrorMessage;
-    [TranslateError(vetUniqueItems)]
     function TranslateUniqueItems: TErrorMessage;
-    [TranslateError(vetContains)]
     function TranslateContains: TErrorMessage;
-    [TranslateError(vetMaxContains)]
     function TranslateMaxContains: TErrorMessage;
-    [TranslateError(vetMinContains)]
     function TranslateMinContains: TErrorMessage;
-    [TranslateError(vetUnevaluatedItems)]
     function TranslateUnevaluatedItems: TErrorMessage;
-
-    // --- Erros de Objeto ---
-    [TranslateError(vetMaxProperties)]
     function TranslateMaxProperties: TErrorMessage;
-    [TranslateError(vetMinProperties)]
     function TranslateMinProperties: TErrorMessage;
-    [TranslateError(vetRequiredPropertyMissing)]
     function TranslateRequiredPropertyMissing: TErrorMessage;
-    [TranslateError(vetDependentRequired)]
     function TranslateDependentRequired: TErrorMessage;
-    [TranslateError(vetUnevaluatedProperties)]
     function TranslateUnevaluatedProperties: TErrorMessage;
-    [TranslateError(vetInvalidPropertyName)]
     function TranslateInvalidPropertyName: TErrorMessage;
-
-    // --- Erros de Aplicadores ---
-    [TranslateError(vetAllOf)]
     function TranslateAllOf: TErrorMessage;
-    [TranslateError(vetAnyOf)]
     function TranslateAnyOf: TErrorMessage;
-    [TranslateError(vetOneOf_NoMatch)]
     function TranslateOneOf_NoMatch: TErrorMessage;
-    [TranslateError(vetOneOf_MultipleMatches)]
     function TranslateOneOf_MultipleMatches: TErrorMessage;
-    [TranslateError(vetNot)]
     function TranslateNot: TErrorMessage;
-    [TranslateError(vetSchemaIsFalse)]
     function TranslateSchemaIsFalse: TErrorMessage;
-
-    // --- Fallback ---
-    [TranslateError(vetUnresolvedReference)]
     function TranslateUnresolvedReference: TErrorMessage;
-    [TranslateError(vetUnsupportedVocabulary)]
     function TranslateUnsupportedVocabulary: TErrorMessage;
-    [TranslateError(vetUnknown)]
     function TranslateUnknown: TErrorMessage;
+  public
+    /// <summary>Returns the localized error message for the given error type in Portuguese.</summary>
+    /// <param name="pErrorType">The validation error type to translate.</param>
+    function GetMessage(const pErrorType: TErrorType): TErrorMessage;
   end;
 
 implementation
@@ -283,8 +244,8 @@ end;
 
 function TTranslate_ptBR.TranslateUnknown: TErrorMessage;
 begin
-  Result.Error := 'Ocorreu um erro de valida��o desconhecido.';
-  Result.Hint  := 'Nenhuma dica dispon�vel para este erro.';
+  Result.Error := 'Ocorreu um erro de validação desconhecido.';
+  Result.Hint  := 'Nenhuma dica disponível para este erro.';
 end;
 
 function TTranslate_ptBR.TranslateUnresolvedReference: TErrorMessage;
@@ -297,6 +258,47 @@ function TTranslate_ptBR.TranslateUnsupportedVocabulary: TErrorMessage;
 begin
   Result.Error := 'O vocabulário obrigatório "%s" não é suportado.';
   Result.Hint  := 'Use apenas vocabulários suportados por este validador ou marque vocabulários desconhecidos como opcionais.';
+end;
+
+function TTranslate_ptBR.GetMessage(const pErrorType: TErrorType): TErrorMessage;
+begin
+  case pErrorType of
+    vetInvalidType:              Result := TranslateInvalidType;
+    vetEnumValueMismatch:        Result := TranslateEnumValueMismatch;
+    vetConstValueMismatch:       Result := TranslateConstValueMismatch;
+    vetMultipleOf:               Result := TranslateMultipleOf;
+    vetMaximum:                  Result := TranslateMaximum;
+    vetExclusiveMaximum:         Result := TranslateExclusiveMaximum;
+    vetMinimum:                  Result := TranslateMinimum;
+    vetExclusiveMinimum:         Result := TranslateExclusiveMinimum;
+    vetMaxLength:                Result := TranslateMaxLength;
+    vetMinLength:                Result := TranslateMinLength;
+    vetPattern:                  Result := TranslatePattern;
+    vetInvalidFormat:            Result := TranslateInvalidFormat;
+    vetMaxItems:                 Result := TranslateMaxItems;
+    vetMinItems:                 Result := TranslateMinItems;
+    vetUniqueItems:              Result := TranslateUniqueItems;
+    vetMaxContains:              Result := TranslateMaxContains;
+    vetMinContains:              Result := TranslateMinContains;
+    vetContains:                 Result := TranslateContains;
+    vetUnevaluatedItems:         Result := TranslateUnevaluatedItems;
+    vetMaxProperties:            Result := TranslateMaxProperties;
+    vetMinProperties:            Result := TranslateMinProperties;
+    vetRequiredPropertyMissing:  Result := TranslateRequiredPropertyMissing;
+    vetDependentRequired:        Result := TranslateDependentRequired;
+    vetUnevaluatedProperties:    Result := TranslateUnevaluatedProperties;
+    vetInvalidPropertyName:      Result := TranslateInvalidPropertyName;
+    vetAllOf:                    Result := TranslateAllOf;
+    vetAnyOf:                    Result := TranslateAnyOf;
+    vetOneOf_NoMatch:            Result := TranslateOneOf_NoMatch;
+    vetOneOf_MultipleMatches:    Result := TranslateOneOf_MultipleMatches;
+    vetNot:                      Result := TranslateNot;
+    vetUnresolvedReference:      Result := TranslateUnresolvedReference;
+    vetUnsupportedVocabulary:    Result := TranslateUnsupportedVocabulary;
+    vetSchemaIsFalse:            Result := TranslateSchemaIsFalse;
+  else
+    Result := TranslateUnknown;
+  end;
 end;
 
 end.

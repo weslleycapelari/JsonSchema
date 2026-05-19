@@ -1,4 +1,4 @@
-﻿unit JsonSchema.Validation.Types;
+unit JsonSchema.Validation.Types;
 
 interface
 
@@ -11,6 +11,11 @@ uses
   JsonSchema.Validation.Interfaces;
 
 type
+  /// <summary>
+  /// Collects errors and annotations produced during a single schema validation
+  /// run. Implements IValidationResult with fluent builder methods for error
+  /// accumulation, annotation recording, and evaluated property tracking.
+  /// </summary>
   TValidationResult = class(TInterfacedPersistent, IValidationResult)
   private
     FErrors: TArray<IError>;
@@ -20,13 +25,33 @@ type
     constructor Create;
     destructor Destroy; override;
     function Errors: TArray<IError>;
-    function AddError(const AError: IError): IValidationResult;
-    function AddAnnotation(const AKeyword, AValue: string): IValidationResult;
-    function AddEvaluatedProperty(const AProperty: string): IValidationResult;
+    /// <summary>
+    /// Appends an error to the error list and returns Self for fluent chaining.
+    /// </summary>
+    function AddError(const pError: IError): IValidationResult;
+    /// <summary>
+    /// Records a keyword/value annotation pair and returns Self for fluent chaining.
+    /// Has no effect when pKeyword is empty.
+    /// </summary>
+    function AddAnnotation(const pKeyword, pValue: string): IValidationResult;
+    /// <summary>
+    /// Normalizes and records a property path as evaluated, then returns Self
+    /// for fluent chaining. Has no effect when pProperty is empty.
+    /// </summary>
+    function AddEvaluatedProperty(const pProperty: string): IValidationResult;
+    /// <summary>
+    /// Returns True when no errors have been recorded.
+    /// </summary>
     function IsValid: Boolean;
     function EvaluatedProperties: TEnumerable<string>;
   end;
 
+  /// <summary>
+  /// Represents a single validation error with full diagnostic context: root
+  /// and parent JSON nodes, schema and instance paths, error type, message, and
+  /// optional custom and standard hints. All setter overloads return Self to
+  /// support fluent builder chains.
+  /// </summary>
   TError = class sealed(TInterfacedPersistent, IError)
   private
     FRootNode: TJSONValue;
@@ -41,25 +66,28 @@ type
     FStandardHint: string;
   public
     function RootNode: TJSONValue; overload;
-    function RootNode(const AValue: TJSONValue): IError; overload;
+    function RootNode(const pValue: TJSONValue): IError; overload;
     function ErrorType: TErrorType; overload;
-    function ErrorType(const AValue: TErrorType): IError; overload;
+    function ErrorType(const pValue: TErrorType): IError; overload;
     function ParentNode: TJSONValue; overload;
-    function ParentNode(const AValue: TJSONValue): IError; overload;
+    function ParentNode(const pValue: TJSONValue): IError; overload;
     function CustomHint: string; overload;
-    function CustomHint(const AValue: string): IError; overload;
+    function CustomHint(const pValue: string): IError; overload;
     function SchemaPath: string; overload;
-    function SchemaPath(const AValue: string): IError; overload;
+    function SchemaPath(const pValue: string): IError; overload;
     function SchemaNode: TJSONValue; overload;
-    function SchemaNode(const AValue: TJSONValue): IError; overload;
+    function SchemaNode(const pValue: TJSONValue): IError; overload;
     function InstanceNode: TJSONValue; overload;
-    function InstanceNode(const AValue: TJSONValue): IError; overload;
+    function InstanceNode(const pValue: TJSONValue): IError; overload;
     function InstancePath: string; overload;
-    function InstancePath(const AValue: string): IError; overload;
+    function InstancePath(const pValue: string): IError; overload;
     function ErrorMessage: string; overload;
-    function ErrorMessage(const AValue: string): IError; overload;
+    function ErrorMessage(const pValue: string): IError; overload;
     function StandardHint: string; overload;
-    function StandardHint(const AValue: string): IError; overload;
+    function StandardHint(const pValue: string): IError; overload;
+    /// <summary>
+    /// Returns the custom hint when set; falls back to the standard hint otherwise.
+    /// </summary>
     function EffectiveHint: string;
   end;
 
@@ -69,9 +97,9 @@ uses
   System.SysUtils,
   System.StrUtils;
 
-function NormalizeEvaluatedPath(const APath: string): string;
+function NormalizeEvaluatedPath(const pPath: string): string;
 begin
-  Result := Trim(APath);
+  Result := Trim(pPath);
 
   if Result.IsEmpty or (Result = '#') then
     Exit('/');
@@ -113,29 +141,29 @@ begin
   inherited;
 end;
 
-function TValidationResult.AddError(const AError: IError): IValidationResult;
+function TValidationResult.AddError(const pError: IError): IValidationResult;
 begin
   Result := Self;
   SetLength(FErrors, Length(FErrors) + 1);
-  FErrors[Length(FErrors) - 1] := AError;
+  FErrors[Length(FErrors) - 1] := pError;
 end;
 
-function TValidationResult.AddAnnotation(const AKeyword, AValue: string): IValidationResult;
+function TValidationResult.AddAnnotation(const pKeyword, pValue: string): IValidationResult;
 begin
   Result := Self;
-  if not AKeyword.IsEmpty then
-    FAnnotations.Add(AKeyword + #0 + AValue);
+  if not pKeyword.IsEmpty then
+    FAnnotations.Add(pKeyword + #0 + pValue);
 end;
 
-function TValidationResult.AddEvaluatedProperty(const AProperty: string): IValidationResult;
+function TValidationResult.AddEvaluatedProperty(const pProperty: string): IValidationResult;
 var
-  LCanonicalPath: string;
+  lCanonicalPath: string;
 begin
   Result := Self;
-  if not AProperty.IsEmpty then
+  if not pProperty.IsEmpty then
   begin
-    LCanonicalPath := NormalizeEvaluatedPath(AProperty);
-    FEvaluatedProperties.Add(LCanonicalPath);
+    lCanonicalPath := NormalizeEvaluatedPath(pProperty);
+    FEvaluatedProperties.Add(lCanonicalPath);
   end;
 end;
 
@@ -156,10 +184,10 @@ end;
 
 { TError }
 
-function TError.CustomHint(const AValue: string): IError;
+function TError.CustomHint(const pValue: string): IError;
 begin
   Result := Self;
-  FCustomHint := AValue;
+  FCustomHint := pValue;
 end;
 
 function TError.CustomHint: string;
@@ -180,16 +208,16 @@ begin
   Result := FErrorMessage
 end;
 
-function TError.ErrorMessage(const AValue: string): IError;
+function TError.ErrorMessage(const pValue: string): IError;
 begin
   Result := Self;
-  FErrorMessage := AValue;
+  FErrorMessage := pValue;
 end;
 
-function TError.ErrorType(const AValue: TErrorType): IError;
+function TError.ErrorType(const pValue: TErrorType): IError;
 begin
   Result := Self;
-  FErrorType := AValue;
+  FErrorType := pValue;
 end;
 
 function TError.ErrorType: TErrorType;
@@ -202,10 +230,10 @@ begin
   Result := FInstanceNode;
 end;
 
-function TError.InstanceNode(const AValue: TJSONValue): IError;
+function TError.InstanceNode(const pValue: TJSONValue): IError;
 begin
   Result := Self;
-  FInstanceNode := AValue;
+  FInstanceNode := pValue;
 end;
 
 function TError.InstancePath: string;
@@ -213,22 +241,22 @@ begin
   Result := FInstancePath;
 end;
 
-function TError.InstancePath(const AValue: string): IError;
+function TError.InstancePath(const pValue: string): IError;
 begin
   Result := Self;
-  FInstancePath := AValue;
+  FInstancePath := pValue;
 end;
 
-function TError.ParentNode(const AValue: TJSONValue): IError;
+function TError.ParentNode(const pValue: TJSONValue): IError;
 begin
   Result := Self;
-  FParentNode := AValue;
+  FParentNode := pValue;
 end;
 
-function TError.RootNode(const AValue: TJSONValue): IError;
+function TError.RootNode(const pValue: TJSONValue): IError;
 begin
   Result := Self;
-  FRootNode := AValue;
+  FRootNode := pValue;
 end;
 
 function TError.RootNode: TJSONValue;
@@ -241,10 +269,10 @@ begin
   Result := FParentNode;
 end;
 
-function TError.SchemaNode(const AValue: TJSONValue): IError;
+function TError.SchemaNode(const pValue: TJSONValue): IError;
 begin
   Result := Self;
-  FSchemaNode := AValue;
+  FSchemaNode := pValue;
 end;
 
 function TError.SchemaNode: TJSONValue;
@@ -252,10 +280,10 @@ begin
   Result := FSchemaNode;
 end;
 
-function TError.SchemaPath(const AValue: string): IError;
+function TError.SchemaPath(const pValue: string): IError;
 begin
   Result := Self;
-  FSchemaPath := AValue;
+  FSchemaPath := pValue;
 end;
 
 function TError.SchemaPath: string;
@@ -263,10 +291,10 @@ begin
   Result := FSchemaPath;
 end;
 
-function TError.StandardHint(const AValue: string): IError;
+function TError.StandardHint(const pValue: string): IError;
 begin
   Result := Self;
-  FStandardHint := AValue;
+  FStandardHint := pValue;
 end;
 
 function TError.StandardHint: string;

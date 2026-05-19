@@ -1,4 +1,4 @@
-﻿unit JsonSchema;
+unit JsonSchema;
 
 interface
 
@@ -34,10 +34,23 @@ type
   TDraftVersion       = JsonSchema.Walker.Types.TDraftVersion;
   TDraftVersionHelper = JsonSchema.Walker.Types.TDraftVersionHelper;
 
+  /// <summary>
+  /// Main entry point for JSON Schema validation.
+  /// Selects the correct draft visitor based on the $schema keyword or explicit parameter.
+  /// </summary>
   TJsonSchema = class
   public
-    class function Validate(const ASchema, AData: TJSONValue;
-      const ADraft: TDraftVersion = TDraftVersion.dvUnknown; const ACustomHints: TJSONValue = nil): IValidationResult; static;
+    /// <summary>
+    /// Validates pData against pSchema and returns the validation result.
+    /// The draft is auto-detected from the $schema keyword when pDraft is dvUnknown.
+    /// </summary>
+    /// <param name="pSchema">The JSON Schema document.</param>
+    /// <param name="pData">The JSON value to validate.</param>
+    /// <param name="pDraft">Draft version override; dvUnknown means auto-detect.</param>
+    /// <param name="pCustomHints">Optional JSON object with per-field custom error hints.</param>
+    class function Validate(const pSchema, pData: TJSONValue;
+      const pDraft: TDraftVersion = TDraftVersion.dvUnknown;
+      const pCustomHints: TJSONValue = nil): IValidationResult; static;
   end;
 
 implementation
@@ -47,54 +60,54 @@ uses
 
 { TJsonSchema }
 
-class function TJsonSchema.Validate(const ASchema, AData: TJSONValue; const ADraft: TDraftVersion;
-  const ACustomHints: TJSONValue): IValidationResult;
+class function TJsonSchema.Validate(const pSchema, pData: TJSONValue; const pDraft: TDraftVersion;
+  const pCustomHints: TJSONValue): IValidationResult;
 var
-  LDraft: string;
-  LWalker: IWalker;
-  LBaseURI: string;
-  LDraftVersion: TDraftVersion;
-  LVisitorDraft6: TDraft6Visitor;
-  LVisitorDraft7: TDraft7Visitor;
-  LVisitorDraft2019_09: TDraft2019_09Visitor;
-  LVisitorDraft2020_12: TDraft2020_12Visitor;
+  lDraft: string;
+  lWalker: IWalker;
+  lBaseURI: string;
+  lDraftVersion: TDraftVersion;
+  lVisitorDraft6: TDraft6Visitor;
+  lVisitorDraft7: TDraft7Visitor;
+  lVisitorDraft2019_09: TDraft2019_09Visitor;
+  lVisitorDraft2020_12: TDraft2020_12Visitor;
 begin
-  LDraft := ADraft.ToSchema;
-  if ADraft = TDraftVersion.dvUnknown then
-    if not ASchema.TryGetValue('$schema', LDraft) then
-      LDraft := TDraftVersion.dvDraft2020_12.ToSchema;
+  lDraft := pDraft.ToSchema;
+  if pDraft = TDraftVersion.dvUnknown then
+    if not pSchema.TryGetValue('$schema', lDraft) then
+      lDraft := TDraftVersion.dvDraft2020_12.ToSchema;
 
-  LDraftVersion := TDraftVersion.FromSchema(LDraft);
-  LBaseURI := TUtils.UriGenerateRandom;
+  lDraftVersion := TDraftVersion.FromSchema(lDraft);
+  lBaseURI := TUtils.UriGenerateRandom;
 
-  case LDraftVersion of
+  case lDraftVersion of
     dvDraft6:
       begin
-        LVisitorDraft6 := TDraft6Visitor.Create(ASchema, AData, LBaseURI, ACustomHints);
-        LWalker := TWalker<TDraft6Visitor>.Create(ASchema, LVisitorDraft6);
-        LWalker.Walk;
-        Result  := LVisitorDraft6.Result;
+        lVisitorDraft6 := TDraft6Visitor.Create(pSchema, pData, lBaseURI, pCustomHints);
+        lWalker := TWalker<TDraft6Visitor>.Create(pSchema, lVisitorDraft6);
+        lWalker.Walk;
+        Result  := lVisitorDraft6.Result;
       end;
     dvDraft7:
       begin
-        LVisitorDraft7 := TDraft7Visitor.Create(ASchema, AData, LBaseURI, ACustomHints);
-        LWalker := TWalker<TDraft7Visitor>.Create(ASchema, LVisitorDraft7);
-        LWalker.Walk;
-        Result  := LVisitorDraft7.Result;
+        lVisitorDraft7 := TDraft7Visitor.Create(pSchema, pData, lBaseURI, pCustomHints);
+        lWalker := TWalker<TDraft7Visitor>.Create(pSchema, lVisitorDraft7);
+        lWalker.Walk;
+        Result  := lVisitorDraft7.Result;
       end;
     dvDraft2019_09:
       begin
-        LVisitorDraft2019_09 := TDraft2019_09Visitor.Create(ASchema, AData, LBaseURI, ACustomHints);
-        LWalker := TWalker<TDraft2019_09Visitor>.Create(ASchema, LVisitorDraft2019_09);
-        LWalker.Walk;
-        Result  := LVisitorDraft2019_09.Result;
+        lVisitorDraft2019_09 := TDraft2019_09Visitor.Create(pSchema, pData, lBaseURI, pCustomHints);
+        lWalker := TWalker<TDraft2019_09Visitor>.Create(pSchema, lVisitorDraft2019_09);
+        lWalker.Walk;
+        Result  := lVisitorDraft2019_09.Result;
       end;
     dvDraft2020_12:
       begin
-        LVisitorDraft2020_12 := TDraft2020_12Visitor.Create(ASchema, AData, LBaseURI, ACustomHints);
-        LWalker := TWalker<TDraft2020_12Visitor>.Create(ASchema, LVisitorDraft2020_12);
-        LWalker.Walk;
-        Result  := LVisitorDraft2020_12.Result;
+        lVisitorDraft2020_12 := TDraft2020_12Visitor.Create(pSchema, pData, lBaseURI, pCustomHints);
+        lWalker := TWalker<TDraft2020_12Visitor>.Create(pSchema, lVisitorDraft2020_12);
+        lWalker.Walk;
+        Result  := lVisitorDraft2020_12.Result;
       end
   else
     raise Exception.Create('Invalid or unsupported JSON Schema draft version.');
@@ -102,4 +115,3 @@ begin
 end;
 
 end.
-

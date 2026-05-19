@@ -3,27 +3,34 @@
 interface
 
 type
+  /// <summary>
+  /// Supported display languages for validation error messages.
+  /// </summary>
+  {$SCOPEDENUMS ON}
   TLanguage = (
-    lang_enUS,    // Ingl�s (Estados Unidos)
-    lang_ptBR     // Portugu�s (Brasil)
+    lang_enUS,
+    lang_ptBR
   );
+  {$SCOPEDENUMS OFF}
 
-  /// <summary>Estrutura da resposta de mensagem de erro/hint da biblioteca</summary>
+  /// <summary>
+  /// Holds the error message and hint text returned by a translation provider.
+  /// </summary>
   TErrorMessage = record
     Error: string;
     Hint: string;
   end;
 
-  /// <summary>Tipo de fun��o de tradu��o que retorna a estrutura de mensagem de erro</summary>
-  TTranslateFunc = function: TErrorMessage of object;
-
+  /// <summary>
+  /// Identifies each validation error type produced by the JSON Schema validator.
+  /// </summary>
   TErrorType = (
     // Erros de tipo e valor
     vetInvalidType,
     vetEnumValueMismatch,
     vetConstValueMismatch,
 
-    // Erros num�ricos
+    // Erros numéricos
     vetMultipleOf,
     vetMaximum,
     vetExclusiveMaximum,
@@ -63,26 +70,11 @@ type
     vetUnresolvedReference,
     vetUnsupportedVocabulary,
 
-    // Erro gen�rico
+    // Erro genérico
     vetSchemaIsFalse,
     vetUnknown
   );
 
-  TranslateErrorAttribute = class(TCustomAttribute)
-  private
-    FErrorType: TErrorType;
-  public
-    constructor Create(const AErrorType: TErrorType);
-    property ErrorType: TErrorType read FErrorType;
-  end;
-
 implementation
-
-{ TranslateErrorAttribute }
-
-constructor TranslateErrorAttribute.Create(const AErrorType: TErrorType);
-begin
-  FErrorType := AErrorType;
-end;
 
 end.

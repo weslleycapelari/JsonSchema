@@ -1,4 +1,4 @@
-﻿unit JsonSchema.Translate.Interfaces;
+unit JsonSchema.Translate.Interfaces;
 
 interface
 
@@ -6,55 +6,15 @@ uses
   JsonSchema.Translate.Types;
 
 type
+  /// <summary>
+  /// Contract for translation providers that supply validation error messages.
+  /// Each language implements this interface by returning localized Error and Hint strings.
+  /// </summary>
   ITranslate = interface(IInterface)
-    ['{72BDBA2B-8DE8-4ABD-B00A-37B1F78AF13B}']
-    // --- Erros de Tipo e Valor ---
-    function TranslateInvalidType: TErrorMessage;
-    function TranslateEnumValueMismatch: TErrorMessage;
-    function TranslateConstValueMismatch: TErrorMessage;
-
-    // --- Erros Num�ricos ---
-    function TranslateMultipleOf: TErrorMessage;
-    function TranslateMaximum: TErrorMessage;
-    function TranslateExclusiveMaximum: TErrorMessage;
-    function TranslateMinimum: TErrorMessage;
-    function TranslateExclusiveMinimum: TErrorMessage;
-
-    // --- Erros de String ---
-    function TranslateMaxLength: TErrorMessage;
-    function TranslateMinLength: TErrorMessage;
-    function TranslatePattern: TErrorMessage;
-    function TranslateInvalidFormat: TErrorMessage;
-
-    // --- Erros de Array ---
-    function TranslateMaxItems: TErrorMessage;
-    function TranslateMinItems: TErrorMessage;
-    function TranslateUniqueItems: TErrorMessage;
-    function TranslateContains: TErrorMessage;
-    function TranslateMaxContains: TErrorMessage;
-    function TranslateMinContains: TErrorMessage;
-    function TranslateUnevaluatedItems: TErrorMessage;
-
-    // --- Erros de Objeto ---
-    function TranslateMaxProperties: TErrorMessage;
-    function TranslateMinProperties: TErrorMessage;
-    function TranslateRequiredPropertyMissing: TErrorMessage;
-    function TranslateDependentRequired: TErrorMessage;
-    function TranslateUnevaluatedProperties: TErrorMessage;
-    function TranslateInvalidPropertyName: TErrorMessage;
-
-    // --- Erros de Aplicadores ---
-    function TranslateAllOf: TErrorMessage;
-    function TranslateAnyOf: TErrorMessage;
-    function TranslateOneOf_NoMatch: TErrorMessage;
-    function TranslateOneOf_MultipleMatches: TErrorMessage;
-    function TranslateNot: TErrorMessage;
-    function TranslateSchemaIsFalse: TErrorMessage;
-
-    // --- Fallback ---
-    function TranslateUnresolvedReference: TErrorMessage;
-    function TranslateUnsupportedVocabulary: TErrorMessage;
-    function TranslateUnknown: TErrorMessage;
+    ['{A1C3E5F7-2B4D-4E6F-8A0C-1D3E5F7A9B2C}']
+    /// <summary>Returns the localized error message for the given error type.</summary>
+    /// <param name="pErrorType">The validation error type to translate.</param>
+    function GetMessage(const pErrorType: TErrorType): TErrorMessage;
   end;
 
 implementation

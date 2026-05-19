@@ -11,30 +11,36 @@ uses
   JsonSchema.Walker.Types;
 
 type
+  /// <summary>Contract for a schema walker that dispatches keyword visits.</summary>
   IWalker = interface(IInterface)
     ['{AEC155F6-90DD-479F-AD21-3B26426AF03B}']
     procedure Walk;
   end;
 
+  /// <summary>Generic schema walker that uses RTTI to discover and dispatch visitor methods by keyword.</summary>
   TWalker<T: IVisitor<T>> = class(TInterfacedPersistent, IWalker)
   private
     FSchema: TJSONValue;
     FVisitor: T;
     FVisitorMethod: TDictionary<string, TVisitorProc>;
 
-    procedure DispatchVisit(const AName: string; const AValue: TJSONValue);
+    procedure DispatchVisit(const pName: string; const pValue: TJSONValue);
     procedure PopulateVisitorMethods;
   public
-    constructor Create(const ASchema: TJSONValue; const AVisitor: T);
+    /// <summary>Creates the walker for the given schema node, binding it to the supplied visitor.</summary>
+    constructor Create(const pSchema: TJSONValue; const pVisitor: T);
     destructor Destroy; override;
 
+    /// <summary>Iterates over every keyword in the schema and dispatches the matching visitor method.</summary>
     procedure Walk;
     function Visitor: T;
   end;
 
+  /// <summary>Factory that builds a correctly versioned IWalker for a root schema document.</summary>
   TValidationWalker = class
   public
-    class function New(const ASchema, AData: TJSONValue; const ACustomHint: TJSONValue = nil): IWalker;
+    /// <summary>Detects the draft version from the schema and returns the appropriate walker.</summary>
+    class function New(const pSchema, pData: TJSONValue; const pCustomHint: TJSONValue = nil): IWalker;
   end;
 
 implementation
@@ -52,10 +58,10 @@ uses
 
 { TWalker<T> }
 
-constructor TWalker<T>.Create(const ASchema: TJSONValue; const AVisitor: T);
+constructor TWalker<T>.Create(const pSchema: TJSONValue; const pVisitor: T);
 begin
-  FSchema := ASchema;
-  FVisitor := AVisitor;
+  FSchema := pSchema;
+  FVisitor := pVisitor;
   FVisitorMethod := TDictionary<string, TVisitorProc>.Create;
 
   PopulateVisitorMethods;
@@ -67,28 +73,28 @@ begin
   inherited;
 end;
 
-procedure TWalker<T>.DispatchVisit(const AName: string; const AValue: TJSONValue);
+procedure TWalker<T>.DispatchVisit(const pName: string; const pValue: TJSONValue);
 begin
-  if not FVisitorMethod.ContainsKey(AName) then
+  if not FVisitorMethod.ContainsKey(pName) then
     Exit;
 
-  FVisitorMethod.Items[AName](AValue);
+  FVisitorMethod.Items[pName](pValue);
 end;
 
 procedure TWalker<T>.PopulateVisitorMethods;
 var
-  LType: TRttiType;
-  LMethod: TRttiMethod;
-  LObject: TObject;
-  LObjects: TArray<TObject>;
-  LContext: TRttiContext;
-  LMethodPtr: TMethod;
-  LAttribute: TCustomAttribute;
-  LParameters: TArray<TRttiParameter>;
-  LKeyword: string;
+  lType: TRttiType;
+  lMethod: TRttiMethod;
+  lObject: TObject;
+  lObjects: TArray<TObject>;
+  lContext: TRttiContext;
+  lMethodPtr: TMethod;
+  lAttribute: TCustomAttribute;
+  lParameters: TArray<TRttiParameter>;
+  lKeyword: string;
 begin
-  LContext := TRttiContext.Create;
-  LObjects := [
+  lContext := TRttiContext.Create;
+  lObjects := [
     TObject(FVisitor.Core),
     TObject(FVisitor.Applicator),
     TObject(FVisitor.Validation),
@@ -96,38 +102,34 @@ begin
     TObject(FVisitor.RelativeJsonPointer)
   ];
 
-  for LObject in LObjects do
+  for lObject in lObjects do
   begin
-    if not Assigned(LObject) then
-      Continue;
-
-    LType := LContext.GetType(LObject.ClassType);
-
-    // GetMethods retorna metodos na ordem VMT: base primeiro, derivados (reintroduce) depois.
-    // Usando AddOrSetValue (ultimo vence), o metodo derivado (reintroduce) ganha
-    // precedencia sobre o metodo da classe base com o mesmo keyword.
-    for LMethod in LType.GetMethods do
+    if Assigned(lObject) then
     begin
-      for LAttribute in LMethod.GetAttributes do
+      lType := lContext.GetType(lObject.ClassType);
+
+      // GetMethods returns methods in VMT order (base first, then derived/reintroduce).
+      // AddOrSetValue ensures the derived method wins over the base class method for the same keyword.
+      for lMethod in lType.GetMethods do
       begin
-        if not (LAttribute is VisitorKeywordAttribute) then
-          Continue;
-
-        LKeyword := VisitorKeywordAttribute(LAttribute).Name;
-
-        if LKeyword.IsEmpty then
-          Continue;
-
-        LParameters := LMethod.GetParameters;
-
-        if Length(LParameters) <> 1 then
-          Continue;
-
-        LMethodPtr := default(TMethod);
-        LMethodPtr.Code := LMethod.CodeAddress;
-        LMethodPtr.Data := LObject;
-
-        FVisitorMethod.AddOrSetValue(LKeyword, TVisitorProc(LMethodPtr));
+        for lAttribute in lMethod.GetAttributes do
+        begin
+          if lAttribute is VisitorKeywordAttribute then
+          begin
+            lKeyword := VisitorKeywordAttribute(lAttribute).Name;
+            if not lKeyword.IsEmpty then
+            begin
+              lParameters := lMethod.GetParameters;
+              if Length(lParameters) = 1 then
+              begin
+                lMethodPtr := default(TMethod);
+                lMethodPtr.Code := lMethod.CodeAddress;
+                lMethodPtr.Data := lObject;
+                FVisitorMethod.AddOrSetValue(lKeyword, TVisitorProc(lMethodPtr));
+              end;
+            end;
+          end;
+        end;
       end;
     end;
   end;
@@ -161,20 +163,20 @@ const
     'format'
   );
 var
-  LPair: TJSONPair;
-  LKeyword: string;
-  LJsonValue: TJSONValue;
-  LRefValue: TJSONValue;
-  LHasRef: Boolean;
-  LPrecedence: TArray<string>;
-  LPrecedentKeyword: string;
-  LSchemaDraft: string;
-  LDraftVersion: TDraftVersion;
-  LAllowSiblingKeywordsWithRef: Boolean;
-  LValidationKeyword: string;
-  LDraft2019VocabularyMode: IDraft2019_09ValidationVocabularyMode;
-  LSilentValidationMode: Boolean;
-  LIsValidationKeyword: Boolean;
+  lPair: TJSONPair;
+  lKeyword: string;
+  lJsonValue: TJSONValue;
+  lRefValue: TJSONValue;
+  lHasRef: Boolean;
+  lPrecedence: TArray<string>;
+  lPrecedentKeyword: string;
+  lSchemaDraft: string;
+  lDraftVersion: TDraftVersion;
+  lAllowSiblingKeywordsWithRef: Boolean;
+  lValidationKeyword: string;
+  lDraft2019VocabularyMode: IDraft2019_09ValidationVocabularyMode;
+  lSilentValidationMode: Boolean;
+  lIsValidationKeyword: Boolean;
 begin
   if not Assigned(FSchema) then
     Exit;
@@ -182,7 +184,6 @@ begin
   if not Assigned(FVisitor) then
     Exit;
 
-  // Se for um schema booleano (true ou false)
   if (FSchema is TJSONBool) then
   begin
     FVisitor.Core.VisitBooleanSchema(TJSONBool(FSchema));
@@ -192,115 +193,98 @@ begin
   if not (FSchema is TJSONObject) then
     Exit;
 
-  LPrecedence := FVisitor.KeywordPrecedence;
+  lPrecedence := FVisitor.KeywordPrecedence;
 
-  LDraftVersion := TDraftVersion.dvUnknown;
-  if TJSONObject(FSchema).TryGetValue('$schema', LSchemaDraft) then
-    LDraftVersion := TDraftVersion.FromSchema(LSchemaDraft)
+  lDraftVersion := TDraftVersion.dvUnknown;
+  if TJSONObject(FSchema).TryGetValue('$schema', lSchemaDraft) then
+    lDraftVersion := TDraftVersion.FromSchema(lSchemaDraft)
   else
   begin
-    for LPrecedentKeyword in LPrecedence do
-      if (LPrecedentKeyword = '$recursiveRef') or (LPrecedentKeyword = '$dynamicRef') or
-         (LPrecedentKeyword = 'unevaluatedProperties') then
-      begin
-        LDraftVersion := TDraftVersion.dvDraft2019_09;
-        Break;
-      end;
+    for lPrecedentKeyword in lPrecedence do
+      if (lDraftVersion = TDraftVersion.dvUnknown) and
+         ((lPrecedentKeyword = '$recursiveRef') or (lPrecedentKeyword = '$dynamicRef') or
+          (lPrecedentKeyword = 'unevaluatedProperties')) then
+        lDraftVersion := TDraftVersion.dvDraft2019_09;
   end;
 
-  LAllowSiblingKeywordsWithRef := LDraftVersion in [TDraftVersion.dvDraft2019_09, TDraftVersion.dvDraft2020_12];
+  lAllowSiblingKeywordsWithRef := lDraftVersion in [TDraftVersion.dvDraft2019_09, TDraftVersion.dvDraft2020_12];
 
-  LSilentValidationMode := Supports(FVisitor, IDraft2019_09ValidationVocabularyMode, LDraft2019VocabularyMode) and
-    LDraft2019VocabularyMode.IsValidationVocabularySilent;
+  lSilentValidationMode := Supports(FVisitor, IDraft2019_09ValidationVocabularyMode, lDraft2019VocabularyMode) and
+    lDraft2019VocabularyMode.IsValidationVocabularySilent;
 
-  if LSilentValidationMode then
-    for LValidationKeyword in CValidationKeywords do
-      FVisitor.AddVisitedKeyword(LValidationKeyword);
+  if lSilentValidationMode then
+    for lValidationKeyword in CValidationKeywords do
+      FVisitor.AddVisitedKeyword(lValidationKeyword);
 
-  LHasRef := TJSONObject(FSchema).TryGetValue('$ref', LRefValue);
-  if LHasRef and (not LAllowSiblingKeywordsWithRef) then
+  lHasRef := TJSONObject(FSchema).TryGetValue('$ref', lRefValue);
+  if lHasRef and (not lAllowSiblingKeywordsWithRef) then
   begin
-    DispatchVisit('$ref', LRefValue);
+    DispatchVisit('$ref', lRefValue);
     Exit;
   end;
 
-  if Length(LPrecedence) > 0 then
+  if Length(lPrecedence) > 0 then
   begin
-    for LPrecedentKeyword in LPrecedence do
+    for lPrecedentKeyword in lPrecedence do
     begin
-      if TJSONObject(FSchema).TryGetValue(LPrecedentKeyword, LJsonValue) then
+      if TJSONObject(FSchema).TryGetValue(lPrecedentKeyword, lJsonValue) then
       begin
-        LIsValidationKeyword := False;
-        if LSilentValidationMode then
-          for LValidationKeyword in CValidationKeywords do
-            if SameText(LPrecedentKeyword, LValidationKeyword) then
-            begin
-              LIsValidationKeyword := True;
-              Break;
-            end;
+        lIsValidationKeyword := False;
+        if lSilentValidationMode then
+          for lValidationKeyword in CValidationKeywords do
+            if not lIsValidationKeyword and SameText(lPrecedentKeyword, lValidationKeyword) then
+              lIsValidationKeyword := True;
 
-        if LIsValidationKeyword then
-          Continue;
-
-        if FVisitor.HasVisitedKeyword(LPrecedentKeyword) then
-          Continue;
-
-        DispatchVisit(LPrecedentKeyword, LJsonValue);
-        FVisitor.AddVisitedKeyword(LPrecedentKeyword);
+        if not lIsValidationKeyword and not FVisitor.HasVisitedKeyword(lPrecedentKeyword) then
+        begin
+          DispatchVisit(lPrecedentKeyword, lJsonValue);
+          FVisitor.AddVisitedKeyword(lPrecedentKeyword);
+        end;
       end;
     end;
   end;
 
-  LSilentValidationMode := Supports(FVisitor, IDraft2019_09ValidationVocabularyMode, LDraft2019VocabularyMode) and
-    LDraft2019VocabularyMode.IsValidationVocabularySilent;
+  lSilentValidationMode := Supports(FVisitor, IDraft2019_09ValidationVocabularyMode, lDraft2019VocabularyMode) and
+    lDraft2019VocabularyMode.IsValidationVocabularySilent;
 
-  if LSilentValidationMode then
-    for LValidationKeyword in CValidationKeywords do
-      FVisitor.AddVisitedKeyword(LValidationKeyword);
+  if lSilentValidationMode then
+    for lValidationKeyword in CValidationKeywords do
+      FVisitor.AddVisitedKeyword(lValidationKeyword);
 
-  for LPair in TJSONObject(FSchema) do
+  for lPair in TJSONObject(FSchema) do
   begin
-    LKeyword := LPair.JsonString.Value;
+    lKeyword := lPair.JsonString.Value;
 
-    LIsValidationKeyword := False;
-    if LSilentValidationMode then
-      for LValidationKeyword in CValidationKeywords do
-        if SameText(LKeyword, LValidationKeyword) then
-        begin
-          LIsValidationKeyword := True;
-          Break;
-        end;
+    lIsValidationKeyword := False;
+    if lSilentValidationMode then
+      for lValidationKeyword in CValidationKeywords do
+        if not lIsValidationKeyword and SameText(lKeyword, lValidationKeyword) then
+          lIsValidationKeyword := True;
 
-    if LIsValidationKeyword then
-      Continue;
-
-    if FVisitor.HasVisitedKeyword(LKeyword) then
-      Continue;
-
-    DispatchVisit(LKeyword, LPair.JsonValue);
+    if not lIsValidationKeyword and not FVisitor.HasVisitedKeyword(lKeyword) then
+      DispatchVisit(lKeyword, lPair.JsonValue);
   end;
-
 end;
 
 { TValidationWalker }
 
-class function TValidationWalker.New(const ASchema, AData: TJSONValue; const ACustomHint: TJSONValue): IWalker;
+class function TValidationWalker.New(const pSchema, pData: TJSONValue; const pCustomHint: TJSONValue): IWalker;
 var
-  LDraft: TDraftVersion;
-  LSchema: string;
-  LBaseURI: string;
+  lDraft: TDraftVersion;
+  lSchema: string;
+  lBaseURI: string;
 begin
-  ASchema.TryGetValue('$schema', LSchema);
-  LDraft := TDraftVersion.FromSchema(LSchema);
-  LBaseURI := TUtils.UriGenerateRandom;
+  pSchema.TryGetValue('$schema', lSchema);
+  lDraft := TDraftVersion.FromSchema(lSchema);
+  lBaseURI := TUtils.UriGenerateRandom;
 
-  case LDraft of
-    dvDraft6:       Result := TWalker<TDraft6Visitor>.Create(ASchema, TDraft6Visitor.Create(ASchema, AData, LBaseURI, ACustomHint));
-    dvDraft7:       Result := TWalker<TDraft7Visitor>.Create(ASchema, TDraft7Visitor.Create(ASchema, AData, LBaseURI, ACustomHint));
-    dvDraft2019_09: Result := TWalker<TDraft2019_09Visitor>.Create(ASchema, TDraft2019_09Visitor.Create(ASchema, AData, LBaseURI, ACustomHint));
-    dvDraft2020_12: Result := TWalker<TDraft2020_12Visitor>.Create(ASchema, TDraft2020_12Visitor.Create(ASchema, AData, LBaseURI, ACustomHint));
+  case lDraft of
+    dvDraft6:       Result := TWalker<TDraft6Visitor>.Create(pSchema, TDraft6Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
+    dvDraft7:       Result := TWalker<TDraft7Visitor>.Create(pSchema, TDraft7Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
+    dvDraft2019_09: Result := TWalker<TDraft2019_09Visitor>.Create(pSchema, TDraft2019_09Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
+    dvDraft2020_12: Result := TWalker<TDraft2020_12Visitor>.Create(pSchema, TDraft2020_12Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
   else
-    Result := TWalker<TDraft2020_12Visitor>.Create(ASchema, TDraft2020_12Visitor.Create(ASchema, AData, LBaseURI, ACustomHint));
+    Result := TWalker<TDraft2020_12Visitor>.Create(pSchema, TDraft2020_12Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
   end;
 end;
 

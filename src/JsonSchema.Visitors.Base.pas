@@ -1,4 +1,4 @@
-﻿unit JsonSchema.Visitors.Base;
+unit JsonSchema.Visitors.Base;
 
 interface
 
@@ -10,6 +10,7 @@ uses
   JsonSchema.Visitors.Interfaces;
 
 type
+  /// <summary>Base visitor that owns and manages the scope stack for schema traversal.</summary>
   TBaseVisitor<T> = class(TInterfacedPersistent, IVisitor<T>)
   protected
     FCore: IBaseCoreVisitor<T>;
@@ -21,7 +22,8 @@ type
     FData: TJSONValue;
     FScopeStack: TStack<TScope>;
   public
-    constructor Create(const ASchema, AData: TJSONValue; const ABaseURI: string);
+    /// <summary>Initialises the scope stack and pushes the root scope derived from the supplied schema and data nodes.</summary>
+    constructor Create(const pSchema, pData: TJSONValue; const pBaseURI: string);
     destructor Destroy; override;
 
     function Core: IBaseCoreVisitor<T>;
@@ -31,21 +33,28 @@ type
     function RelativeJsonPointer: IBaseRelativeJsonPointer<T>;
 
     function KeywordPrecedence: TArray<string>; virtual;
+    /// <summary>Pops and returns the top scope from the stack.</summary>
     function PopScope: TScope;
-    function PushScope(const AScope: TScope): IVisitor<T>;
-    function CurrentScope(const AOffset: Integer = 0): TScope;
-    function UpdateScope(const AScope: TScope; const AOffset: Integer = 0): IVisitor<T>;
+    /// <summary>Pushes a new scope onto the stack, ensuring a fresh EvaluatedPropertiesInScope set.</summary>
+    function PushScope(const pScope: TScope): IVisitor<T>;
+    /// <summary>Returns the scope at the given depth offset from the top of the stack.</summary>
+    function CurrentScope(const pOffset: Integer = 0): TScope;
+    /// <summary>Replaces the scope at the given depth offset with the supplied value.</summary>
+    function UpdateScope(const pScope: TScope; const pOffset: Integer = 0): IVisitor<T>;
     function VisitedKeywords: TArray<string>;
-    function AddVisitedKeyword(const AKeyword: string): IVisitor<T>;
-    function HasVisitedKeyword(const AKeyword: string): Boolean;
-    function New(const ASchema, AData: TJSONValue; const ABaseURI: string): T; virtual; abstract;
+    /// <summary>Appends a keyword to the visited-keywords list of the current scope.</summary>
+    function AddVisitedKeyword(const pKeyword: string): IVisitor<T>;
+    /// <summary>Returns True if the given keyword has already been visited in the current scope.</summary>
+    function HasVisitedKeyword(const pKeyword: string): Boolean;
+    function New(const pSchema, pData: TJSONValue; const pBaseURI: string): T; virtual; abstract;
   end;
 
+  /// <summary>Base helper that holds a reference to the owning visitor and exposes it via Visitor.</summary>
   TBase<T: IVisitor<T>> = class(TInterfacedPersistent, IBase<T>)
   private
     FVisitor: T;
   public
-    constructor Create(AVisitor: T);
+    constructor Create(pVisitor: T);
     function Visitor: T;
   end;
 
@@ -56,9 +65,9 @@ uses
 
 { TBase<T> }
 
-constructor TBase<T>.Create(AVisitor: T);
+constructor TBase<T>.Create(pVisitor: T);
 begin
-  FVisitor := AVisitor;
+  FVisitor := pVisitor;
 end;
 
 function TBase<T>.Visitor: T;
@@ -68,14 +77,14 @@ end;
 
 { TBaseVisitor<T> }
 
-function TBaseVisitor<T>.AddVisitedKeyword(const AKeyword: string): IVisitor<T>;
+function TBaseVisitor<T>.AddVisitedKeyword(const pKeyword: string): IVisitor<T>;
 var
-  LScope: TScope;
+  lScope: TScope;
 begin
   Result := Self;
-  LScope := CurrentScope;
-  TUtils.AddArray<string>(LScope.VisitedKeywords, AKeyword);
-  UpdateScope(LScope);
+  lScope := CurrentScope;
+  TUtils.AddArray<string>(lScope.VisitedKeywords, pKeyword);
+  UpdateScope(lScope);
 end;
 
 function TBaseVisitor<T>.Applicator: IBaseApplicatorVisitor<T>;
@@ -88,63 +97,63 @@ begin
   Result := FCore;
 end;
 
-constructor TBaseVisitor<T>.Create(const ASchema, AData: TJSONValue; const ABaseURI: string);
+constructor TBaseVisitor<T>.Create(const pSchema, pData: TJSONValue; const pBaseURI: string);
 var
-  LScope: TScope;
+  lScope: TScope;
 begin
-  FData := AData;
+  FData := pData;
   FScopeStack := TStack<TScope>.Create;
 
-  LScope.BaseURI           := ABaseURI;
-  LScope.SchemaPath        := '#';
-  LScope.SchemaNode        := ASchema;
-  LScope.InstancePath      := '#';
-  LScope.InstanceNode      := AData;
-  LScope.CoveredItems      := [];
-  LScope.ContainsCount     := 0;
-  LScope.VisitedKeywords   := [];
-  LScope.CoveredProperties := [];
-  LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
-  FScopeStack.Push(LScope);
+  lScope.BaseURI           := pBaseURI;
+  lScope.SchemaPath        := '#';
+  lScope.SchemaNode        := pSchema;
+  lScope.InstancePath      := '#';
+  lScope.InstanceNode      := pData;
+  lScope.CoveredItems      := [];
+  lScope.ContainsCount     := 0;
+  lScope.VisitedKeywords   := [];
+  lScope.CoveredProperties := [];
+  lScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+  FScopeStack.Push(lScope);
 end;
 
-function TBaseVisitor<T>.CurrentScope(const AOffset: Integer): TScope;
+function TBaseVisitor<T>.CurrentScope(const pOffset: Integer): TScope;
 begin
   FillChar(Result, SizeOf(Result), 0);
-  if FScopeStack.Count > AOffset then
-    Result := FScopeStack.List[FScopeStack.Count - AOffset - 1];
+  if FScopeStack.Count > pOffset then
+    Result := FScopeStack.List[FScopeStack.Count - pOffset - 1];
 end;
 
 destructor TBaseVisitor<T>.Destroy;
 var
-  LScope: TScope;
-  LFreedSets: TList<THashSet<string>>;
+  lScope: TScope;
+  lFreedSets: TList<THashSet<string>>;
 begin
-  LFreedSets := TList<THashSet<string>>.Create;
+  lFreedSets := TList<THashSet<string>>.Create;
   try
-    for LScope in FScopeStack do
-      if Assigned(LScope.EvaluatedPropertiesInScope) and not LFreedSets.Contains(LScope.EvaluatedPropertiesInScope) then
+    for lScope in FScopeStack do
+      if Assigned(lScope.EvaluatedPropertiesInScope) and not lFreedSets.Contains(lScope.EvaluatedPropertiesInScope) then
       begin
-        LFreedSets.Add(LScope.EvaluatedPropertiesInScope);
-        LScope.EvaluatedPropertiesInScope.Free;
+        lFreedSets.Add(lScope.EvaluatedPropertiesInScope);
+        lScope.EvaluatedPropertiesInScope.Free;
       end;
   finally
-    LFreedSets.Free;
+    lFreedSets.Free;
   end;
 
   FScopeStack.Free;
   inherited;
 end;
 
-function TBaseVisitor<T>.HasVisitedKeyword(const AKeyword: string): Boolean;
+function TBaseVisitor<T>.HasVisitedKeyword(const pKeyword: string): Boolean;
 var
-  LList: TList<string>;
+  lList: TList<string>;
 begin
-  LList := TList<string>.Create(CurrentScope.VisitedKeywords);
+  lList := TList<string>.Create(CurrentScope.VisitedKeywords);
   try
-    Result := LList.Contains(AKeyword);
+    Result := lList.Contains(pKeyword);
   finally
-    LList.Free;
+    lList.Free;
   end;
 end;
 
@@ -163,20 +172,20 @@ begin
   Result := FScopeStack.Pop;
 end;
 
-function TBaseVisitor<T>.PushScope(const AScope: TScope): IVisitor<T>;
+function TBaseVisitor<T>.PushScope(const pScope: TScope): IVisitor<T>;
 var
-  LScope: TScope;
+  lScope: TScope;
 begin
   Result := Self;
-  LScope := AScope;
+  lScope := pScope;
 
   if (FScopeStack.Count > 0) and Assigned(CurrentScope.EvaluatedPropertiesInScope) and
-     (LScope.EvaluatedPropertiesInScope = CurrentScope.EvaluatedPropertiesInScope) then
-    LScope.EvaluatedPropertiesInScope := THashSet<string>.Create
-  else if not Assigned(LScope.EvaluatedPropertiesInScope) then
-    LScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+     (lScope.EvaluatedPropertiesInScope = CurrentScope.EvaluatedPropertiesInScope) then
+    lScope.EvaluatedPropertiesInScope := THashSet<string>.Create
+  else if not Assigned(lScope.EvaluatedPropertiesInScope) then
+    lScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
 
-  FScopeStack.Push(LScope);
+  FScopeStack.Push(lScope);
 end;
 
 function TBaseVisitor<T>.RelativeJsonPointer: IBaseRelativeJsonPointer<T>;
@@ -184,11 +193,11 @@ begin
   Result := FRelativeJsonPointer;
 end;
 
-function TBaseVisitor<T>.UpdateScope(const AScope: TScope; const AOffset: Integer): IVisitor<T>;
+function TBaseVisitor<T>.UpdateScope(const pScope: TScope; const pOffset: Integer): IVisitor<T>;
 begin
   Result := Self;
-  if FScopeStack.Count > AOffset then
-    FScopeStack.List[FScopeStack.Count - AOffset - 1] := AScope;
+  if FScopeStack.Count > pOffset then
+    FScopeStack.List[FScopeStack.Count - pOffset - 1] := pScope;
 end;
 
 function TBaseVisitor<T>.Validation: IBaseValidationVisitor<T>;
