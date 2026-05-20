@@ -1,4 +1,4 @@
-unit JsonSchema.Validation.Visitor.Validation;
+﻿unit JsonSchema.Validation.Visitor.Validation;
 
 interface
 
@@ -73,6 +73,21 @@ type
     procedure VisitContentEncoding(const pValue: TJSONString);
     [VisitorKeyword('contentMediaType')]
     procedure VisitContentMediaType(const pValue: TJSONString);
+  strict private
+    procedure ResetScopeForKeyword(var pScope: TScope; const pKeyword: string);
+    function ValidateIPv4PartList(const pParts: TArray<string>): Boolean;
+    function ValidateLeapSecondUTC(const pTimezoneStr: string; const pHour, pMinute: Integer; const pOffsetHourStr,
+      pOffsetMinuteStr: string): Boolean;
+
+    function ValidateIPv4Format(const pValue: string): Boolean;
+    function ValidateIPv6Format(const pValue: string): Boolean;
+    function ValidateDateTimeFormat(const pValue: string): Boolean;
+    function ValidateDateFormat(const pValue: string): Boolean;
+    function ValidateTimeFormat(const pValue: string): Boolean;
+    function ValidateEmailFormat(const pValue: string): Boolean;
+    function ValidateIDNHostnameFormat(const pValue: string): Boolean;
+    function ValidateIRIFormat(const pValue: string): Boolean;
+    function ValidateURITemplateFormat(const pValue: string): Boolean;
   end;
 
 implementation
@@ -94,16 +109,90 @@ uses
 
 { TBaseValidationVisitor<T> }
 
+procedure TBaseValidationVisitor<T>.ResetScopeForKeyword(var pScope: TScope; const pKeyword: string);
+begin
+  pScope.SchemaPath        := Format('%s/%s', [pScope.SchemaPath, pKeyword]);
+  pScope.CoveredItems      := [];
+  pScope.ContainsCount     := 0;
+  pScope.VisitedKeywords   := [];
+  pScope.CoveredProperties := [];
+end;
+
+function TBaseValidationVisitor<T>.ValidateIPv4PartList(const pParts: TArray<string>): Boolean;
+var
+  lPart: string;
+  lNumber: Integer;
+begin
+  Result := True;
+  for lPart in pParts do
+  begin
+    if (lPart = '') or not TRegEx.IsMatch(lPart, '^\d+$') then
+    begin
+      Result := False;
+      Exit;
+    end;
+
+    if (Length(lPart) > 1) and (lPart[1] = '0') then
+    begin
+      Result := False;
+      Exit;
+    end;
+
+    if not TryStrToInt(lPart, lNumber) or (lNumber < 0) or (lNumber > 255) then
+    begin
+      Result := False;
+      Exit;
+    end;
+  end;
+end;
+
+function TBaseValidationVisitor<T>.ValidateLeapSecondUTC(const pTimezoneStr: string; const pHour, pMinute: Integer; const pOffsetHourStr,
+  pOffsetMinuteStr: string): Boolean;
+var
+  lOffsetSign: Char;
+  lOffsetHour: Integer;
+  lOffsetMinute: Integer;
+  lOffsetTotalMinutes: Integer;
+  lUtcTotalMinutes: Integer;
+  lUtcHour: Integer;
+  lUtcMinute: Integer;
+begin
+  if SameText(pTimezoneStr, 'Z') then
+  begin
+    Result := (pHour = 23) and (pMinute = 59);
+    Exit;
+  end;
+
+  lOffsetSign := pTimezoneStr[1];
+  Result :=
+    TryStrToInt(pOffsetHourStr, lOffsetHour) and
+    TryStrToInt(pOffsetMinuteStr, lOffsetMinute) and
+    (lOffsetHour <= 23) and
+    (lOffsetMinute <= 59);
+
+  if Result then
+  begin
+    lOffsetTotalMinutes := (lOffsetHour * 60) + lOffsetMinute;
+    lUtcTotalMinutes := (pHour * 60) + pMinute;
+
+    if lOffsetSign = '+' then
+      lUtcTotalMinutes := lUtcTotalMinutes - lOffsetTotalMinutes
+    else
+      lUtcTotalMinutes := lUtcTotalMinutes + lOffsetTotalMinutes;
+
+    lUtcTotalMinutes := ((lUtcTotalMinutes mod 1440) + 1440) mod 1440;
+    lUtcHour := lUtcTotalMinutes div 60;
+    lUtcMinute := lUtcTotalMinutes mod 60;
+    Result := (lUtcHour = 23) and (lUtcMinute = 59);
+  end;
+end;
+
 procedure TBaseValidationVisitor<T>.VisitConst(const pValue: TJSONValue);
 var
   lScope: TScope;
 begin
   lScope := Visitor.CurrentScope;
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'const']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'const');
   Visitor.PushScope(lScope);
   try
     if not TUtils.JsonEquals(lScope.InstanceNode, pValue) then
@@ -120,11 +209,7 @@ var
   lEnumValue: TJSONValue;
 begin
   lScope := Visitor.CurrentScope;
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'enum']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'enum');
   Visitor.PushScope(lScope);
   try
     lIsValid := False;
@@ -329,11 +414,7 @@ begin
   else
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'exclusiveMaximum']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'exclusiveMaximum');
   Visitor.PushScope(lScope);
   try
     if lIsExclusive and (TUtils.JsonGetFloat(lScope.InstanceNode) >= lLimitValue) then
@@ -377,11 +458,7 @@ begin
   else
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'exclusiveMinimum']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'exclusiveMinimum');
   Visitor.PushScope(lScope);
   try
     if lIsExclusive and (TUtils.JsonGetFloat(lScope.InstanceNode) <= lLimitValue) then
@@ -398,46 +475,6 @@ var
   lFormatName: string;
   lInstanceValue: string;
   lIsValid: Boolean;
-  lParts: TArray<string>;
-  lLeftParts: TArray<string>;
-  lRightParts: TArray<string>;
-  lPart: string;
-  lWorkValue: string;
-  lLeftValue: string;
-  lRightValue: string;
-  lNumber: Integer;
-  lSplitPos: Integer;
-  lLastColon: Integer;
-  lIPv4Tail: string;
-  lHextetCount: Integer;
-  lExpectedHextets: Integer;
-  lHasCompression: Boolean;
-  lDateTime: TDateTime;
-  lMatch: TMatch;
-  lYear: Integer;
-  lMonth: Integer;
-  lDay: Integer;
-  lHour: Integer;
-  lMinute: Integer;
-  lSecond: Integer;
-  lOffsetHour: Integer;
-  lOffsetMinute: Integer;
-  lUtcTotalMinutes: Integer;
-  lOffsetTotalMinutes: Integer;
-  lUtcHour: Integer;
-  lUtcMinute: Integer;
-  lOffsetSign: Char;
-  lTemplateDepth: Integer;
-  lTemplateExpr: string;
-  lTemplateChar: Char;
-  lLabels: TArray<string>;
-  lLabel: string;
-  lCodePoint: Integer;
-  lIndex: Integer;
-  lHasArabicIndic: Boolean;
-  lHasExtendedArabicIndic: Boolean;
-  lHasKatakanaMiddleDot: Boolean;
-  lHasKanaHanContent: Boolean;
 begin
   if Supports(Visitor, IDraftFormatAssertionMode, lFormatMode) and
      (not lFormatMode.IsFormatAssertionEnabled) then
@@ -448,11 +485,7 @@ begin
   if TUtils.JsonGetType(lScope.InstanceNode) <> 'string' then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'format']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'format');
   Visitor.PushScope(lScope);
   try
     lFormatName := LowerCase(pValue.Value);
@@ -460,442 +493,28 @@ begin
     lIsValid := True;
 
     if lFormatName = 'ipv4' then
-    begin
-      lParts := SplitString(lInstanceValue, '.');
-      lIsValid := Length(lParts) = 4;
-
-      if lIsValid then
-        for lPart in lParts do
-        begin
-          if (lPart = '') or not TRegEx.IsMatch(lPart, '^\d+$') then
-          begin
-            lIsValid := False;
-            Break;
-          end;
-
-          if (Length(lPart) > 1) and (lPart[1] = '0') then
-          begin
-            lIsValid := False;
-            Break;
-          end;
-
-          if not TryStrToInt(lPart, lNumber) or (lNumber < 0) or (lNumber > 255) then
-          begin
-            lIsValid := False;
-            Break;
-          end;
-        end;
-    end
+      lIsValid := ValidateIPv4Format(lInstanceValue)
     else if lFormatName = 'ipv6' then
-    begin
-      lWorkValue := lInstanceValue;
-      lExpectedHextets := 8;
-      lIsValid := lWorkValue <> '';
-
-      if lIsValid and (Pos('.', lWorkValue) > 0) then
-      begin
-        lLastColon := LastDelimiter(':', lWorkValue);
-        if lLastColon = 0 then
-          lIsValid := False
-        else
-        begin
-          lIPv4Tail := Copy(lWorkValue, lLastColon + 1, MaxInt);
-          lParts := SplitString(lIPv4Tail, '.');
-          lIsValid := Length(lParts) = 4;
-
-          if lIsValid then
-            for lPart in lParts do
-            begin
-              if (lPart = '') or not TRegEx.IsMatch(lPart, '^\d+$') then
-              begin
-                lIsValid := False;
-                Break;
-              end;
-
-              if (Length(lPart) > 1) and (lPart[1] = '0') then
-              begin
-                lIsValid := False;
-                Break;
-              end;
-
-              if not TryStrToInt(lPart, lNumber) or (lNumber < 0) or (lNumber > 255) then
-              begin
-                lIsValid := False;
-                Break;
-              end;
-            end;
-
-          if lIsValid then
-          begin
-            lExpectedHextets := 6;
-            if (lLastColon > 1) and (lWorkValue[lLastColon - 1] = ':') then
-              lWorkValue := Copy(lWorkValue, 1, lLastColon)
-            else
-              lWorkValue := Copy(lWorkValue, 1, lLastColon - 1);
-          end;
-        end;
-      end;
-
-      if lIsValid then
-      begin
-        if Pos(':::', lWorkValue) > 0 then
-          lIsValid := False
-        else
-        begin
-          lHasCompression := Pos('::', lWorkValue) > 0;
-
-          if lHasCompression then
-          begin
-            lSplitPos := Pos('::', lWorkValue);
-            if PosEx('::', lWorkValue, lSplitPos + 2) > 0 then
-              lIsValid := False
-            else
-            begin
-              lHextetCount := 0;
-              lLeftValue := Copy(lWorkValue, 1, lSplitPos - 1);
-              lRightValue := Copy(lWorkValue, lSplitPos + 2, MaxInt);
-
-              if lLeftValue <> '' then
-              begin
-                lLeftParts := SplitString(lLeftValue, ':');
-                for lPart in lLeftParts do
-                begin
-                  if (lPart = '') or not TRegEx.IsMatch(lPart, '^[0-9A-Fa-f]{1,4}$') then
-                  begin
-                    lIsValid := False;
-                    Break;
-                  end;
-                  Inc(lHextetCount);
-                end;
-              end;
-
-              if lIsValid and (lRightValue <> '') then
-              begin
-                lRightParts := SplitString(lRightValue, ':');
-                for lPart in lRightParts do
-                begin
-                  if (lPart = '') or not TRegEx.IsMatch(lPart, '^[0-9A-Fa-f]{1,4}$') then
-                  begin
-                    lIsValid := False;
-                    Break;
-                  end;
-                  Inc(lHextetCount);
-                end;
-              end;
-
-              if lIsValid then
-                lIsValid := lHextetCount < lExpectedHextets;
-            end;
-          end
-          else
-          begin
-            lParts := SplitString(lWorkValue, ':');
-            if Length(lParts) <> lExpectedHextets then
-              lIsValid := False
-            else
-              for lPart in lParts do
-                if (lPart = '') or not TRegEx.IsMatch(lPart, '^[0-9A-Fa-f]{1,4}$') then
-                begin
-                  lIsValid := False;
-                  Break;
-                end;
-          end;
-        end;
-      end;
-    end
+      lIsValid := ValidateIPv6Format(lInstanceValue)
     else if lFormatName = 'date-time' then
-    begin
-      lMatch := TRegEx.Match(lInstanceValue,
-        '^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?([Zz]|[+\-]\d{2}:\d{2})$',
-        [roCompiled]);
-      lIsValid := lMatch.Success;
-
-      if lIsValid then
-      begin
-        lIsValid :=
-          TryStrToInt(lMatch.Groups[1].Value, lYear) and
-          TryStrToInt(lMatch.Groups[2].Value, lMonth) and
-          TryStrToInt(lMatch.Groups[3].Value, lDay) and
-          TryStrToInt(lMatch.Groups[4].Value, lHour) and
-          TryStrToInt(lMatch.Groups[5].Value, lMinute) and
-          TryStrToInt(lMatch.Groups[6].Value, lSecond);
-
-        if lIsValid then
-          lIsValid :=
-            (lYear >= 1) and
-            (lMonth >= 1) and (lMonth <= 12) and
-            (lDay >= 1) and (lDay <= 31) and
-            TryEncodeDate(Word(lYear), Word(lMonth), Word(lDay), lDateTime);
-
-        if lIsValid then
-          lIsValid := (lHour <= 23) and (lMinute <= 59) and (lSecond <= 60);
-
-        // Leap second is valid only for 23:59:60 in UTC.
-        if lIsValid and (lSecond = 60) then
-        begin
-          if SameText(lMatch.Groups[7].Value, 'Z') then
-          begin
-            lIsValid := (lHour = 23) and (lMinute = 59);
-          end
-          else
-          begin
-            lOffsetSign := lMatch.Groups[7].Value[1];
-            lIsValid :=
-              TryStrToInt(Copy(lMatch.Groups[7].Value, 2, 2), lOffsetHour) and
-              TryStrToInt(Copy(lMatch.Groups[7].Value, 5, 2), lOffsetMinute) and
-              (lOffsetHour <= 23) and
-              (lOffsetMinute <= 59);
-
-            if lIsValid then
-            begin
-              lOffsetTotalMinutes := (lOffsetHour * 60) + lOffsetMinute;
-              lUtcTotalMinutes := (lHour * 60) + lMinute;
-
-              if lOffsetSign = '+' then
-                lUtcTotalMinutes := lUtcTotalMinutes - lOffsetTotalMinutes
-              else
-                lUtcTotalMinutes := lUtcTotalMinutes + lOffsetTotalMinutes;
-
-              lUtcTotalMinutes := ((lUtcTotalMinutes mod 1440) + 1440) mod 1440;
-              lUtcHour := lUtcTotalMinutes div 60;
-              lUtcMinute := lUtcTotalMinutes mod 60;
-              lIsValid := (lUtcHour = 23) and (lUtcMinute = 59);
-            end;
-          end;
-        end;
-
-        if lIsValid and (lMatch.Groups[7].Value <> '') and
-           (not SameText(lMatch.Groups[7].Value, 'Z')) then
-        begin
-          lIsValid :=
-            TryStrToInt(Copy(lMatch.Groups[7].Value, 2, 2), lOffsetHour) and
-            TryStrToInt(Copy(lMatch.Groups[7].Value, 5, 2), lOffsetMinute) and
-            (lOffsetHour <= 23) and
-            (lOffsetMinute <= 59);
-        end;
-      end;
-    end
+      lIsValid := ValidateDateTimeFormat(lInstanceValue)
     else if lFormatName = 'duration' then
       lIsValid := TRegEx.IsMatch(lInstanceValue,
         '^P(?!$)((\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?|(\d+W))$',
         [roCompiled])
     else if lFormatName = 'date' then
-    begin
-      lMatch := TRegEx.Match(lInstanceValue,
-        '^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$',
-        [roCompiled]);
-      lIsValid := lMatch.Success;
-
-      if lIsValid then
-      begin
-        lIsValid :=
-          TryStrToInt(lMatch.Groups[1].Value, lYear) and
-          TryStrToInt(lMatch.Groups[2].Value, lMonth) and
-          TryStrToInt(lMatch.Groups[3].Value, lDay);
-
-        if lIsValid then
-          lIsValid := TryEncodeDate(Word(lYear), Word(lMonth), Word(lDay), lDateTime);
-      end;
-    end
+      lIsValid := ValidateDateFormat(lInstanceValue)
     else if lFormatName = 'time' then
-    begin
-      // RFC 3339 full-time: HH:MM:SS[.frac](Z|+HH:MM|-HH:MM)
-      lMatch := TRegEx.Match(lInstanceValue,
-        '^([01][0-9]|2[0-3]):([0-5][0-9]):((?:[0-5][0-9]|60))(?:\.[0-9]+)?([Zz]|[+\-]([01][0-9]|2[0-3]):([0-5][0-9]))$',
-        [roCompiled]);
-      lIsValid := lMatch.Success;
-
-      if lIsValid then
-      begin
-        lIsValid :=
-          TryStrToInt(lMatch.Groups[1].Value, lHour) and
-          TryStrToInt(lMatch.Groups[2].Value, lMinute) and
-          TryStrToInt(lMatch.Groups[3].Value, lSecond);
-
-        if lIsValid then
-          lIsValid := (lHour <= 23) and (lMinute <= 59) and (lSecond <= 60);
-
-        // Leap second is valid only for 23:59:60 in UTC.
-        if lIsValid and (lSecond = 60) then
-        begin
-          if SameText(lMatch.Groups[4].Value, 'Z') then
-          begin
-            lIsValid := (lHour = 23) and (lMinute = 59);
-          end
-          else
-          begin
-            lOffsetSign := lMatch.Groups[4].Value[1];
-            lIsValid :=
-              TryStrToInt(lMatch.Groups[5].Value, lOffsetHour) and
-              TryStrToInt(lMatch.Groups[6].Value, lOffsetMinute) and
-              (lOffsetHour <= 23) and
-              (lOffsetMinute <= 59);
-
-            if lIsValid then
-            begin
-              lOffsetTotalMinutes := (lOffsetHour * 60) + lOffsetMinute;
-              lUtcTotalMinutes := (lHour * 60) + lMinute;
-
-              if lOffsetSign = '+' then
-                lUtcTotalMinutes := lUtcTotalMinutes - lOffsetTotalMinutes
-              else
-                lUtcTotalMinutes := lUtcTotalMinutes + lOffsetTotalMinutes;
-
-              lUtcTotalMinutes := ((lUtcTotalMinutes mod 1440) + 1440) mod 1440;
-              lUtcHour := lUtcTotalMinutes div 60;
-              lUtcMinute := lUtcTotalMinutes mod 60;
-              lIsValid := (lUtcHour = 23) and (lUtcMinute = 59);
-            end;
-          end;
-        end;
-      end;
-    end
+      lIsValid := ValidateTimeFormat(lInstanceValue)
     else if lFormatName = 'email' then
-      lIsValid := TRegEx.IsMatch(lInstanceValue,
-        '^[A-Za-z0-9!#$%&''*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&''*+/=?^_`{|}~-]+)*@(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-))(?:\.(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-)))*$',
-        [roCompiled])
+      lIsValid := ValidateEmailFormat(lInstanceValue)
     else if lFormatName = 'idn-email' then
       // Placeholder RFC 6531/5890: aceita Unicode basico sem espacos e com separacao local@dominio.
       lIsValid := TRegEx.IsMatch(lInstanceValue,
         '^[^\s@]+@(?=.{1,253}$)(?:(?!-)[\p{L}\p{N}-]{1,63}(?<!-))(?:\.(?:(?!-)[\p{L}\p{N}-]{1,63}(?<!-)))*$',
         [roCompiled])
     else if lFormatName = 'idn-hostname' then
-    begin
-      // Regras minimas RFC 5890/IDNA: tamanho de labels, controle, espacos, hifens e punycode malformado.
-      lWorkValue := lInstanceValue;
-      for lIndex := 1 to Length(lWorkValue) do
-      begin
-        lCodePoint := Ord(lWorkValue[lIndex]);
-        if (lCodePoint = $3002) or (lCodePoint = $FF0E) or (lCodePoint = $FF61) then
-          lWorkValue[lIndex] := '.';
-      end;
-
-      lIsValid := (lWorkValue <> '') and (Length(lWorkValue) <= 253);
-
-      if lIsValid then
-        lIsValid := not TRegEx.IsMatch(lWorkValue, '[\x00-\x1F\x7F\s]', [roCompiled]);
-
-      if lIsValid then
-        lIsValid := not ((lWorkValue[1] = '.') or (lWorkValue[Length(lWorkValue)] = '.'));
-
-      if lIsValid then
-        lIsValid := Pos('..', lWorkValue) = 0;
-
-      if lIsValid then
-      begin
-        lLabels := SplitString(lWorkValue, '.');
-        for lLabel in lLabels do
-        begin
-          if (lLabel = '') or (Length(lLabel) > 63) then
-          begin
-            lIsValid := False;
-            Break;
-          end;
-
-          if (lLabel[1] = '-') or (lLabel[Length(lLabel)] = '-') then
-          begin
-            lIsValid := False;
-            Break;
-          end;
-
-          if StartsText('xn--', lLabel) then
-          begin
-            // Punycode ACE prefix deve estar em lowercase e conter payload alfanumerico/hifen.
-            if not lLabel.StartsWith('xn--') or
-               (Length(lLabel) <= 4) or
-               not TRegEx.IsMatch(Copy(lLabel, 5, MaxInt), '^[a-z0-9-]+$', [roCompiled]) then
-            begin
-              lIsValid := False;
-              Break;
-            end;
-          end;
-        end;
-
-        if lIsValid then
-        begin
-          lHasArabicIndic := False;
-          lHasExtendedArabicIndic := False;
-          lHasKatakanaMiddleDot := False;
-          lHasKanaHanContent := False;
-
-          for lIndex := 1 to Length(lWorkValue) do
-          begin
-            lCodePoint := Ord(lWorkValue[lIndex]);
-
-            // Casos explicitamente DISALLOWED no conjunto de testes opcionais.
-            if (lCodePoint = $302E) or (lCodePoint = $0640) or (lCodePoint = $07FA) or
-               (lCodePoint = $3031) or (lCodePoint = $3032) or (lCodePoint = $3033) or
-               (lCodePoint = $3034) or (lCodePoint = $3035) or (lCodePoint = $303B) or
-               (lCodePoint = $303E) or (lCodePoint = $303F) then
-            begin
-              lIsValid := False;
-              Break;
-            end;
-
-            // Nao permitir inicio com marcas combinantes dos casos de teste.
-            if (lIndex = 1) and ((lCodePoint = $0903) or (lCodePoint = $0300) or (lCodePoint = $0488)) then
-            begin
-              lIsValid := False;
-              Break;
-            end;
-
-            // U+00B7 deve estar entre 'l' e 'l'.
-            if lCodePoint = $00B7 then
-              if (lIndex = 1) or (lIndex = Length(lWorkValue)) or
-                 (lWorkValue[lIndex - 1] <> 'l') or (lWorkValue[lIndex + 1] <> 'l') then
-              begin
-                lIsValid := False;
-                Break;
-              end;
-
-            // Greek KERAIA U+0375 deve ser seguida por caractere grego.
-            if lCodePoint = $0375 then
-              if (lIndex = Length(lWorkValue)) or
-                 not ((Ord(lWorkValue[lIndex + 1]) >= $0370) and (Ord(lWorkValue[lIndex + 1]) <= $03FF)) then
-              begin
-                lIsValid := False;
-                Break;
-              end;
-
-            // Hebrew GERESH/GERSHAYIM devem ser precedidos por hebraico.
-            if (lCodePoint = $05F3) or (lCodePoint = $05F4) then
-              if (lIndex = 1) or
-                 not ((Ord(lWorkValue[lIndex - 1]) >= $0590) and (Ord(lWorkValue[lIndex - 1]) <= $05FF)) then
-              begin
-                lIsValid := False;
-                Break;
-              end;
-
-            if (lCodePoint >= $0660) and (lCodePoint <= $0669) then
-              lHasArabicIndic := True;
-            if (lCodePoint >= $06F0) and (lCodePoint <= $06F9) then
-              lHasExtendedArabicIndic := True;
-
-            // KATAKANA MIDDLE DOT: exige outro caractere Hiragana/Katakana/Han no host.
-            if lCodePoint = $30FB then
-              lHasKatakanaMiddleDot := True
-            else if ((lCodePoint >= $3040) and (lCodePoint <= $309F)) or
-                    ((lCodePoint >= $30A0) and (lCodePoint <= $30FF)) or
-                    ((lCodePoint >= $4E00) and (lCodePoint <= $9FFF)) then
-              lHasKanaHanContent := True;
-
-            // ZERO WIDTH JOINER U+200D deve ser precedido por virama U+094D.
-            if lCodePoint = $200D then
-              if (lIndex = 1) or (Ord(lWorkValue[lIndex - 1]) <> $094D) then
-              begin
-                lIsValid := False;
-                Break;
-              end;
-          end;
-
-          if lIsValid and lHasArabicIndic and lHasExtendedArabicIndic then
-            lIsValid := False;
-
-          if lIsValid and lHasKatakanaMiddleDot and not lHasKanaHanContent then
-            lIsValid := False;
-        end;
-      end;
-    end
+      lIsValid := ValidateIDNHostnameFormat(lInstanceValue)
     else if lFormatName = 'json-pointer' then
       lIsValid := TURIUtils.IsValidJsonPointer(lInstanceValue)
     else if lFormatName = 'uri-reference' then
@@ -906,82 +525,9 @@ begin
       // Placeholder RFC 3987: aceita caracteres Unicode, sem espacos de controle.
       lIsValid := TRegEx.IsMatch(lInstanceValue, '^[^\s<>"{}|\^`\\]+$', [roCompiled])
     else if lFormatName = 'iri' then
-    begin
-      // Placeholder RFC 3987: requer esquema + ':' e evita caracteres de controle.
-      lIsValid := TRegEx.IsMatch(lInstanceValue, '^[A-Za-z][A-Za-z0-9+.-]*:[^\s<>"{}|\^`\\]*$', [roCompiled]);
-      // Rejeitar IPv6 sem colchetes na authority (ex: http://2001:db8::1/)
-      if lIsValid then
-      begin
-        lMatch := TRegEx.Match(lInstanceValue, '^[A-Za-z][A-Za-z0-9+.-]*://([^/?#]*)', [roCompiled]);
-        if lMatch.Success then
-        begin
-          lWorkValue := lMatch.Groups[1].Value;
-          lSplitPos := LastDelimiter('@', lWorkValue);
-          if lSplitPos > 0 then
-            lWorkValue := Copy(lWorkValue, lSplitPos + 1, MaxInt);
-          if (lWorkValue = '') or (lWorkValue[1] <> '[') then
-            if TRegEx.IsMatch(lWorkValue, ':[^:]*:', [roCompiled]) then
-              lIsValid := False;
-        end;
-      end;
-    end
+      lIsValid := ValidateIRIFormat(lInstanceValue)
     else if lFormatName = 'uri-template' then
-    begin
-      lTemplateDepth := 0;
-      lTemplateExpr := '';
-
-      for lTemplateChar in lInstanceValue do
-      begin
-        if lTemplateChar = '{' then
-        begin
-          if lTemplateDepth <> 0 then
-          begin
-            lIsValid := False;
-            Break;
-          end;
-
-          lTemplateDepth := 1;
-          lTemplateExpr := '';
-          Continue;
-        end;
-
-        if lTemplateChar = '}' then
-        begin
-          if lTemplateDepth = 0 then
-          begin
-            lIsValid := False;
-            Break;
-          end;
-
-          lIsValid := lTemplateExpr <> '';
-          if lIsValid then
-            lIsValid := TRegEx.IsMatch(
-              lTemplateExpr,
-              '^[+#./;?&]?[A-Za-z0-9_%.][A-Za-z0-9_%.]*(?::\d+|\*)?(?:,[A-Za-z0-9_%.][A-Za-z0-9_%.]*(?::\d+|\*)?)*$',
-              [roCompiled]);
-
-          if not lIsValid then
-            Break;
-
-          lTemplateDepth := 0;
-          Continue;
-        end;
-
-        if lTemplateDepth = 1 then
-        begin
-          if (lTemplateChar <= ' ') or (lTemplateChar = '{') or (lTemplateChar = '}') then
-          begin
-            lIsValid := False;
-            Break;
-          end;
-
-          lTemplateExpr := lTemplateExpr + lTemplateChar;
-        end;
-      end;
-
-      if lIsValid then
-        lIsValid := lTemplateDepth = 0;
-    end
+      lIsValid := ValidateURITemplateFormat(lInstanceValue)
     else if lFormatName = 'relative-json-pointer' then
       // RFC draft-handrews-relative-json-pointer: non-negative-integer seguido de '#' ou JSON Pointer
       lIsValid := TRegEx.IsMatch(lInstanceValue,
@@ -1011,6 +557,497 @@ begin
   end;
 end;
 
+function TBaseValidationVisitor<T>.ValidateIPv4Format(const pValue: string): Boolean;
+var
+  lParts: TArray<string>;
+begin
+  lParts := SplitString(pValue, '.');
+  Result := Length(lParts) = 4;
+
+  if Result then
+    Result := ValidateIPv4PartList(lParts);
+end;
+
+function TBaseValidationVisitor<T>.ValidateIPv6Format(const pValue: string): Boolean;
+var
+  lWorkValue: string;
+  lLeftParts: TArray<string>;
+  lRightParts: TArray<string>;
+  lParts: TArray<string>;
+  lPart: string;
+  lIPv4Tail: string;
+  lLeftValue: string;
+  lRightValue: string;
+  lSplitPos: Integer;
+  lLastColon: Integer;
+  lHextetCount: Integer;
+  lExpectedHextets: Integer;
+  lHasCompression: Boolean;
+begin
+  lWorkValue := pValue;
+  lExpectedHextets := 8;
+  Result := lWorkValue <> '';
+
+  if Result and (Pos('.', lWorkValue) > 0) then
+  begin
+    lLastColon := LastDelimiter(':', lWorkValue);
+    if lLastColon = 0 then
+      Result := False
+    else
+    begin
+      lIPv4Tail := Copy(lWorkValue, lLastColon + 1, MaxInt);
+      lParts := SplitString(lIPv4Tail, '.');
+      Result := Length(lParts) = 4;
+
+      if Result then
+        Result := ValidateIPv4PartList(lParts);
+
+      if Result then
+      begin
+        lExpectedHextets := 6;
+        if (lLastColon > 1) and (lWorkValue[lLastColon - 1] = ':') then
+          lWorkValue := Copy(lWorkValue, 1, lLastColon)
+        else
+          lWorkValue := Copy(lWorkValue, 1, lLastColon - 1);
+      end;
+    end;
+  end;
+
+  if Result then
+  begin
+    if Pos(':::', lWorkValue) > 0 then
+      Result := False
+    else
+    begin
+      lHasCompression := Pos('::', lWorkValue) > 0;
+
+      if lHasCompression then
+      begin
+        lSplitPos := Pos('::', lWorkValue);
+        if PosEx('::', lWorkValue, lSplitPos + 2) > 0 then
+          Result := False
+        else
+        begin
+          lHextetCount := 0;
+          lLeftValue := Copy(lWorkValue, 1, lSplitPos - 1);
+          lRightValue := Copy(lWorkValue, lSplitPos + 2, MaxInt);
+
+          if lLeftValue <> '' then
+          begin
+            lLeftParts := SplitString(lLeftValue, ':');
+            for lPart in lLeftParts do
+            begin
+              if (lPart = '') or not TRegEx.IsMatch(lPart, '^[0-9A-Fa-f]{1,4}$') then
+              begin
+                Result := False;
+                Break;
+              end;
+              Inc(lHextetCount);
+            end;
+          end;
+
+          if Result and (lRightValue <> '') then
+          begin
+            lRightParts := SplitString(lRightValue, ':');
+            for lPart in lRightParts do
+            begin
+              if (lPart = '') or not TRegEx.IsMatch(lPart, '^[0-9A-Fa-f]{1,4}$') then
+              begin
+                Result := False;
+                Break;
+              end;
+              Inc(lHextetCount);
+            end;
+          end;
+
+          if Result then
+            Result := lHextetCount < lExpectedHextets;
+        end;
+      end
+      else
+      begin
+        lParts := SplitString(lWorkValue, ':');
+        if Length(lParts) <> lExpectedHextets then
+          Result := False
+        else
+          for lPart in lParts do
+            if (lPart = '') or not TRegEx.IsMatch(lPart, '^[0-9A-Fa-f]{1,4}$') then
+            begin
+              Result := False;
+              Break;
+            end;
+      end;
+    end;
+  end;
+end;
+
+function TBaseValidationVisitor<T>.ValidateDateTimeFormat(const pValue: string): Boolean;
+var
+  lMatch: TMatch;
+  lYear: Integer;
+  lMonth: Integer;
+  lDay: Integer;
+  lHour: Integer;
+  lMinute: Integer;
+  lSecond: Integer;
+  lOffsetHour: Integer;
+  lOffsetMinute: Integer;
+  lDateTime: TDateTime;
+begin
+  lMatch := TRegEx.Match(pValue,
+    '^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?([Zz]|[+\-]\d{2}:\d{2})$',
+    [roCompiled]);
+  Result := lMatch.Success;
+
+  if Result then
+  begin
+    Result :=
+      TryStrToInt(lMatch.Groups[1].Value, lYear) and
+      TryStrToInt(lMatch.Groups[2].Value, lMonth) and
+      TryStrToInt(lMatch.Groups[3].Value, lDay) and
+      TryStrToInt(lMatch.Groups[4].Value, lHour) and
+      TryStrToInt(lMatch.Groups[5].Value, lMinute) and
+      TryStrToInt(lMatch.Groups[6].Value, lSecond);
+
+    if Result then
+      Result :=
+        (lYear >= 1) and
+        (lMonth >= 1) and (lMonth <= 12) and
+        (lDay >= 1) and (lDay <= 31) and
+        TryEncodeDate(Word(lYear), Word(lMonth), Word(lDay), lDateTime);
+
+    if Result then
+      Result := (lHour <= 23) and (lMinute <= 59) and (lSecond <= 60);
+
+    // Leap second is valid only for 23:59:60 in UTC.
+    if Result and (lSecond = 60) then
+      Result := ValidateLeapSecondUTC(
+        lMatch.Groups[7].Value, lHour, lMinute,
+        Copy(lMatch.Groups[7].Value, 2, 2),
+        Copy(lMatch.Groups[7].Value, 5, 2));
+
+    if Result and (lMatch.Groups[7].Value <> '') and
+       (not SameText(lMatch.Groups[7].Value, 'Z')) then
+    begin
+      Result :=
+        TryStrToInt(Copy(lMatch.Groups[7].Value, 2, 2), lOffsetHour) and
+        TryStrToInt(Copy(lMatch.Groups[7].Value, 5, 2), lOffsetMinute) and
+        (lOffsetHour <= 23) and
+        (lOffsetMinute <= 59);
+    end;
+  end;
+end;
+
+function TBaseValidationVisitor<T>.ValidateDateFormat(const pValue: string): Boolean;
+var
+  lMatch: TMatch;
+  lYear: Integer;
+  lMonth: Integer;
+  lDay: Integer;
+  lDateTime: TDateTime;
+begin
+  lMatch := TRegEx.Match(pValue,
+    '^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$',
+    [roCompiled]);
+  Result := lMatch.Success;
+
+  if Result then
+  begin
+    Result :=
+      TryStrToInt(lMatch.Groups[1].Value, lYear) and
+      TryStrToInt(lMatch.Groups[2].Value, lMonth) and
+      TryStrToInt(lMatch.Groups[3].Value, lDay);
+
+    if Result then
+      Result := TryEncodeDate(Word(lYear), Word(lMonth), Word(lDay), lDateTime);
+  end;
+end;
+
+function TBaseValidationVisitor<T>.ValidateTimeFormat(const pValue: string): Boolean;
+var
+  lMatch: TMatch;
+  lHour: Integer;
+  lMinute: Integer;
+  lSecond: Integer;
+  lOffsetHour: string;
+  lOffsetMinute: string;
+begin
+  // RFC 3339 full-time: HH:MM:SS[.frac](Z|+HH:MM|-HH:MM)
+  lMatch := TRegEx.Match(pValue,
+    '^([01][0-9]|2[0-3]):([0-5][0-9]):((?:[0-5][0-9]|60))(?:\.[0-9]+)?([Zz]|[+\-]([01][0-9]|2[0-3]):([0-5][0-9]))$',
+    [roCompiled]);
+  Result := lMatch.Success;
+
+  if Result then
+  begin
+    Result :=
+      TryStrToInt(lMatch.Groups[1].Value, lHour) and
+      TryStrToInt(lMatch.Groups[2].Value, lMinute) and
+      TryStrToInt(lMatch.Groups[3].Value, lSecond);
+
+    if Result then
+      Result := (lHour <= 23) and (lMinute <= 59) and (lSecond <= 60);
+
+    // Leap second is valid only for 23:59:60 in UTC.
+    if Result and (lSecond = 60) then
+    begin
+      lOffsetHour := '';
+      lOffsetMinute := '';
+
+      if lMatch.Groups.Count > 5 then
+        lOffsetHour := lMatch.Groups[5].Value;
+
+      if lMatch.Groups.Count > 6 then
+        lOffsetMinute := lMatch.Groups[6].Value;
+
+      Result := ValidateLeapSecondUTC(lMatch.Groups[4].Value, lHour, lMinute, lOffsetHour, lOffsetMinute);
+    end;
+  end;
+end;
+
+function TBaseValidationVisitor<T>.ValidateEmailFormat(const pValue: string): Boolean;
+begin
+  Result := TRegEx.IsMatch(pValue,
+    '^[A-Za-z0-9!#$%&''*+/=?^_`{|}~-]+(?:\.[A-Za-z0-9!#$%&''*+/=?^_`{|}~-]+)*@(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-))(?:\.(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-)))*$',
+    [roCompiled]);
+end;
+
+function TBaseValidationVisitor<T>.ValidateIDNHostnameFormat(const pValue: string): Boolean;
+var
+  lWorkValue: string;
+  lLabels: TArray<string>;
+  lLabel: string;
+  lCodePoint: Integer;
+  lIndex: Integer;
+  lHasArabicIndic: Boolean;
+  lHasExtendedArabicIndic: Boolean;
+  lHasKatakanaMiddleDot: Boolean;
+  lHasKanaHanContent: Boolean;
+begin
+  // Regras minimas RFC 5890/IDNA: tamanho de labels, controle, espacos, hifens e punycode malformado.
+  lWorkValue := pValue;
+  for lIndex := 1 to Length(lWorkValue) do
+  begin
+    lCodePoint := Ord(lWorkValue[lIndex]);
+    if (lCodePoint = $3002) or (lCodePoint = $FF0E) or (lCodePoint = $FF61) then
+      lWorkValue[lIndex] := '.';
+  end;
+
+  Result := (lWorkValue <> '') and (Length(lWorkValue) <= 253);
+
+  if Result then
+    Result := not TRegEx.IsMatch(lWorkValue, '[\x00-\x1F\x7F\s]', [roCompiled]);
+
+  if Result then
+    Result := not ((lWorkValue[1] = '.') or (lWorkValue[Length(lWorkValue)] = '.'));
+
+  if Result then
+    Result := Pos('..', lWorkValue) = 0;
+
+  if Result then
+  begin
+    lLabels := SplitString(lWorkValue, '.');
+    for lLabel in lLabels do
+    begin
+      if (lLabel = '') or (Length(lLabel) > 63) then
+      begin
+        Result := False;
+        Break;
+      end;
+
+      if (lLabel[1] = '-') or (lLabel[Length(lLabel)] = '-') then
+      begin
+        Result := False;
+        Break;
+      end;
+
+      if StartsText('xn--', lLabel) then
+      begin
+        // Punycode ACE prefix deve estar em lowercase e conter payload alfanumerico/hifen.
+        if not lLabel.StartsWith('xn--') or
+           (Length(lLabel) <= 4) or
+           not TRegEx.IsMatch(Copy(lLabel, 5, MaxInt), '^[a-z0-9-]+$', [roCompiled]) then
+        begin
+          Result := False;
+          Break;
+        end;
+      end;
+    end;
+
+    if Result then
+    begin
+      lHasArabicIndic := False;
+      lHasExtendedArabicIndic := False;
+      lHasKatakanaMiddleDot := False;
+      lHasKanaHanContent := False;
+
+      for lIndex := 1 to Length(lWorkValue) do
+      begin
+        lCodePoint := Ord(lWorkValue[lIndex]);
+
+        // Casos explicitamente DISALLOWED no conjunto de testes opcionais.
+        if (lCodePoint = $302E) or (lCodePoint = $0640) or (lCodePoint = $07FA) or
+           (lCodePoint = $3031) or (lCodePoint = $3032) or (lCodePoint = $3033) or
+           (lCodePoint = $3034) or (lCodePoint = $3035) or (lCodePoint = $303B) or
+           (lCodePoint = $303E) or (lCodePoint = $303F) then
+        begin
+          Result := False;
+          Break;
+        end;
+
+        // Nao permitir inicio com marcas combinantes dos casos de teste.
+        if (lIndex = 1) and ((lCodePoint = $0903) or (lCodePoint = $0300) or (lCodePoint = $0488)) then
+        begin
+          Result := False;
+          Break;
+        end;
+
+        // U+00B7 deve estar entre 'l' e 'l'.
+        if lCodePoint = $00B7 then
+          if (lIndex = 1) or (lIndex = Length(lWorkValue)) or
+             (lWorkValue[lIndex - 1] <> 'l') or (lWorkValue[lIndex + 1] <> 'l') then
+          begin
+            Result := False;
+            Break;
+          end;
+
+        // Greek KERAIA U+0375 deve ser seguida por caractere grego.
+        if lCodePoint = $0375 then
+          if (lIndex = Length(lWorkValue)) or
+             not ((Ord(lWorkValue[lIndex + 1]) >= $0370) and (Ord(lWorkValue[lIndex + 1]) <= $03FF)) then
+          begin
+            Result := False;
+            Break;
+          end;
+
+        // Hebrew GERESH/GERSHAYIM devem ser precedidos por hebraico.
+        if (lCodePoint = $05F3) or (lCodePoint = $05F4) then
+          if (lIndex = 1) or
+             not ((Ord(lWorkValue[lIndex - 1]) >= $0590) and (Ord(lWorkValue[lIndex - 1]) <= $05FF)) then
+          begin
+            Result := False;
+            Break;
+          end;
+
+        if (lCodePoint >= $0660) and (lCodePoint <= $0669) then
+          lHasArabicIndic := True;
+        if (lCodePoint >= $06F0) and (lCodePoint <= $06F9) then
+          lHasExtendedArabicIndic := True;
+
+        // KATAKANA MIDDLE DOT: exige outro caractere Hiragana/Katakana/Han no host.
+        if lCodePoint = $30FB then
+          lHasKatakanaMiddleDot := True
+        else if ((lCodePoint >= $3040) and (lCodePoint <= $309F)) or
+                ((lCodePoint >= $30A0) and (lCodePoint <= $30FF)) or
+                ((lCodePoint >= $4E00) and (lCodePoint <= $9FFF)) then
+          lHasKanaHanContent := True;
+
+        // ZERO WIDTH JOINER U+200D deve ser precedido por virama U+094D.
+        if lCodePoint = $200D then
+          if (lIndex = 1) or (Ord(lWorkValue[lIndex - 1]) <> $094D) then
+          begin
+            Result := False;
+            Break;
+          end;
+      end;
+
+      if Result and lHasArabicIndic and lHasExtendedArabicIndic then
+        Result := False;
+
+      if Result and lHasKatakanaMiddleDot and not lHasKanaHanContent then
+        Result := False;
+    end;
+  end;
+end;
+
+function TBaseValidationVisitor<T>.ValidateIRIFormat(const pValue: string): Boolean;
+var
+  lMatch: TMatch;
+  lWorkValue: string;
+  lSplitPos: Integer;
+begin
+  // Placeholder RFC 3987: requer esquema + ':' e evita caracteres de controle.
+  Result := TRegEx.IsMatch(pValue, '^[A-Za-z][A-Za-z0-9+.-]*:[^\s<>"{}|\^`\\]*$', [roCompiled]);
+  // Rejeitar IPv6 sem colchetes na authority (ex: http://2001:db8::1/)
+  if Result then
+  begin
+    lMatch := TRegEx.Match(pValue, '^[A-Za-z][A-Za-z0-9+.-]*://([^/?#]*)', [roCompiled]);
+    if lMatch.Success then
+    begin
+      lWorkValue := lMatch.Groups[1].Value;
+      lSplitPos := LastDelimiter('@', lWorkValue);
+      if lSplitPos > 0 then
+        lWorkValue := Copy(lWorkValue, lSplitPos + 1, MaxInt);
+      if (lWorkValue = '') or (lWorkValue[1] <> '[') then
+        if TRegEx.IsMatch(lWorkValue, ':[^:]*:', [roCompiled]) then
+          Result := False;
+    end;
+  end;
+end;
+
+function TBaseValidationVisitor<T>.ValidateURITemplateFormat(const pValue: string): Boolean;
+var
+  lTemplateDepth: Integer;
+  lTemplateExpr: string;
+  lTemplateChar: Char;
+begin
+  lTemplateDepth := 0;
+  lTemplateExpr := '';
+  Result := True;
+
+  for lTemplateChar in pValue do
+  begin
+    if lTemplateChar = '{' then
+    begin
+      if lTemplateDepth <> 0 then
+      begin
+        Result := False;
+        Break;
+      end;
+
+      lTemplateDepth := 1;
+      lTemplateExpr := '';
+      Continue;
+    end;
+
+    if lTemplateChar = '}' then
+    begin
+      if lTemplateDepth = 0 then
+      begin
+        Result := False;
+        Break;
+      end;
+
+      Result := lTemplateExpr <> '';
+      if Result then
+        Result := TRegEx.IsMatch(
+          lTemplateExpr,
+          '^[+#./;?&]?[A-Za-z0-9_%.][A-Za-z0-9_%.]*(?::\d+|\*)?(?:,[A-Za-z0-9_%.][A-Za-z0-9_%.]*(?::\d+|\*)?)*$',
+          [roCompiled]);
+
+      if not Result then
+        Break;
+
+      lTemplateDepth := 0;
+      Continue;
+    end;
+
+    if lTemplateDepth = 1 then
+    begin
+      if (lTemplateChar <= ' ') or (lTemplateChar = '{') or (lTemplateChar = '}') then
+      begin
+        Result := False;
+        Break;
+      end;
+
+      lTemplateExpr := lTemplateExpr + lTemplateChar;
+    end;
+  end;
+
+  if Result then
+    Result := lTemplateDepth = 0;
+end;
+
 procedure TBaseValidationVisitor<T>.VisitMaximum(const pValue: TJSONNumber);
 var
   lScope: TScope;
@@ -1020,11 +1057,7 @@ begin
   if not MatchStr(TUtils.JsonGetType(lScope.InstanceNode), ['number', 'integer']) then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'maximum']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'maximum');
   Visitor.PushScope(lScope);
   try
     if (TUtils.JsonGetFloat(lScope.InstanceNode) > TUtils.JsonGetFloat(pValue)) then
@@ -1043,11 +1076,7 @@ begin
   if TUtils.JsonGetType(lScope.InstanceNode) <> 'array' then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'maxItems']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'maxItems');
   Visitor.PushScope(lScope);
   try
     if (TJSONArray(lScope.InstanceNode).Count > TUtils.JsonGetInteger(pValue)) then
@@ -1066,11 +1095,7 @@ begin
   if TUtils.JsonGetType(lScope.InstanceNode) <> 'string' then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'maxLength']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'maxLength');
   Visitor.PushScope(lScope);
   try
     if (Length(TUtils.Utf32Encode(TJSONString(lScope.InstanceNode).Value)) > TUtils.JsonGetInteger(pValue)) then
@@ -1089,11 +1114,7 @@ begin
   if TUtils.JsonGetType(lScope.InstanceNode) <> 'object' then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'maxProperties']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'maxProperties');
   Visitor.PushScope(lScope);
   try
     if (TJSONObject(lScope.InstanceNode).Count > TUtils.JsonGetInteger(pValue)) then
@@ -1117,11 +1138,7 @@ begin
   if not MatchStr(TUtils.JsonGetType(lScope.InstanceNode), ['number', 'integer']) then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'minimum']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'minimum');
   Visitor.PushScope(lScope);
   try
     if (TUtils.JsonGetFloat(lScope.InstanceNode) < TUtils.JsonGetFloat(pValue)) then
@@ -1140,11 +1157,7 @@ begin
   if TUtils.JsonGetType(lScope.InstanceNode) <> 'array' then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'minItems']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'minItems');
   Visitor.PushScope(lScope);
   try
     if (TJSONArray(lScope.InstanceNode).Count < TUtils.JsonGetInteger(pValue)) then
@@ -1163,11 +1176,7 @@ begin
   if TUtils.JsonGetType(lScope.InstanceNode) <> 'string' then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'minLength']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'minLength');
   Visitor.PushScope(lScope);
   try
     if (Length(TUtils.Utf32Encode(TJSONString(lScope.InstanceNode).Value)) < TUtils.JsonGetInteger(pValue)) then
@@ -1186,11 +1195,7 @@ begin
   if TUtils.JsonGetType(lScope.InstanceNode) <> 'object' then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'minProperties']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'minProperties');
   Visitor.PushScope(lScope);
   try
     if (TJSONObject(lScope.InstanceNode).Count < TUtils.JsonGetInteger(pValue)) then
@@ -1217,11 +1222,7 @@ begin
   if not MatchStr(TUtils.JsonGetType(lScope.InstanceNode), ['number', 'integer']) then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'multipleOf']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'multipleOf');
   Visitor.PushScope(lScope);
   try
     lValue := TUtils.JsonGetFloat(lScope.InstanceNode);
@@ -1281,11 +1282,7 @@ begin
   if TUtils.JsonGetType(lScope.InstanceNode) <> 'string' then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'pattern']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'pattern');
   Visitor.PushScope(lScope);
   try
     if not TRegEx.IsMatch(
@@ -1346,11 +1343,7 @@ begin
   if TUtils.JsonGetType(lScope.InstanceNode) <> 'object' then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'required']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'required');
   Visitor.PushScope(lScope);
   try
     for lRequired in pValue do
@@ -1368,11 +1361,7 @@ var
   lAllowedTypes: TList<string>;
 begin
   lScope := Visitor.CurrentScope;
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'type']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'type');
   Visitor.PushScope(lScope);
   lAllowedTypes := TList<string>.Create;
   try
@@ -1415,11 +1404,7 @@ begin
   if TUtils.JsonGetType(lScope.InstanceNode) <> 'array' then
     Exit;
 
-  lScope.SchemaPath        := Format('%s/%s', [lScope.SchemaPath, 'uniqueItems']);
-  lScope.CoveredItems      := [];
-  lScope.ContainsCount     := 0;
-  lScope.VisitedKeywords   := [];
-  lScope.CoveredProperties := [];
+  ResetScopeForKeyword(lScope, 'uniqueItems');
   Visitor.PushScope(lScope);
   try
     lArray := TJSONArray(lScope.InstanceNode);

@@ -10,6 +10,33 @@ uses
   JsonSchema.Visitors.Base,
   JsonSchema.Validation.Interfaces;
 
+const
+  /// <summary>
+  /// The complete list of JSON Schema validation vocabulary keywords, shared by
+  /// Draft 2019-09 and Draft 2020-12. Used to mark keywords as visited or silenced
+  /// when $vocabulary excludes the validation vocabulary.
+  /// </summary>
+  CValidationKeywords: array[0..17] of string = (
+    'type',
+    'multipleOf',
+    'maximum',
+    'exclusiveMaximum',
+    'minimum',
+    'exclusiveMinimum',
+    'maxLength',
+    'minLength',
+    'pattern',
+    'maxItems',
+    'minItems',
+    'uniqueItems',
+    'maxProperties',
+    'minProperties',
+    'required',
+    'enum',
+    'const',
+    'format'
+  );
+
 type
   /// <summary>
   /// Collects errors and annotations produced during a single schema validation

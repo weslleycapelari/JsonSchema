@@ -23,8 +23,11 @@ type
     procedure DiscoverInArrayOfSchemas(pJsonArray: TJSONArray);
     procedure DiscoverInSingleSchema(pJsonValue: TJSONValue);
     class function TryResolveStaticMappedFile(const pRemoteURI: string; out pMappedFilePath: string): Boolean; static;
+    class function MapDraftSchemaURI(const pCanonicalURI: string; const pRepoRootPath: string; out pFilePath: string): Boolean; static;
+    class function TryMapTestServerURI(const pRemoteURI: string; const pRepoRootPath: string; out pMappedFilePath: string): Boolean; static;
     class function IsLocalTestServerURI(const pURI: string): Boolean; static;
     procedure TryLoadRemoteResource(const pTargetURI: TURIReference);
+    procedure WalkSchemaRoot(const pSchemaRoot: TJSONValue; const pResourceKeyURI: string);
   public
     /// <summary>Initializes the registry visitor, seeds the resource table with the root schema, and wires up all subordinate visitor handlers.</summary>
     /// <param name="pSchema">The root JSON Schema value to register.</param>
@@ -254,7 +257,6 @@ var
   lCanonicalURI: string;
   lRepoRootPath: string;
   lCandidatePath: string;
-  lRelativeRemotePath: string;
 begin
   pMappedFilePath := '';
   lCanonicalURI := LowerCase(pRemoteURI);
@@ -266,79 +268,100 @@ begin
         '..'),
       '..'));
 
-  if (lCanonicalURI = 'http://json-schema.org/draft-06/schema') or
-     (lCanonicalURI = 'https://json-schema.org/draft-06/schema') then
-    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft6\schema.json')
-  else if (lCanonicalURI = 'http://json-schema.org/draft-07/schema') or
-          (lCanonicalURI = 'https://json-schema.org/draft-07/schema') then
-    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft7\schema.json')
-  else if (lCanonicalURI = 'http://json-schema.org/draft/2019-09/schema') or
-          (lCanonicalURI = 'https://json-schema.org/draft/2019-09/schema') then
-    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\schema.json')
-  else if (lCanonicalURI = 'https://json-schema.org/draft/2020-12/schema') then
-    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2020-12\schema.json')
-  else if lCanonicalURI.EndsWith('/draft2020-12/baseurichangefolder/baseurichangefolder/folderinteger.json') then
-    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2020-12\baseUriChangeFolder\folderInteger.json')
-  else if lCanonicalURI.EndsWith('/draft2020-12/baseurichangefolderinsubschema/baseurichangefolderinsubschema/folderinteger.json') then
-    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2020-12\baseUriChangeFolderInSubschema\folderInteger.json')
-  else if lCanonicalURI.EndsWith('/draft2019-09/baseurichangefolder/baseurichangefolder/folderinteger.json') then
-      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolder\folderInteger.json')
-    else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/core') then
-      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\core.json')
-    else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/applicator') then
-      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\applicator.json')
-    else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/validation') then
-      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\validation.json')
-    else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/meta-data') then
-      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\meta-data.json')
-    else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/format') then
-      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\format.json')
-    else if (lCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/content') then
-      lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\content.json')
-  else if lCanonicalURI.EndsWith('/draft2019-09/baseurichangefolderinsubschema/baseurichangefolderinsubschema/folderinteger.json') then
-    lCandidatePath := TPath.Combine(lRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolderInSubschema\folderInteger.json')
-  else
+  if MapDraftSchemaURI(lCanonicalURI, lRepoRootPath, lCandidatePath) then
   begin
-    if lCanonicalURI.StartsWith('http://test.json-schema.org/') or
-       lCanonicalURI.StartsWith('https://test.json-schema.org/') then
-    begin
-      lRelativeRemotePath := pRemoteURI;
-      lRelativeRemotePath := StringReplace(lRelativeRemotePath, 'http://test.json-schema.org/', '', [rfIgnoreCase]);
-      lRelativeRemotePath := StringReplace(lRelativeRemotePath, 'https://test.json-schema.org/', '', [rfIgnoreCase]);
-      lRelativeRemotePath := StringReplace(lRelativeRemotePath, '/', PathDelim, [rfReplaceAll]);
+    if not FileExists(lCandidatePath) then
+      Exit(False);
 
-      lCandidatePath := TPath.Combine(lRepoRootPath, TPath.Combine('test\schemas\remotes\draft2020-12', lRelativeRemotePath));
-      if not FileExists(lCandidatePath) and not lCandidatePath.EndsWith('.json') then
-        lCandidatePath := lCandidatePath + '.json';
-
-      if FileExists(lCandidatePath) then
-      begin
-        pMappedFilePath := lCandidatePath;
-        Exit(True);
-      end;
-    end;
-
-    if IsLocalTestServerURI(pRemoteURI) then
-    begin
-      lRelativeRemotePath := StringReplace(pRemoteURI, 'http://localhost:1234/', '', [rfIgnoreCase]);
-      lRelativeRemotePath := StringReplace(lRelativeRemotePath, 'http://127.0.0.1:1234/', '', [rfIgnoreCase]);
-      lRelativeRemotePath := StringReplace(lRelativeRemotePath, '/', PathDelim, [rfReplaceAll]);
-      lCandidatePath := TPath.Combine(lRepoRootPath, TPath.Combine('test\schemas\remotes', lRelativeRemotePath));
-      if FileExists(lCandidatePath) then
-      begin
-        pMappedFilePath := lCandidatePath;
-        Exit(True);
-      end;
-    end;
-
-    Exit(False);
+    pMappedFilePath := lCandidatePath;
+    Exit(True);
   end;
 
-  if not FileExists(lCandidatePath) then
-    Exit(False);
+  Result := TryMapTestServerURI(pRemoteURI, lRepoRootPath, pMappedFilePath);
+end;
 
-  pMappedFilePath := lCandidatePath;
+class function TRegistryVisitor.MapDraftSchemaURI(const pCanonicalURI: string; const pRepoRootPath: string; out pFilePath: string): Boolean;
+begin
   Result := True;
+  if (pCanonicalURI = 'http://json-schema.org/draft-06/schema') or
+     (pCanonicalURI = 'https://json-schema.org/draft-06/schema') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft6\schema.json')
+  else if (pCanonicalURI = 'http://json-schema.org/draft-07/schema') or
+          (pCanonicalURI = 'https://json-schema.org/draft-07/schema') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft7\schema.json')
+  else if (pCanonicalURI = 'http://json-schema.org/draft/2019-09/schema') or
+          (pCanonicalURI = 'https://json-schema.org/draft/2019-09/schema') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft2019-09\schema.json')
+  else if (pCanonicalURI = 'https://json-schema.org/draft/2020-12/schema') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft2020-12\schema.json')
+  else if pCanonicalURI.EndsWith('/draft2020-12/baseurichangefolder/baseurichangefolder/folderinteger.json') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft2020-12\baseUriChangeFolder\folderInteger.json')
+  else if pCanonicalURI.EndsWith('/draft2020-12/baseurichangefolderinsubschema/baseurichangefolderinsubschema/folderinteger.json') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft2020-12\baseUriChangeFolderInSubschema\folderInteger.json')
+  else if pCanonicalURI.EndsWith('/draft2019-09/baseurichangefolder/baseurichangefolder/folderinteger.json') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolder\folderInteger.json')
+  else if (pCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/core') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\core.json')
+  else if (pCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/applicator') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\applicator.json')
+  else if (pCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/validation') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\validation.json')
+  else if (pCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/meta-data') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\meta-data.json')
+  else if (pCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/format') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\format.json')
+  else if (pCanonicalURI = 'https://json-schema.org/draft/2019-09/meta/content') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft2019-09\meta\content.json')
+  else if pCanonicalURI.EndsWith('/draft2019-09/baseurichangefolderinsubschema/baseurichangefolderinsubschema/folderinteger.json') then
+    pFilePath := TPath.Combine(pRepoRootPath, 'test\schemas\remotes\draft2019-09\baseUriChangeFolderInSubschema\folderInteger.json')
+  else
+  begin
+    pFilePath := '';
+    Result := False;
+  end;
+end;
+
+class function TRegistryVisitor.TryMapTestServerURI(const pRemoteURI: string; const pRepoRootPath: string; out pMappedFilePath: string): Boolean;
+var
+  lRelativeRemotePath: string;
+  lCandidatePath: string;
+  lLowerURI: string;
+begin
+  Result := False;
+  pMappedFilePath := '';
+  lLowerURI := LowerCase(pRemoteURI);
+
+  if lLowerURI.StartsWith('http://test.json-schema.org/') or
+     lLowerURI.StartsWith('https://test.json-schema.org/') then
+  begin
+    lRelativeRemotePath := pRemoteURI;
+    lRelativeRemotePath := StringReplace(lRelativeRemotePath, 'http://test.json-schema.org/', '', [rfIgnoreCase]);
+    lRelativeRemotePath := StringReplace(lRelativeRemotePath, 'https://test.json-schema.org/', '', [rfIgnoreCase]);
+    lRelativeRemotePath := StringReplace(lRelativeRemotePath, '/', PathDelim, [rfReplaceAll]);
+
+    lCandidatePath := TPath.Combine(pRepoRootPath, TPath.Combine('test\schemas\remotes\draft2020-12', lRelativeRemotePath));
+    if not FileExists(lCandidatePath) and not lCandidatePath.EndsWith('.json') then
+      lCandidatePath := lCandidatePath + '.json';
+
+    if FileExists(lCandidatePath) then
+    begin
+      pMappedFilePath := lCandidatePath;
+      Exit(True);
+    end;
+  end;
+
+  if IsLocalTestServerURI(pRemoteURI) then
+  begin
+    lRelativeRemotePath := StringReplace(pRemoteURI, 'http://localhost:1234/', '', [rfIgnoreCase]);
+    lRelativeRemotePath := StringReplace(lRelativeRemotePath, 'http://127.0.0.1:1234/', '', [rfIgnoreCase]);
+    lRelativeRemotePath := StringReplace(lRelativeRemotePath, '/', PathDelim, [rfReplaceAll]);
+    lCandidatePath := TPath.Combine(pRepoRootPath, TPath.Combine('test\schemas\remotes', lRelativeRemotePath));
+    if FileExists(lCandidatePath) then
+    begin
+      pMappedFilePath := lCandidatePath;
+      Exit(True);
+    end;
+  end;
 end;
 
 class function TRegistryVisitor.IsLocalTestServerURI(const pURI: string): Boolean;
@@ -348,6 +371,29 @@ begin
   lLowerURI := LowerCase(pURI);
   Result := lLowerURI.StartsWith('http://localhost:1234/') or
             lLowerURI.StartsWith('http://127.0.0.1:1234/');
+end;
+
+procedure TRegistryVisitor.WalkSchemaRoot(const pSchemaRoot: TJSONValue; const pResourceKeyURI: string);
+var
+  lScope: TScope;
+  lNewScope: TScope;
+begin
+  lScope := CurrentScope;
+  lNewScope := lScope;
+  lNewScope.BaseURI           := pResourceKeyURI;
+  lNewScope.SchemaNode        := pSchemaRoot;
+  lNewScope.SchemaPath        := '#';
+  lNewScope.CoveredItems      := [];
+  lNewScope.ContainsCount     := 0;
+  lNewScope.VisitedKeywords   := [];
+  lNewScope.CoveredProperties := [];
+
+  PushScope(lNewScope);
+  try
+    TWalker<TRegistryVisitor>.Create(pSchemaRoot, Self).Walk;
+  finally
+    PopScope;
+  end;
 end;
 
 procedure TRegistryVisitor.TryLoadRemoteResource(const pTargetURI: TURIReference);
@@ -360,8 +406,6 @@ var
   lResponse: IHTTPResponse;
   lResponseBody: string;
   lSchemaRoot: TJSONValue;
-  lScope: TScope;
-  lNewScope: TScope;
 begin
   lFetchURI := pTargetURI;
   lFetchURI.Query := '';
@@ -387,22 +431,7 @@ begin
 
       FResources.AddOrSetValue(lResourceKeyURI, TResource.Create(TURIReference.From(lResourceKeyURI), lSchemaRoot));
 
-      lScope := CurrentScope;
-      lNewScope := lScope;
-      lNewScope.BaseURI           := lResourceKeyURI;
-      lNewScope.SchemaNode        := lSchemaRoot;
-      lNewScope.SchemaPath        := '#';
-      lNewScope.CoveredItems      := [];
-      lNewScope.ContainsCount     := 0;
-      lNewScope.VisitedKeywords   := [];
-      lNewScope.CoveredProperties := [];
-
-      PushScope(lNewScope);
-      try
-        TWalker<TRegistryVisitor>.Create(lSchemaRoot, Self).Walk;
-      finally
-        PopScope;
-      end;
+      WalkSchemaRoot(lSchemaRoot, lResourceKeyURI);
       Exit;
     end;
 
@@ -422,22 +451,7 @@ begin
 
       FResources.AddOrSetValue(lResourceKeyURI, TResource.Create(TURIReference.From(lResourceKeyURI), lSchemaRoot));
 
-      lScope := CurrentScope;
-      lNewScope := lScope;
-      lNewScope.BaseURI           := lResourceKeyURI;
-      lNewScope.SchemaNode        := lSchemaRoot;
-      lNewScope.SchemaPath        := '#';
-      lNewScope.CoveredItems      := [];
-      lNewScope.ContainsCount     := 0;
-      lNewScope.VisitedKeywords   := [];
-      lNewScope.CoveredProperties := [];
-
-      PushScope(lNewScope);
-      try
-        TWalker<TRegistryVisitor>.Create(lSchemaRoot, Self).Walk;
-      finally
-        PopScope;
-      end;
+      WalkSchemaRoot(lSchemaRoot, lResourceKeyURI);
     finally
       lHttpClient.Free;
     end;

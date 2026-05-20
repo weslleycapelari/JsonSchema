@@ -1,4 +1,4 @@
-unit JsonSchema.Validation.Visitor.Core;
+﻿unit JsonSchema.Validation.Visitor.Core;
 
 interface
 
@@ -8,7 +8,10 @@ uses
   JsonSchema.Visitors.Base,
   JsonSchema.Visitors.Types,
   JsonSchema.Validation.Interfaces,
-  JsonSchema.Registry.Base;
+  JsonSchema.Registry.Base,
+  JsonSchema.Registry.Uri,
+  JsonSchema.Registry.Resource,
+  JsonSchema.Walker.Types;
 
 type
   /// <summary>
@@ -27,6 +30,13 @@ type
     [VisitorKeyword('$defs')]
     procedure VisitDefinitions(const pValue: TJSONObject);
     procedure VisitBooleanSchema(const pValue: TJSONBool);
+  strict private
+    function ResolveRefTarget(const pRefString, pBaseURI: string; out pFinalURI: TURIReference; out pResource: TResource;
+      out pTargetSchema: TJSONValue; out pResolvedBaseURI: string): Boolean;
+    function DetectTargetDraftVersion(const pFinalURI: TURIReference; const pTargetResource: TResource; out pTargetDraftVersion: TDraftVersion;
+      out pCurrentHandlesNewDrafts: Boolean; out pCurrentDraftVersion: TDraftVersion): Boolean;
+    procedure MergeRefEvaluatedProperties(const pNewScope: TScope; var pScope: TScope; const pValidationVisitor: IValidationVisitor<T>);
+    function NormalizeEvaluatedPropertyPath(const pProp, pInstancePath: string): string;
   end;
 
 implementation
@@ -39,12 +49,35 @@ uses
   JsonSchema.Validation.Types,
   JsonSchema.Common.Utils,
   JsonSchema,
-  JsonSchema.Walker,
-  JsonSchema.Walker.Types,
-  JsonSchema.Registry.Uri,
-  JsonSchema.Registry.Resource;
+  JsonSchema.Walker;
 
 { TBaseCoreVisitor<T> }
+
+function TBaseCoreVisitor<T>.NormalizeEvaluatedPropertyPath(const pProp, pInstancePath: string): string;
+begin
+  Result := pProp;
+  if Result.IsEmpty then
+    Exit;
+  if (pInstancePath <> '#') and not Result.StartsWith(pInstancePath + '/') then
+  begin
+    if Result = '#' then
+      Result := pInstancePath
+    else if Result.StartsWith('#/') then
+      Result := Result.Substring(1)
+    else if Result.StartsWith('#.') then
+      Result := pInstancePath + '/' +
+        StringReplace(Result.Substring(2), '.', '/', [rfReplaceAll])
+    else if Result.StartsWith('/') then
+    begin
+      // Paths starting with '/' are already absolute in the document.
+    end
+    else if Result.StartsWith('.') then
+      Result := pInstancePath + '/' +
+        StringReplace(Result.Substring(1), '.', '/', [rfReplaceAll])
+    else
+      Result := pInstancePath + '/' + Result;
+  end;
+end;
 
 procedure TBaseCoreVisitor<T>.VisitBooleanSchema(const pValue: TJSONBool);
 begin
@@ -69,10 +102,133 @@ begin
   Visitor.UpdateScope(lScope);
 end;
 
+function TBaseCoreVisitor<T>.ResolveRefTarget(
+  const pRefString, pBaseURI: string;
+  out pFinalURI: TURIReference;
+  out pResource: TResource;
+  out pTargetSchema: TJSONValue;
+  out pResolvedBaseURI: string): Boolean;
+var
+  lValidationVisitor: IValidationVisitor<T>;
+begin
+  Result := False;
+  pFinalURI := TURIReference.From(pRefString).ResolveWith(TURIReference.From(pBaseURI));
+
+  if not Supports(Visitor, IValidationVisitor<T>, lValidationVisitor) then
+    Exit;
+
+  if not lValidationVisitor.Registry.TryFindResource(pFinalURI.Unsplit, pResource) then
+  begin
+    Visitor.AddError(TErrorType.vetUnresolvedReference, [pFinalURI.Unsplit]);
+    Exit;
+  end;
+
+  pTargetSchema := pResource.ResolveFragment(pFinalURI.Fragment, pResolvedBaseURI);
+  if not Assigned(pTargetSchema) then
+  begin
+    Visitor.AddError(TErrorType.vetUnresolvedReference, [pFinalURI.Unsplit]);
+    Exit;
+  end;
+
+  Result := True;
+end;
+
+function TBaseCoreVisitor<T>.DetectTargetDraftVersion(
+  const pFinalURI: TURIReference;
+  const pTargetResource: TResource;
+  out pTargetDraftVersion: TDraftVersion;
+  out pCurrentHandlesNewDrafts: Boolean;
+  out pCurrentDraftVersion: TDraftVersion): Boolean;
+var
+  lTargetRootSchema: TJSONValue;
+  lTargetDraftSchema: string;
+  lPrecedenceKey: string;
+begin
+  pTargetDraftVersion := TDraftVersion.dvUnknown;
+  lTargetRootSchema := pTargetResource.ResolveFragment('');
+
+  if (lTargetRootSchema is TJSONObject) and
+     TJSONObject(lTargetRootSchema).TryGetValue<string>('$schema', lTargetDraftSchema) then
+    pTargetDraftVersion := TDraftVersion.FromSchema(lTargetDraftSchema);
+
+  if pTargetDraftVersion = TDraftVersion.dvUnknown then
+  begin
+    if ContainsText(pFinalURI.Unsplit, '/draft2019-09/') then
+      pTargetDraftVersion := TDraftVersion.dvDraft2019_09
+    else if ContainsText(pFinalURI.Unsplit, '/draft2020-12/') then
+      pTargetDraftVersion := TDraftVersion.dvDraft2020_12;
+  end;
+
+  pCurrentHandlesNewDrafts := False;
+  pCurrentDraftVersion := TDraftVersion.dvUnknown;
+  for lPrecedenceKey in Visitor.KeywordPrecedence do
+    if lPrecedenceKey = '$dynamicRef' then
+    begin
+      pCurrentHandlesNewDrafts := True;
+      pCurrentDraftVersion := TDraftVersion.dvDraft2020_12;
+      Break;
+    end
+    else if lPrecedenceKey = '$recursiveRef' then
+    begin
+      pCurrentHandlesNewDrafts := True;
+      pCurrentDraftVersion := TDraftVersion.dvDraft2019_09;
+      Break;
+    end;
+
+  Result := True;
+end;
+
+procedure TBaseCoreVisitor<T>.MergeRefEvaluatedProperties(
+  const pNewScope: TScope;
+  var pScope: TScope;
+  const pValidationVisitor: IValidationVisitor<T>);
+var
+  lEvaluatedProperty: string;
+  lNormalizedEvaluatedProperty: string;
+  lRelativePath: string;
+  lSegmentSeparator: Integer;
+  lFirstSegment: string;
+  lItemIndex: Integer;
+begin
+  pScope.CoveredItems      := TUtils.MergeArray<Integer>([pScope.CoveredItems, pNewScope.CoveredItems]);
+  pScope.CoveredProperties := TUtils.MergeArray<string>([pScope.CoveredProperties, pNewScope.CoveredProperties]);
+  if not Assigned(pNewScope.EvaluatedPropertiesInScope) then
+    Exit;
+
+  if not Assigned(pScope.EvaluatedPropertiesInScope) then
+    pScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+  for lEvaluatedProperty in pNewScope.EvaluatedPropertiesInScope do
+  begin
+    lNormalizedEvaluatedProperty := NormalizeEvaluatedPropertyPath(lEvaluatedProperty, pScope.InstancePath);
+
+    pScope.EvaluatedPropertiesInScope.Add(lNormalizedEvaluatedProperty);
+    pValidationVisitor.Result.AddEvaluatedProperty(lNormalizedEvaluatedProperty);
+
+    if ((pScope.InstancePath = '#') and lNormalizedEvaluatedProperty.StartsWith('/')) or
+       ((pScope.InstancePath <> '#') and lNormalizedEvaluatedProperty.StartsWith(pScope.InstancePath + '/')) then
+    begin
+      if pScope.InstancePath = '#' then
+        lRelativePath := lNormalizedEvaluatedProperty.Substring(1)
+      else
+        lRelativePath := lNormalizedEvaluatedProperty.Substring((pScope.InstancePath + '/').Length);
+      lSegmentSeparator := Pos('/', lRelativePath);
+      if lSegmentSeparator > 0 then
+        lFirstSegment := Copy(lRelativePath, 1, lSegmentSeparator - 1)
+      else
+        lFirstSegment := lRelativePath;
+
+      if TryStrToInt(lFirstSegment, lItemIndex) then
+        TUtils.AddArray<Integer>(pScope.CoveredItems, lItemIndex)
+      else if lFirstSegment <> '' then
+        TUtils.AddArray<string>(pScope.CoveredProperties, lFirstSegment);
+    end;
+  end;
+end;
+
 procedure TBaseCoreVisitor<T>.VisitRef(const pValue: TJSONString);
 var
   lScope: TScope;
-  lRefString: string;
   lFinalURI: TURIReference;
   lTargetResource: TResource;
   lTargetSchema: TJSONValue;
@@ -84,8 +240,6 @@ var
   lGuardReason: string;
   lGuardKey: string;
   lGuardEntered: Boolean;
-  lTargetRootSchema: TJSONValue;
-  lTargetDraftSchema: string;
   lTargetDraftVersion: TDraftVersion;
   lCrossDraftResult: IValidationResult;
   lCrossDraftError: IError;
@@ -100,7 +254,6 @@ var
   lSegmentSeparator: Integer;
   lFirstSegment: string;
   lItemIndex: Integer;
-  lPrecedenceKey: string;
   lCurrentHandlesNewDrafts: Boolean;
   lCurrentDraftVersion: TDraftVersion;
   lResultEvaluatedBefore: THashSet<string>;
@@ -109,10 +262,10 @@ begin
     Exit; // Sanity check
 
   lScope := Visitor.CurrentScope;
-  lRefString := pValue.Value;
 
-  // 1. Resolve a URI da referência
-  lFinalURI := TURIReference.From(lRefString).ResolveWith(TURIReference.From(lScope.BaseURI));
+  if not ResolveRefTarget(pValue.Value, lScope.BaseURI, lFinalURI, lTargetResource, lTargetSchema, lResolvedBaseURI) then
+    Exit;
+
   lGuardKey := lFinalURI.Unsplit + '|' + lScope.InstancePath;
   lGuardEntered := False;
 
@@ -127,54 +280,7 @@ begin
   end;
 
   try
-    // 2. Busca o recurso de schema no Registry
-    if not lValidationVisitor.Registry.TryFindResource(lFinalURI.Unsplit, lTargetResource) then
-    begin
-      Visitor.AddError(TErrorType.vetUnresolvedReference, [lFinalURI.Unsplit]);
-      Exit;
-    end;
-
-    // 3. Resolve o fragmento (#/... ou #anchor) dentro do recurso
-    lTargetSchema := lTargetResource.ResolveFragment(lFinalURI.Fragment, lResolvedBaseURI);
-
-    if not Assigned(lTargetSchema) then
-    begin
-      Visitor.AddError(TErrorType.vetUnresolvedReference, [lFinalURI.Unsplit]);
-      Exit;
-    end;
-
-    // 3.1 Se o recurso apontar para outro draft, valida com o visitor correto.
-    lTargetDraftVersion := TDraftVersion.dvUnknown;
-    lTargetRootSchema := lTargetResource.ResolveFragment('');
-
-    if (lTargetRootSchema is TJSONObject) and TJSONObject(lTargetRootSchema).TryGetValue<string>('$schema', lTargetDraftSchema) then
-      lTargetDraftVersion := TDraftVersion.FromSchema(lTargetDraftSchema);
-
-    if (lTargetDraftVersion = TDraftVersion.dvUnknown) then
-    begin
-      if ContainsText(lFinalURI.Unsplit, '/draft2019-09/') then
-        lTargetDraftVersion := TDraftVersion.dvDraft2019_09
-      else if ContainsText(lFinalURI.Unsplit, '/draft2020-12/') then
-        lTargetDraftVersion := TDraftVersion.dvDraft2020_12;
-    end;
-
-    // Verifica se o visitor atual já suporta nativamente os drafts 2019-09/2020-12.
-    // Se sim, não usar o caminho cross-draft para refs do mesmo draft (preserva o dynamic scope chain).
-    lCurrentHandlesNewDrafts := False;
-    lCurrentDraftVersion := TDraftVersion.dvUnknown;
-    for lPrecedenceKey in Visitor.KeywordPrecedence do
-      if lPrecedenceKey = '$dynamicRef' then
-      begin
-        lCurrentHandlesNewDrafts := True;
-        lCurrentDraftVersion := TDraftVersion.dvDraft2020_12;
-        Break;
-      end
-      else if lPrecedenceKey = '$recursiveRef' then
-      begin
-        lCurrentHandlesNewDrafts := True;
-        lCurrentDraftVersion := TDraftVersion.dvDraft2019_09;
-        Break;
-      end;
+    DetectTargetDraftVersion(lFinalURI, lTargetResource, lTargetDraftVersion, lCurrentHandlesNewDrafts, lCurrentDraftVersion);
 
     if ((lTargetDraftVersion = TDraftVersion.dvDraft7) and lCurrentHandlesNewDrafts) or
        ((lTargetDraftVersion in [TDraftVersion.dvDraft2019_09, TDraftVersion.dvDraft2020_12]) and
@@ -186,29 +292,7 @@ begin
         lScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
       for lEvaluatedProperty in lCrossDraftResult.EvaluatedProperties do
       begin
-        lNormalizedEvaluatedProperty := lEvaluatedProperty;
-        if not lNormalizedEvaluatedProperty.IsEmpty then
-        begin
-          if (lScope.InstancePath <> '#') and not lNormalizedEvaluatedProperty.StartsWith(lScope.InstancePath + '/') then
-          begin
-            if lNormalizedEvaluatedProperty = '#' then
-              lNormalizedEvaluatedProperty := lScope.InstancePath
-            else if lNormalizedEvaluatedProperty.StartsWith('#/') then
-              lNormalizedEvaluatedProperty := lNormalizedEvaluatedProperty.Substring(1)
-            else if lNormalizedEvaluatedProperty.StartsWith('#.') then
-              lNormalizedEvaluatedProperty := lScope.InstancePath + '/' +
-                StringReplace(lNormalizedEvaluatedProperty.Substring(2), '.', '/', [rfReplaceAll])
-            else if lNormalizedEvaluatedProperty.StartsWith('/') then
-            begin
-              // Caminhos iniciados por '/' já são absolutos no documento.
-            end
-            else if lNormalizedEvaluatedProperty.StartsWith('.') then
-              lNormalizedEvaluatedProperty := lScope.InstancePath + '/' +
-                StringReplace(lNormalizedEvaluatedProperty.Substring(1), '.', '/', [rfReplaceAll])
-            else
-              lNormalizedEvaluatedProperty := lScope.InstancePath + '/' + lNormalizedEvaluatedProperty;
-          end;
-        end;
+        lNormalizedEvaluatedProperty := NormalizeEvaluatedPropertyPath(lEvaluatedProperty, lScope.InstancePath);
 
         lScope.EvaluatedPropertiesInScope.Add(lNormalizedEvaluatedProperty);
         lValidationVisitor.Result.AddEvaluatedProperty(lNormalizedEvaluatedProperty);
@@ -275,7 +359,7 @@ begin
       Exit;
     end;
 
-    // 4. Prepara e executa a validação recursiva
+    // Prepara e executa a validação recursiva no mesmo draft
     lNewScope := lScope;
     lNewScope.BaseURI      := lResolvedBaseURI;
     lNewScope.SchemaNode   := lTargetSchema;
@@ -310,29 +394,7 @@ begin
           if lResultEvaluatedBefore.Contains(lEvaluatedProperty) then
             Continue;
 
-          lNormalizedEvaluatedProperty := lEvaluatedProperty;
-          if not lNormalizedEvaluatedProperty.IsEmpty then
-          begin
-            if (lScope.InstancePath <> '#') and not lNormalizedEvaluatedProperty.StartsWith(lScope.InstancePath + '/') then
-            begin
-              if lNormalizedEvaluatedProperty = '#' then
-                lNormalizedEvaluatedProperty := lScope.InstancePath
-              else if lNormalizedEvaluatedProperty.StartsWith('#/') then
-                lNormalizedEvaluatedProperty := lNormalizedEvaluatedProperty.Substring(1)
-              else if lNormalizedEvaluatedProperty.StartsWith('#.') then
-                lNormalizedEvaluatedProperty := lScope.InstancePath + '/' +
-                  StringReplace(lNormalizedEvaluatedProperty.Substring(2), '.', '/', [rfReplaceAll])
-              else if lNormalizedEvaluatedProperty.StartsWith('/') then
-              begin
-                // Caminhos iniciados por '/' já são absolutos no documento.
-              end
-              else if lNormalizedEvaluatedProperty.StartsWith('.') then
-                lNormalizedEvaluatedProperty := lScope.InstancePath + '/' +
-                  StringReplace(lNormalizedEvaluatedProperty.Substring(1), '.', '/', [rfReplaceAll])
-              else
-                lNormalizedEvaluatedProperty := lScope.InstancePath + '/' + lNormalizedEvaluatedProperty;
-            end;
-          end;
+          lNormalizedEvaluatedProperty := NormalizeEvaluatedPropertyPath(lEvaluatedProperty, lScope.InstancePath);
 
           lNewScope.EvaluatedPropertiesInScope.Add(lNormalizedEvaluatedProperty);
         end;
@@ -341,64 +403,7 @@ begin
         lNewScope := Visitor.PopScope;
       end;
 
-      lScope.CoveredItems      := TUtils.MergeArray<Integer>([lScope.CoveredItems, lNewScope.CoveredItems]);
-      lScope.CoveredProperties := TUtils.MergeArray<string>([lScope.CoveredProperties, lNewScope.CoveredProperties]);
-      if Assigned(lNewScope.EvaluatedPropertiesInScope) then
-      begin
-        if not Assigned(lScope.EvaluatedPropertiesInScope) then
-          lScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
-
-        for lEvaluatedProperty in lNewScope.EvaluatedPropertiesInScope do
-        begin
-          lNormalizedEvaluatedProperty := lEvaluatedProperty;
-          if not lNormalizedEvaluatedProperty.IsEmpty then
-          begin
-            if (lScope.InstancePath <> '#') and not lNormalizedEvaluatedProperty.StartsWith(lScope.InstancePath + '/') then
-            begin
-              if lNormalizedEvaluatedProperty = '#' then
-                lNormalizedEvaluatedProperty := lScope.InstancePath
-              else if lNormalizedEvaluatedProperty.StartsWith('#/') then
-                lNormalizedEvaluatedProperty := lNormalizedEvaluatedProperty.Substring(1)
-              else if lNormalizedEvaluatedProperty.StartsWith('#.') then
-                lNormalizedEvaluatedProperty := lScope.InstancePath + '/' +
-                  StringReplace(lNormalizedEvaluatedProperty.Substring(2), '.', '/', [rfReplaceAll])
-              else if lNormalizedEvaluatedProperty.StartsWith('/') then
-              begin
-                // Caminhos iniciados por '/' já são absolutos no documento.
-              end
-              else if lNormalizedEvaluatedProperty.StartsWith('.') then
-                lNormalizedEvaluatedProperty := lScope.InstancePath + '/' +
-                  StringReplace(lNormalizedEvaluatedProperty.Substring(1), '.', '/', [rfReplaceAll])
-              else
-                lNormalizedEvaluatedProperty := lScope.InstancePath + '/' + lNormalizedEvaluatedProperty;
-            end;
-          end;
-
-          lScope.EvaluatedPropertiesInScope.Add(lNormalizedEvaluatedProperty);
-          lValidationVisitor.Result.AddEvaluatedProperty(lNormalizedEvaluatedProperty);
-
-          // Em refs no mesmo draft, reconstrói cobertura local para unevaluated* no escopo pai.
-          if ((lScope.InstancePath = '#') and lNormalizedEvaluatedProperty.StartsWith('/')) or
-             ((lScope.InstancePath <> '#') and lNormalizedEvaluatedProperty.StartsWith(lScope.InstancePath + '/')) then
-          begin
-            if lScope.InstancePath = '#' then
-              lRelativePath := lNormalizedEvaluatedProperty.Substring(1)
-            else
-              lRelativePath := lNormalizedEvaluatedProperty.Substring((lScope.InstancePath + '/').Length);
-            lSegmentSeparator := Pos('/', lRelativePath);
-            if lSegmentSeparator > 0 then
-              lFirstSegment := Copy(lRelativePath, 1, lSegmentSeparator - 1)
-            else
-              lFirstSegment := lRelativePath;
-
-            if TryStrToInt(lFirstSegment, lItemIndex) then
-              TUtils.AddArray<Integer>(lScope.CoveredItems, lItemIndex)
-            else if lFirstSegment <> '' then
-              TUtils.AddArray<string>(lScope.CoveredProperties, lFirstSegment);
-          end;
-        end;
-      end;
-
+      MergeRefEvaluatedProperties(lNewScope, lScope, lValidationVisitor);
       Visitor.UpdateScope(lScope);
     finally
       lResultEvaluatedBefore.Free;

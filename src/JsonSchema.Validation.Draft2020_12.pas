@@ -1,9 +1,10 @@
-unit JsonSchema.Validation.Draft2020_12;
+﻿unit JsonSchema.Validation.Draft2020_12;
 
 interface
 
 uses
   System.JSON,
+  System.Generics.Collections,
   JsonSchema.Visitors.Base,
   JsonSchema.Visitors.Types,
   JsonSchema.Visitors.Interfaces,
@@ -69,6 +70,19 @@ type
 
   /// <summary>Implements core keyword visitors for JSON Schema Draft 2020-12.</summary>
   TDraft2020_12CoreVisitor = class(TBaseCoreVisitor<TDraft2020_12Visitor>, IDraft2020_12CoreVisitor)
+  strict private
+    /// <summary>Normalizes a JSON path fragment to a canonical slash-delimited form.</summary>
+    function NormalizeLocalPath(const pPath: string): string;
+    /// <summary>Traverses the dynamic scope chain from outermost to innermost, returning the base URI of
+    /// the first scope whose resource declares a $dynamicAnchor matching pDynamicAnchorName.</summary>
+    function FindDynamicBaseURI(const pDynamicAnchorName: string): string;
+    /// <summary>Copies all currently evaluated properties from the validation result into the current
+    /// scope's EvaluatedPropertiesInScope set so that the about-to-be-entered $ref can see them.</summary>
+    procedure InjectParentEvaluatedIntoCurrentScope;
+    /// <summary>Executes VisitRef for the given value, synchronises newly covered items/properties back
+    /// into the current scope, and restores the BaseURI after the call returns.</summary>
+    procedure ExecuteRefWithCurrentVisitor(const pRefValue: TJSONString);
+  public
     [VisitorKeyword('$schema')]
     procedure VisitSchema(const pValue: TJSONString);
     [VisitorKeyword('$comment')]
@@ -85,6 +99,10 @@ type
 
   /// <summary>Implements applicator keyword visitors for JSON Schema Draft 2020-12.</summary>
   TDraft2020_12ApplicatorVisitor = class(TBaseApplicatorVisitor<TDraft2020_12Visitor>, IDraft2020_12ApplicatorVisitor)
+  private
+    function BuildEvaluatedPropertiesSet(const pScope: TScope): THashSet<string>;
+    function BuildEvaluatedItemsSet(const pScope: TScope): THashSet<string>;
+  public
     [VisitorKeyword('items')]
     procedure VisitItems(const pValue: TJSONValue);
     [VisitorKeyword('prefixItems')]
@@ -104,8 +122,6 @@ type
     procedure VisitFormat(const pValue: TJSONString); reintroduce;
     [VisitorKeyword('contains')]
     procedure VisitContains(const pValue: TJSONValue);
-    [VisitorKeyword('propertyNames')]
-    procedure VisitPropertyNames(const pValue: TJSONValue);
     [VisitorKeyword('dependentRequired')]
     procedure VisitDependentRequired(const pValue: TJSONObject);
     [VisitorKeyword('maxContains')]
@@ -124,14 +140,16 @@ uses
   System.Math,
   System.SysUtils,
   System.StrUtils,
-  System.Generics.Collections,
   JsonSchema.Common.Utils,
   JsonSchema.Translate.Types,
+  JsonSchema.Validation.Types,
   JsonSchema.Walker,
   JsonSchema.Registry.Resource,
   JsonSchema.Registry.Uri;
 
 function NormalizeToFullInstancePath(const pPath: string): string; forward;
+function NormalizeAnchorName(const pAnchor: string): string; forward;
+function ResolveDynamicAnchor(const pResource: TResource; const pAnchorName: string; out pResolvedBaseURI: string): TJSONValue; forward;
 
 { TDraft2020_12Visitor }
 
@@ -212,30 +230,173 @@ end;
 
 { TDraft2020_12CoreVisitor }
 
+function TDraft2020_12CoreVisitor.NormalizeLocalPath(const pPath: string): string;
+begin
+  Result := Trim(pPath);
+
+  if Result.IsEmpty or (Result = '#') then
+    Exit('/');
+
+  if Result.StartsWith('#/') then
+    Result := Result.Substring(1)
+  else if Result.StartsWith('#.') then
+    Result := '/' + StringReplace(Result.Substring(2), '.', '/', [rfReplaceAll])
+  else if Result.StartsWith('.') then
+    Result := '/' + StringReplace(Result.Substring(1), '.', '/', [rfReplaceAll])
+  else if not Result.StartsWith('/') then
+    Result := '/' + Result;
+
+  while Pos('//', Result) > 0 do
+    Result := StringReplace(Result, '//', '/', [rfReplaceAll]);
+
+  if Result.EndsWith('/') and (Result <> '/') then
+    Delete(Result, Length(Result), 1);
+end;
+
+function TDraft2020_12CoreVisitor.FindDynamicBaseURI(const pDynamicAnchorName: string): string;
+var
+  lOffset: Integer;
+  lMaxOffset: Integer;
+  lScope: TScope;
+  lScopeResource: TResource;
+  lScopeAnchoredSchema: TJSONValue;
+  lResolvedBaseURI: string;
+  lScopeAnchorValue: TJSONValue;
+  lScopeAnchorName: string;
+  lDynamicBaseRef: TURIReference;
+begin
+  Result := '';
+  lMaxOffset := -1;
+  lOffset := 0;
+  while Assigned(Visitor.CurrentScope(lOffset).SchemaNode) do
+  begin
+    lMaxOffset := lOffset;
+    Inc(lOffset);
+  end;
+
+  // Spec: traverse from outermost (root) to innermost scope.
+  // For each scope, resolve the anchor via Registry by BaseURI — not by inspecting SchemaNode directly,
+  // because the $dynamicAnchor may live in a $defs sub-schema, not at the root of the scope's SchemaNode.
+  for lOffset := lMaxOffset downto 0 do
+  begin
+    lScope := Visitor.CurrentScope(lOffset);
+    if lScope.BaseURI.IsEmpty then
+      Continue;
+
+    if not Visitor.Registry.TryFindResource(lScope.BaseURI, lScopeResource) then
+      Continue;
+
+    lScopeAnchoredSchema := ResolveDynamicAnchor(lScopeResource, pDynamicAnchorName, lResolvedBaseURI);
+    if not Assigned(lScopeAnchoredSchema) then
+      Continue;
+
+    if not ((lScopeAnchoredSchema is TJSONObject) and
+            TJSONObject(lScopeAnchoredSchema).TryGetValue('$dynamicAnchor', lScopeAnchorValue) and
+            (lScopeAnchorValue is TJSONString)) then
+      Continue;
+
+    lScopeAnchorName := NormalizeAnchorName(TJSONString(lScopeAnchorValue).Value);
+    if not SameText(lScopeAnchorName, pDynamicAnchorName) then
+      Continue;
+
+    lDynamicBaseRef := TURIReference.From(lScope.BaseURI);
+    lDynamicBaseRef.Query := '';
+    lDynamicBaseRef.Fragment := '';
+    Result := lDynamicBaseRef.Unsplit;
+    Break;
+  end;
+end;
+
+procedure TDraft2020_12CoreVisitor.InjectParentEvaluatedIntoCurrentScope;
+var
+  lInjectScope: TScope;
+  lEvaluatedProperty: string;
+begin
+  lInjectScope := Visitor.CurrentScope;
+  if not Assigned(lInjectScope.EvaluatedPropertiesInScope) then
+    lInjectScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+  for lEvaluatedProperty in Visitor.Result.EvaluatedProperties do
+    lInjectScope.EvaluatedPropertiesInScope.Add(NormalizeLocalPath(lEvaluatedProperty));
+
+  Visitor.UpdateScope(lInjectScope);
+end;
+
+procedure TDraft2020_12CoreVisitor.ExecuteRefWithCurrentVisitor(const pRefValue: TJSONString);
+var
+  lEvaluatedProperty: string;
+  lNormalizedEvaluatedProperty: string;
+  lScopeForSync: TScope;
+  lCanonicalScopePath: string;
+  lCanonicalPrefix: string;
+  lRelativePath: string;
+  lSegmentSeparator: Integer;
+  lFirstSegment: string;
+  lItemIndex: Integer;
+  lOriginalScope: TScope;
+  lScopeAfterRef: TScope;
+  lResultEvaluatedBeforeRef: THashSet<string>;
+begin
+  InjectParentEvaluatedIntoCurrentScope;
+
+  lResultEvaluatedBeforeRef := THashSet<string>.Create;
+  for lEvaluatedProperty in Visitor.Result.EvaluatedProperties do
+    lResultEvaluatedBeforeRef.Add(NormalizeLocalPath(lEvaluatedProperty));
+
+  lOriginalScope := Visitor.CurrentScope;
+  try
+    inherited VisitRef(pRefValue);
+
+    lScopeForSync := Visitor.CurrentScope;
+    if not Assigned(lScopeForSync.EvaluatedPropertiesInScope) then
+      lScopeForSync.EvaluatedPropertiesInScope := THashSet<string>.Create;
+
+    for lEvaluatedProperty in Visitor.Result.EvaluatedProperties do
+    begin
+      lNormalizedEvaluatedProperty := NormalizeLocalPath(lEvaluatedProperty);
+      if lResultEvaluatedBeforeRef.Contains(lNormalizedEvaluatedProperty) then
+        Continue;
+
+      lScopeForSync.EvaluatedPropertiesInScope.Add(lNormalizedEvaluatedProperty);
+
+      lCanonicalScopePath := NormalizeLocalPath(lScopeForSync.InstancePath);
+      if lCanonicalScopePath = '/' then
+        lCanonicalPrefix := '/'
+      else
+        lCanonicalPrefix := lCanonicalScopePath + '/';
+
+      if not lNormalizedEvaluatedProperty.StartsWith(lCanonicalPrefix) then
+        Continue;
+
+      lRelativePath := lNormalizedEvaluatedProperty.Substring(Length(lCanonicalPrefix));
+      lSegmentSeparator := Pos('/', lRelativePath);
+      if lSegmentSeparator > 0 then
+        lFirstSegment := Copy(lRelativePath, 1, lSegmentSeparator - 1)
+      else
+        lFirstSegment := lRelativePath;
+
+      if TryStrToInt(lFirstSegment, lItemIndex) then
+        TUtils.AddArray<Integer>(lScopeForSync.CoveredItems, lItemIndex)
+      else if lFirstSegment <> '' then
+        TUtils.AddArray<string>(lScopeForSync.CoveredProperties, lFirstSegment);
+    end;
+    Visitor.UpdateScope(lScopeForSync);
+  finally
+    lResultEvaluatedBeforeRef.Free;
+
+    lScopeAfterRef := Visitor.CurrentScope;
+    if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
+    begin
+      lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
+      Visitor.UpdateScope(lScopeAfterRef);
+    end;
+  end;
+end;
+
 /// <summary>Resolves $schema and configures format assertion and validation vocabulary modes.</summary>
 procedure TDraft2020_12CoreVisitor.VisitSchema(const pValue: TJSONString);
 const
   CValidationVocabularyURI = 'https://json-schema.org/draft/2020-12/vocab/validation';
-  CValidationKeywords: array[0..17] of string = (
-    'type',
-    'multipleOf',
-    'maximum',
-    'exclusiveMaximum',
-    'minimum',
-    'exclusiveMinimum',
-    'maxLength',
-    'minLength',
-    'pattern',
-    'maxItems',
-    'minItems',
-    'uniqueItems',
-    'maxProperties',
-    'minProperties',
-    'required',
-    'enum',
-    'const',
-    'format'
-  );
 var
   lScope: TScope;
   lSchemaURI: TURIReference;
@@ -303,141 +464,8 @@ var
   lResolvedBaseURI: string;
   lTargetDynamicAnchorValue: TJSONValue;
   lDynamicAnchorName: string;
-  lScopeAnchorValue: TJSONValue;
-  lScopeAnchorName: string;
-  lOffset: Integer;
-  lMaxOffset: Integer;
-  lDynamicBaseRef: TURIReference;
   lDynamicBaseURI: string;
   lDynamicRefValue: TJSONString;
-  lOriginalScope: TScope;
-  lScopeAfterRef: TScope;
-  lResultEvaluatedBeforeRef: THashSet<string>;
-  lScopeResource: TResource;
-  lScopeAnchoredSchema: TJSONValue;
-
-  function ResolveDynamicAnchor(const pResource: TResource; const pAnchorName: string; out pResolvedBaseURI: string): TJSONValue;
-  begin
-    Result := pResource.ResolveFragment(pAnchorName, pResolvedBaseURI);
-    if Assigned(Result) then
-      Exit;
-
-    Result := pResource.ResolveFragment('#' + pAnchorName, pResolvedBaseURI);
-  end;
-
-  function NormalizeAnchorName(const pAnchor: string): string;
-  begin
-    Result := Trim(pAnchor);
-    if Result.StartsWith('#') then
-      Result := Result.Substring(1);
-  end;
-
-  function NormalizeLocalPath(const pPath: string): string;
-  begin
-    Result := Trim(pPath);
-
-    if Result.IsEmpty or (Result = '#') then
-      Exit('/');
-
-    if Result.StartsWith('#/') then
-      Result := Result.Substring(1)
-    else if Result.StartsWith('#.') then
-      Result := '/' + StringReplace(Result.Substring(2), '.', '/', [rfReplaceAll])
-    else if Result.StartsWith('.') then
-      Result := '/' + StringReplace(Result.Substring(1), '.', '/', [rfReplaceAll])
-    else if not Result.StartsWith('/') then
-      Result := '/' + Result;
-
-    while Pos('//', Result) > 0 do
-      Result := StringReplace(Result, '//', '/', [rfReplaceAll]);
-
-    if Result.EndsWith('/') and (Result <> '/') then
-      Delete(Result, Length(Result), 1);
-  end;
-
-  procedure InjectParentEvaluatedIntoCurrentScope;
-  var
-    lInjectScope: TScope;
-    lEvaluatedProperty: string;
-  begin
-    lInjectScope := Visitor.CurrentScope;
-    if not Assigned(lInjectScope.EvaluatedPropertiesInScope) then
-      lInjectScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
-
-    for lEvaluatedProperty in Visitor.Result.EvaluatedProperties do
-      lInjectScope.EvaluatedPropertiesInScope.Add(NormalizeLocalPath(lEvaluatedProperty));
-
-    Visitor.UpdateScope(lInjectScope);
-  end;
-
-  procedure ExecuteRefWithCurrentVisitor(const pRefValue: TJSONString);
-  var
-    lEvaluatedProperty: string;
-    lNormalizedEvaluatedProperty: string;
-    lScopeForSync: TScope;
-    lCanonicalScopePath: string;
-    lCanonicalPrefix: string;
-    lRelativePath: string;
-    lSegmentSeparator: Integer;
-    lFirstSegment: string;
-    lItemIndex: Integer;
-  begin
-    InjectParentEvaluatedIntoCurrentScope;
-
-    lResultEvaluatedBeforeRef := THashSet<string>.Create;
-    for lEvaluatedProperty in Visitor.Result.EvaluatedProperties do
-      lResultEvaluatedBeforeRef.Add(NormalizeLocalPath(lEvaluatedProperty));
-
-    lOriginalScope := Visitor.CurrentScope;
-    try
-      inherited VisitRef(pRefValue);
-
-      lScopeForSync := Visitor.CurrentScope;
-      if not Assigned(lScopeForSync.EvaluatedPropertiesInScope) then
-        lScopeForSync.EvaluatedPropertiesInScope := THashSet<string>.Create;
-
-      for lEvaluatedProperty in Visitor.Result.EvaluatedProperties do
-      begin
-        lNormalizedEvaluatedProperty := NormalizeLocalPath(lEvaluatedProperty);
-        if lResultEvaluatedBeforeRef.Contains(lNormalizedEvaluatedProperty) then
-          Continue;
-
-        lScopeForSync.EvaluatedPropertiesInScope.Add(lNormalizedEvaluatedProperty);
-
-        lCanonicalScopePath := NormalizeLocalPath(lScopeForSync.InstancePath);
-        if lCanonicalScopePath = '/' then
-          lCanonicalPrefix := '/'
-        else
-          lCanonicalPrefix := lCanonicalScopePath + '/';
-
-        if not lNormalizedEvaluatedProperty.StartsWith(lCanonicalPrefix) then
-          Continue;
-
-        lRelativePath := lNormalizedEvaluatedProperty.Substring(Length(lCanonicalPrefix));
-        lSegmentSeparator := Pos('/', lRelativePath);
-        if lSegmentSeparator > 0 then
-          lFirstSegment := Copy(lRelativePath, 1, lSegmentSeparator - 1)
-        else
-          lFirstSegment := lRelativePath;
-
-        if TryStrToInt(lFirstSegment, lItemIndex) then
-          TUtils.AddArray<Integer>(lScopeForSync.CoveredItems, lItemIndex)
-        else if lFirstSegment <> '' then
-          TUtils.AddArray<string>(lScopeForSync.CoveredProperties, lFirstSegment);
-      end;
-      Visitor.UpdateScope(lScopeForSync);
-    finally
-      lResultEvaluatedBeforeRef.Free;
-
-      lScopeAfterRef := Visitor.CurrentScope;
-      if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
-      begin
-        lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
-        Visitor.UpdateScope(lScopeAfterRef);
-      end;
-    end;
-  end;
-
 begin
   lScope := Visitor.CurrentScope;
   lFinalURI := TURIReference.From(pValue.Value).ResolveWith(TURIReference.From(lScope.BaseURI));
@@ -472,47 +500,7 @@ begin
     Exit;
   end;
 
-  lDynamicBaseURI := '';
-  lMaxOffset := -1;
-  lOffset := 0;
-  while Assigned(Visitor.CurrentScope(lOffset).SchemaNode) do
-  begin
-    lMaxOffset := lOffset;
-    Inc(lOffset);
-  end;
-
-  // Spec: traverse from outermost (root) to innermost scope.
-  // For each scope, resolve the anchor via Registry by BaseURI — not by inspecting SchemaNode directly,
-  // because the $dynamicAnchor may live in a $defs sub-schema, not at the root of the scope's SchemaNode.
-  for lOffset := lMaxOffset downto 0 do
-  begin
-    lScope := Visitor.CurrentScope(lOffset);
-    if lScope.BaseURI.IsEmpty then
-      Continue;
-
-    if not Visitor.Registry.TryFindResource(lScope.BaseURI, lScopeResource) then
-      Continue;
-
-    lScopeAnchoredSchema := ResolveDynamicAnchor(lScopeResource, lDynamicAnchorName, lResolvedBaseURI);
-    if not Assigned(lScopeAnchoredSchema) then
-      Continue;
-
-    if not ((lScopeAnchoredSchema is TJSONObject) and
-            TJSONObject(lScopeAnchoredSchema).TryGetValue('$dynamicAnchor', lScopeAnchorValue) and
-            (lScopeAnchorValue is TJSONString)) then
-      Continue;
-
-    lScopeAnchorName := NormalizeAnchorName(TJSONString(lScopeAnchorValue).Value);
-    if not SameText(lScopeAnchorName, lDynamicAnchorName) then
-      Continue;
-
-    lDynamicBaseRef := TURIReference.From(lScope.BaseURI);
-    lDynamicBaseRef.Query := '';
-    lDynamicBaseRef.Fragment := '';
-    lDynamicBaseURI := lDynamicBaseRef.Unsplit;
-    Break;
-  end;
-
+  lDynamicBaseURI := FindDynamicBaseURI(lDynamicAnchorName);
   if lDynamicBaseURI.IsEmpty then
   begin
     ExecuteRefWithCurrentVisitor(pValue);
@@ -712,11 +700,6 @@ begin
       Visitor.AddError(vetMinContains, [lMinimum, lScope.ContainsCount]);
 end;
 
-procedure TDraft2020_12ValidationVisitor.VisitPropertyNames(const pValue: TJSONValue);
-begin
-  inherited VisitPropertyNames(pValue);
-end;
-
 { TDraft2020_12ApplicatorVisitor }
 
 procedure TDraft2020_12ApplicatorVisitor.VisitItems(const pValue: TJSONValue);
@@ -860,6 +843,22 @@ begin
     Delete(Result, Length(Result), 1);
 end;
 
+function NormalizeAnchorName(const pAnchor: string): string;
+begin
+  Result := Trim(pAnchor);
+  if Result.StartsWith('#') then
+    Result := Result.Substring(1);
+end;
+
+function ResolveDynamicAnchor(const pResource: TResource; const pAnchorName: string; out pResolvedBaseURI: string): TJSONValue;
+begin
+  Result := pResource.ResolveFragment(pAnchorName, pResolvedBaseURI);
+  if Assigned(Result) then
+    Exit;
+
+  Result := pResource.ResolveFragment('#' + pAnchorName, pResolvedBaseURI);
+end;
+
 /// <summary>Validates the "unevaluatedItems" keyword against array items not covered by prior keywords.</summary>
 procedure TDraft2020_12ApplicatorVisitor.VisitUnevaluatedItems(const pValue: TJSONValue);
 var
@@ -867,13 +866,10 @@ var
   lScope: TScope;
   lWalker: IWalker;
   lEvaluated: THashSet<string>;
-  lEvaluatedPath: string;
-  lCoveredIndex: Integer;
   lNewScope: TScope;
   lErrorCount: Integer;
   lCurrentPrefix: string;
   lCanonicalPrefix: string;
-  lCanonicalPath: string;
   lItemPath: string;
 begin
   lScope := Visitor.CurrentScope;
@@ -899,22 +895,13 @@ begin
     Exit;
   end;
 
-  lEvaluated := THashSet<string>.Create;
+  lEvaluated := BuildEvaluatedItemsSet(lScope);
   try
     lCurrentPrefix := NormalizeToFullInstancePath(lScope.InstancePath);
     if lCurrentPrefix.EndsWith('/') then
       lCanonicalPrefix := lCurrentPrefix
     else
       lCanonicalPrefix := lCurrentPrefix + '/';
-
-    for lEvaluatedPath in Visitor.Result.EvaluatedProperties do
-    begin
-      lCanonicalPath := NormalizeToFullInstancePath(lEvaluatedPath);
-      lEvaluated.Add(lCanonicalPath);
-    end;
-
-    for lCoveredIndex in lScope.CoveredItems do
-      lEvaluated.Add(Format('%s%d', [lCanonicalPrefix, lCoveredIndex]));
 
     for lCount := 0 to TJSONArray(lScope.InstanceNode).Count - 1 do
     begin
@@ -954,6 +941,25 @@ begin
   Visitor.UpdateScope(lScope);
 end;
 
+function TDraft2020_12ApplicatorVisitor.BuildEvaluatedItemsSet(const pScope: TScope): THashSet<string>;
+var
+  lCanonicalPrefix: string;
+  lEvaluatedPath: string;
+  lCoveredIndex: Integer;
+begin
+  Result := THashSet<string>.Create;
+
+  lCanonicalPrefix := NormalizeToFullInstancePath(pScope.InstancePath);
+  if not lCanonicalPrefix.EndsWith('/') then
+    lCanonicalPrefix := lCanonicalPrefix + '/';
+
+  for lEvaluatedPath in Visitor.Result.EvaluatedProperties do
+    Result.Add(NormalizeToFullInstancePath(lEvaluatedPath));
+
+  for lCoveredIndex in pScope.CoveredItems do
+    Result.Add(Format('%s%d', [lCanonicalPrefix, lCoveredIndex]));
+end;
+
 /// <summary>Validates the "unevaluatedProperties" keyword against object properties not covered by prior keywords.</summary>
 procedure TDraft2020_12ApplicatorVisitor.VisitUnevaluatedProperties(const pValue: TJSONValue);
 var
@@ -961,13 +967,10 @@ var
   lScope: TScope;
   lWalker: IWalker;
   lEvaluated: THashSet<string>;
-  lEvaluatedProp: string;
-  lCoveredProp: string;
   lNewScope: TScope;
   lErrorCount: Integer;
   lPropKey: string;
   lCurrentPrefix: string;
-  lCanonicalPath: string;
 begin
   lScope := Visitor.CurrentScope;
   if TUtils.JsonGetType(lScope.InstanceNode) <> 'object' then
@@ -994,22 +997,11 @@ begin
     Exit;
   end;
 
-  lEvaluated := THashSet<string>.Create;
+  lEvaluated := BuildEvaluatedPropertiesSet(lScope);
   try
     lCurrentPrefix := NormalizeToFullInstancePath(lScope.InstancePath);
-    if lCurrentPrefix.EndsWith('/') then
-      lCurrentPrefix := lCurrentPrefix
-    else
+    if not lCurrentPrefix.EndsWith('/') then
       lCurrentPrefix := lCurrentPrefix + '/';
-
-    for lEvaluatedProp in Visitor.Result.EvaluatedProperties do
-    begin
-      lCanonicalPath := NormalizeToFullInstancePath(lEvaluatedProp);
-      lEvaluated.Add(lCanonicalPath);
-    end;
-
-    for lCoveredProp in lScope.CoveredProperties do
-      lEvaluated.Add(lCurrentPrefix + lCoveredProp);
 
     for lPair in TJSONObject(lScope.InstanceNode) do
     begin
@@ -1052,6 +1044,25 @@ begin
   end;
 
   Visitor.UpdateScope(lScope);
+end;
+
+function TDraft2020_12ApplicatorVisitor.BuildEvaluatedPropertiesSet(const pScope: TScope): THashSet<string>;
+var
+  lCanonicalPrefix: string;
+  lEvaluatedProp: string;
+  lCoveredProp: string;
+begin
+  Result := THashSet<string>.Create;
+
+  lCanonicalPrefix := NormalizeToFullInstancePath(pScope.InstancePath);
+  if not lCanonicalPrefix.EndsWith('/') then
+    lCanonicalPrefix := lCanonicalPrefix + '/';
+
+  for lEvaluatedProp in Visitor.Result.EvaluatedProperties do
+    Result.Add(NormalizeToFullInstancePath(lEvaluatedProp));
+
+  for lCoveredProp in pScope.CoveredProperties do
+    Result.Add(lCanonicalPrefix + lCoveredProp);
 end;
 
 end.

@@ -1,9 +1,10 @@
-unit JsonSchema.Validation.Visitor.Applicator;
+﻿unit JsonSchema.Validation.Visitor.Applicator;
 
 interface
 
 uses
   System.JSON,
+  System.Generics.Collections,
   JsonSchema.Visitors.Interfaces,
   JsonSchema.Visitors.Base,
   JsonSchema.Visitors.Types,
@@ -47,6 +48,12 @@ type
     procedure VisitAdditionalItems(const pValue: TJSONValue);
     [VisitorKeyword('prefixItems')]
     procedure VisitPrefixItems(const pValue: TJSONArray);
+  strict private
+    procedure ReconstructParentScopeChain(const pChildVisitor: T);
+    procedure CollectBranchEvaluatedProperties(const pBranchVisitor: T; const pBranchScope: TScope; const pParentInstancePath: string;
+      pCombinedEvaluated: THashSet<string>);
+    procedure MergeEvaluatedPropertiesIntoScope(pSource: THashSet<string>; var pScope: TScope);
+    function NormalizeEvaluatedPropertyPath(const pProp, pInstancePath: string): string;
   end;
 
 implementation
@@ -55,13 +62,94 @@ uses
   System.SysUtils,
   System.Math,
   System.RegularExpressions,
-  System.Generics.Collections,
   JsonSchema.Translate.Types,
   JsonSchema.Common.Utils,
   JsonSchema.Walker,
   JsonSchema.Walker.Types;
 
 { TBaseApplicatorVisitor<T> }
+
+function TBaseApplicatorVisitor<T>.NormalizeEvaluatedPropertyPath(const pProp, pInstancePath: string): string;
+begin
+  Result := pProp;
+  if Result.IsEmpty then
+    Exit;
+  if (pInstancePath <> '#') and not Result.StartsWith(pInstancePath + '/') then
+  begin
+    if Result = '#' then
+      Result := pInstancePath
+    else if Result.StartsWith('#/') then
+      Result := Result.Substring(1)
+    else if Result.StartsWith('/') then
+    begin
+      // Paths starting with '/' are already absolute in the document.
+    end
+    else
+      Result := pInstancePath + '/' + Result;
+  end;
+end;
+
+procedure TBaseApplicatorVisitor<T>.ReconstructParentScopeChain(const pChildVisitor: T);
+var
+  lParentOffset: Integer;
+  lParentMaxOffset: Integer;
+  lParentScopeItem: TScope;
+begin
+  pChildVisitor.PopScope;
+  lParentMaxOffset := -1;
+  lParentOffset := 0;
+  while Assigned(Visitor.CurrentScope(lParentOffset).SchemaNode) do
+  begin
+    lParentMaxOffset := lParentOffset;
+    Inc(lParentOffset);
+  end;
+  for lParentOffset := lParentMaxOffset downto 0 do
+  begin
+    lParentScopeItem := Visitor.CurrentScope(lParentOffset);
+    lParentScopeItem.EvaluatedPropertiesInScope := nil;
+    pChildVisitor.PushScope(lParentScopeItem);
+  end;
+end;
+
+procedure TBaseApplicatorVisitor<T>.CollectBranchEvaluatedProperties(
+  const pBranchVisitor: T;
+  const pBranchScope: TScope;
+  const pParentInstancePath: string;
+  pCombinedEvaluated: THashSet<string>);
+var
+  lEvaluatedProperty: string;
+  lNormalizedEvaluatedProperty: string;
+begin
+  if not Assigned(pBranchScope.EvaluatedPropertiesInScope) then
+    Exit;
+
+  for lEvaluatedProperty in pBranchVisitor.Result.EvaluatedProperties do
+  begin
+    lNormalizedEvaluatedProperty := NormalizeEvaluatedPropertyPath(lEvaluatedProperty, pParentInstancePath);
+    pBranchScope.EvaluatedPropertiesInScope.Add(lNormalizedEvaluatedProperty);
+  end;
+
+  for lEvaluatedProperty in pBranchScope.EvaluatedPropertiesInScope do
+  begin
+    lNormalizedEvaluatedProperty := NormalizeEvaluatedPropertyPath(lEvaluatedProperty, pParentInstancePath);
+    pCombinedEvaluated.Add(lNormalizedEvaluatedProperty);
+    Visitor.Result.AddEvaluatedProperty(lNormalizedEvaluatedProperty);
+  end;
+end;
+
+procedure TBaseApplicatorVisitor<T>.MergeEvaluatedPropertiesIntoScope(
+  pSource: THashSet<string>;
+  var pScope: TScope);
+var
+  lEvaluatedProperty: string;
+begin
+  if pSource.Count = 0 then
+    Exit;
+  if not Assigned(pScope.EvaluatedPropertiesInScope) then
+    pScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
+  for lEvaluatedProperty in pSource do
+    pScope.EvaluatedPropertiesInScope.Add(lEvaluatedProperty);
+end;
 
 procedure TBaseApplicatorVisitor<T>.VisitAdditionalItems(const pValue: TJSONValue);
 var
@@ -178,11 +266,7 @@ var
   lNewScope: TScope;
   lVisitor: T;
   lBranchValid: Boolean;
-  lParentOffset: Integer;
-  lParentMaxOffset: Integer;
-  lParentScopeItem: TScope;
   lEvaluatedProperty: string;
-  lNormalizedEvaluatedProperty: string;
   lCombinedCoveredItems: TArray<Integer>;
   lCombinedCoveredProperties: TArray<string>;
   lCombinedEvaluatedProperties: THashSet<string>;
@@ -207,21 +291,7 @@ begin
       lNewScope.CoveredProperties := [];
 
       lVisitor := Visitor.New(lNewScope.SchemaNode, lNewScope.InstanceNode, lScope.BaseURI);
-      lVisitor.PopScope;
-      lParentMaxOffset := -1;
-      lParentOffset := 0;
-      while Assigned(Visitor.CurrentScope(lParentOffset).SchemaNode) do
-      begin
-        lParentMaxOffset := lParentOffset;
-        Inc(lParentOffset);
-      end;
-
-      for lParentOffset := lParentMaxOffset downto 0 do
-      begin
-        lParentScopeItem := Visitor.CurrentScope(lParentOffset);
-        lParentScopeItem.EvaluatedPropertiesInScope := nil;
-        lVisitor.PushScope(lParentScopeItem);
-      end;
+      ReconstructParentScopeChain(lVisitor);
 
       lVisitor.PushScope(lNewScope);
       lWalker := TWalker<T>.Create(lNewScope.SchemaNode, lVisitor);
@@ -240,69 +310,15 @@ begin
       if not Assigned(lNewScope.EvaluatedPropertiesInScope) then
         lNewScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
 
-      for lEvaluatedProperty in lVisitor.Result.EvaluatedProperties do
-      begin
-        lNormalizedEvaluatedProperty := lEvaluatedProperty;
-        if not lNormalizedEvaluatedProperty.IsEmpty then
-        begin
-          if (lScope.InstancePath <> '#') and not lNormalizedEvaluatedProperty.StartsWith(lScope.InstancePath + '/') then
-          begin
-            if lNormalizedEvaluatedProperty = '#' then
-              lNormalizedEvaluatedProperty := lScope.InstancePath
-            else if lNormalizedEvaluatedProperty.StartsWith('#/') then
-              lNormalizedEvaluatedProperty := lNormalizedEvaluatedProperty.Substring(1)
-            else if lNormalizedEvaluatedProperty.StartsWith('/') then
-            begin
-              // Caminhos iniciados por '/' já são absolutos no documento.
-            end
-            else
-              lNormalizedEvaluatedProperty := lScope.InstancePath + '/' + lNormalizedEvaluatedProperty;
-          end;
-        end;
-
-        lNewScope.EvaluatedPropertiesInScope.Add(lNormalizedEvaluatedProperty);
-      end;
-
       lCombinedCoveredItems := TUtils.MergeArray<Integer>([lCombinedCoveredItems, lNewScope.CoveredItems]);
       lCombinedCoveredProperties := TUtils.MergeArray<string>([lCombinedCoveredProperties, lNewScope.CoveredProperties]);
 
-      if Assigned(lNewScope.EvaluatedPropertiesInScope) then
-        for lEvaluatedProperty in lNewScope.EvaluatedPropertiesInScope do
-      begin
-        lNormalizedEvaluatedProperty := lEvaluatedProperty;
-        if not lNormalizedEvaluatedProperty.IsEmpty then
-        begin
-          if (lScope.InstancePath <> '#') and not lNormalizedEvaluatedProperty.StartsWith(lScope.InstancePath + '/') then
-          begin
-            if lNormalizedEvaluatedProperty = '#' then
-              lNormalizedEvaluatedProperty := lScope.InstancePath
-            else if lNormalizedEvaluatedProperty.StartsWith('#/') then
-              lNormalizedEvaluatedProperty := lNormalizedEvaluatedProperty.Substring(1)
-            else if lNormalizedEvaluatedProperty.StartsWith('/') then
-            begin
-              // Caminhos iniciados por '/' já são absolutos no documento.
-            end
-            else
-              lNormalizedEvaluatedProperty := lScope.InstancePath + '/' + lNormalizedEvaluatedProperty;
-          end;
-        end;
-
-        lCombinedEvaluatedProperties.Add(lNormalizedEvaluatedProperty);
-        Visitor.Result.AddEvaluatedProperty(lNormalizedEvaluatedProperty);
-      end;
+      CollectBranchEvaluatedProperties(lVisitor, lNewScope, lScope.InstancePath, lCombinedEvaluatedProperties);
     end;
 
     lScope.CoveredItems := lCombinedCoveredItems;
     lScope.CoveredProperties := lCombinedCoveredProperties;
-    if lCombinedEvaluatedProperties.Count > 0 then
-    begin
-      if not Assigned(lScope.EvaluatedPropertiesInScope) then
-        lScope.EvaluatedPropertiesInScope := THashSet<string>.Create;
-
-      for lEvaluatedProperty in lCombinedEvaluatedProperties do
-        lScope.EvaluatedPropertiesInScope.Add(lEvaluatedProperty);
-    end;
-
+    MergeEvaluatedPropertiesIntoScope(lCombinedEvaluatedProperties, lScope);
     Visitor.UpdateScope(lScope);
   finally
     lCombinedEvaluatedProperties.Free;
@@ -320,9 +336,6 @@ var
   lAnyBranchValid: Boolean;
   lEvaluatedProperty: string;
   lNormalizedEvaluatedProperty: string;
-  lParentOffset: Integer;
-  lParentMaxOffset: Integer;
-  lParentScopeItem: TScope;
 begin
   lScope := Visitor.CurrentScope;
   lAnyBranchValid := False;
@@ -339,22 +352,7 @@ begin
     lNewScope.EvaluatedPropertiesInScope := nil;
 
     lVisitor := Visitor.New(lNewScope.SchemaNode, lNewScope.InstanceNode, lScope.BaseURI);
-    lVisitor.PopScope; // Remove o scope inicial do construtor para substituir pela cadeia do pai
-    // Injeta a cadeia de escopos do pai para manter o dynamic scope chain do $recursiveRef.
-    // Os scopes são empilhados do mais antigo (fundo) ao mais novo (topo), preservando a ordem.
-    lParentMaxOffset := -1;
-    lParentOffset := 0;
-    while Assigned(Visitor.CurrentScope(lParentOffset).SchemaNode) do
-    begin
-      lParentMaxOffset := lParentOffset;
-      Inc(lParentOffset);
-    end;
-    for lParentOffset := lParentMaxOffset downto 0 do
-    begin
-      lParentScopeItem := Visitor.CurrentScope(lParentOffset);
-      lParentScopeItem.EvaluatedPropertiesInScope := nil; // Sandbox cria novo set; sem double-free com o pai
-      lVisitor.PushScope(lParentScopeItem);
-    end;
+    ReconstructParentScopeChain(lVisitor);
     lVisitor.PushScope(lNewScope);
     try
       lWalker := TWalker<T>.Create(lNewScope.SchemaNode, lVisitor);
@@ -373,23 +371,7 @@ begin
 
         for lEvaluatedProperty in lVisitor.Result.EvaluatedProperties do
         begin
-          lNormalizedEvaluatedProperty := lEvaluatedProperty;
-          if not lNormalizedEvaluatedProperty.IsEmpty then
-          begin
-            if (lScope.InstancePath <> '#') and not lNormalizedEvaluatedProperty.StartsWith(lScope.InstancePath + '/') then
-            begin
-              if lNormalizedEvaluatedProperty = '#' then
-                lNormalizedEvaluatedProperty := lScope.InstancePath
-              else if lNormalizedEvaluatedProperty.StartsWith('#/') then
-                lNormalizedEvaluatedProperty := lNormalizedEvaluatedProperty.Substring(1)
-              else if lNormalizedEvaluatedProperty.StartsWith('/') then
-              begin
-                // Caminhos iniciados por '/' já são absolutos no documento.
-              end
-              else
-                lNormalizedEvaluatedProperty := lScope.InstancePath + '/' + lNormalizedEvaluatedProperty;
-            end;
-          end;
+          lNormalizedEvaluatedProperty := NormalizeEvaluatedPropertyPath(lEvaluatedProperty, lScope.InstancePath);
 
           lScope.EvaluatedPropertiesInScope.Add(lNormalizedEvaluatedProperty);
           Visitor.Result.AddEvaluatedProperty(lNormalizedEvaluatedProperty);

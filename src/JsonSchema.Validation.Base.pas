@@ -50,6 +50,9 @@ type
   /// and managing the validation result, error reporting, language, and $ref resolution.
   /// </summary>
   TValidationVisitor<T> = class(TBaseVisitor<T>, IValidationVisitor<T>, IRefResolutionGuard)
+  private
+    function TraverseCustomHintPath(const pRoot: TJSONValue; const pPathSegments: TArray<string>): TJSONValue;
+    function ExtractKeywordHint(const pNode: TJSONValue; const pErrorType: TErrorType): string;
   protected
     FResult: IValidationResult;
     FRegistry: TRegistryVisitor;
@@ -153,44 +156,58 @@ function TValidationVisitor<T>.FindCustomHint(pErrorType: TErrorType): string;
 var
   lScope: TScope;
   lPathSegments: TArray<string>;
-  lCurrentNode: TJSONValue;
-  lSegment: string;
-  lHintValue: TJSONValue;
-  lErrorKeyword: string;
+  lTargetNode: TJSONValue;
 begin
   Result := '';
   lScope := CurrentScope;
   if not Assigned(FCustomHint) or lScope.InstancePath.IsEmpty then
     Exit;
 
-  // Normaliza e quebra o caminho: '#.relacao_empregados[0].cbo' -> ['relacao_empregados', 'cbo']
-  // Precisamos de uma função robusta para isso.
   lPathSegments := TUtils.ParseInstancePath(lScope.InstancePath);
+  lTargetNode := TraverseCustomHintPath(FCustomHint, lPathSegments);
+  if not Assigned(lTargetNode) then
+    Exit;
 
-  lCurrentNode := FCustomHint;
-  for lSegment in lPathSegments do
+  Result := ExtractKeywordHint(lTargetNode, pErrorType);
+end;
+
+function TValidationVisitor<T>.TraverseCustomHintPath(const pRoot: TJSONValue; const pPathSegments: TArray<string>): TJSONValue;
+var
+  lSegment: string;
+  lNext: TJSONValue;
+begin
+  Result := pRoot;
+  for lSegment in pPathSegments do
   begin
-    if not (lCurrentNode is TJSONObject) then
-      Exit; // Não podemos navegar mais fundo
+    if not (Result is TJSONObject) then
+      Exit(nil);
 
-    if not (lCurrentNode as TJSONObject).TryGetValue(lSegment, lCurrentNode) then
+    if (Result as TJSONObject).TryGetValue(lSegment, lNext) then
+      Result := lNext
+    else if (Result as TJSONObject).TryGetValue(GetEnumName(TypeInfo(TErrorType), Ord(TErrorType.vetUnknown)), lNext) then
     begin
-      if (lCurrentNode as TJSONObject).TryGetValue(GetEnumName(TypeInfo(TErrorType), Ord(TErrorType.vetUnknown)), lCurrentNode) then
-        Break // Não encontra um erro específico, mas encontra um erro genérico
-      else
-        Exit; // Caminho não encontrado no JSON de dicas
-    end;
+      Result := lNext;
+      Break;
+    end
+    else
+      Exit(nil);
   end;
+end;
 
-  // Chegamos ao nó final do caminho. Agora procuramos pelo tipo de erro.
-  if (lCurrentNode is TJSONObject) then
+function TValidationVisitor<T>.ExtractKeywordHint(const pNode: TJSONValue; const pErrorType: TErrorType): string;
+var
+  lErrorKeyword: string;
+  lHintValue: TJSONValue;
+begin
+  Result := '';
+  if pNode is TJSONObject then
   begin
-    lErrorKeyword := GetEnumName(TypeInfo(TErrorType), Ord(pErrorType)); // ex: vetPattern
-    if (lCurrentNode as TJSONObject).TryGetValue(lErrorKeyword, lHintValue) and (lHintValue is TJSONString) then
+    lErrorKeyword := GetEnumName(TypeInfo(TErrorType), Ord(pErrorType));
+    if (pNode as TJSONObject).TryGetValue(lErrorKeyword, lHintValue) and (lHintValue is TJSONString) then
       Result := (lHintValue as TJSONString).Value;
   end
-  else if lCurrentNode is TJSONString then
-    Result := TJSONString(lCurrentNode).Value;
+  else if pNode is TJSONString then
+    Result := TJSONString(pNode).Value;
 end;
 
 function TValidationVisitor<T>.KeywordPrecedence: TArray<string>;

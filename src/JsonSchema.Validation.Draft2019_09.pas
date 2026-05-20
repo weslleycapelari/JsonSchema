@@ -68,6 +68,14 @@ type
 
   /// <summary>Implements the Draft 2019-09 Core vocabulary visitor, processing $schema, $comment, $anchor, $recursiveRef, $recursiveAnchor, and $vocabulary keywords.</summary>
   TDraft2019_09CoreVisitor = class(TBaseCoreVisitor<TDraft2019_09Visitor>, IDraft2019_09CoreVisitor)
+  strict private
+    /// <summary>Executes VisitRef for the given value and restores the scope's BaseURI to its
+    /// value before the call, preventing the ref from permanently shifting the validation base.</summary>
+    procedure ExecuteRefWithBaseURIRestoration(const pValue: TJSONString);
+    /// <summary>Traverses the full dynamic scope chain from outermost to innermost, returning the
+    /// BaseURI of the first scope whose SchemaNode declares $recursiveAnchor: true, or empty string.</summary>
+    function FindRecursiveAnchorInDynamicScope: string;
+  public
     [VisitorKeyword('$schema')]
     /// <summary>Reads the metaschema URI and activates validation-vocabulary-silent mode when the metaschema excludes the validation vocabulary.</summary>
     procedure VisitSchema(const pValue: TJSONString);
@@ -150,8 +158,6 @@ type
     [VisitorKeyword('contains')]
     /// <summary>Counts matching items against the contains sub-schema and delegates min/maxContains enforcement, creating a synthetic minContains of 1 when not declared.</summary>
     procedure VisitContains(const pValue: TJSONValue);
-    [VisitorKeyword('propertyNames')]
-    procedure VisitPropertyNames(const pValue: TJSONValue);
     [VisitorKeyword('dependencies')]
     /// <summary>Implements the legacy "dependencies" keyword, routing array values through dependentRequired semantics and object values through dependentSchemas semantics.</summary>
     procedure VisitDependencies(const pValue: TJSONObject);
@@ -179,6 +185,7 @@ uses
   System.Generics.Collections,
   JsonSchema.Common.Utils,
   JsonSchema.Translate.Types,
+  JsonSchema.Validation.Types,
   JsonSchema.Walker,
   JsonSchema.Registry.Resource,
   JsonSchema.Registry.Uri;
@@ -265,80 +272,34 @@ begin
 
 end;
 
-procedure TDraft2019_09CoreVisitor.VisitRecursiveRef(const pValue: TJSONString);
+procedure TDraft2019_09CoreVisitor.ExecuteRefWithBaseURIRestoration(const pValue: TJSONString);
 var
-  lScope: TScope;
-  lFinalURI: TURIReference;
-  lTargetResource: TResource;
-  lTargetSchema: TJSONValue;
-  lResolvedBaseURI: string;
-  lTargetRecursiveAnchor: TJSONValue;
-  lScopes: TList<TScope>;
-  lScopeIndex: Integer;
-  lOffset: Integer;
-  lRecursiveBaseURI: string;
-  lAnchorValue: TJSONValue;
-  lRecursiveRefValue: TJSONString;
-  lHasRecursiveAnchor: Boolean;
   lOriginalScope: TScope;
   lScopeAfterRef: TScope;
 begin
-  lScope := Visitor.CurrentScope;
-  lFinalURI := TURIReference.From(pValue.Value).ResolveWith(TURIReference.From(lScope.BaseURI));
-
-  if not Visitor.Registry.TryFindResource(lFinalURI.Unsplit, lTargetResource) then
-  begin
-    lOriginalScope := Visitor.CurrentScope;
-    try
-      inherited VisitRef(pValue);
-    finally
-      lScopeAfterRef := Visitor.CurrentScope;
-      if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
-      begin
-        lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
-        Visitor.UpdateScope(lScopeAfterRef);
-      end;
+  lOriginalScope := Visitor.CurrentScope;
+  try
+    inherited VisitRef(pValue);
+  finally
+    lScopeAfterRef := Visitor.CurrentScope;
+    if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
+    begin
+      lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
+      Visitor.UpdateScope(lScopeAfterRef);
     end;
-    Exit;
   end;
+end;
 
-  lTargetSchema := lTargetResource.ResolveFragment(lFinalURI.Fragment, lResolvedBaseURI);
-  if not Assigned(lTargetSchema) then
-  begin
-    lOriginalScope := Visitor.CurrentScope;
-    try
-      inherited VisitRef(pValue);
-    finally
-      lScopeAfterRef := Visitor.CurrentScope;
-      if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
-      begin
-        lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
-        Visitor.UpdateScope(lScopeAfterRef);
-      end;
-    end;
-    Exit;
-  end;
-
-  if not ((lTargetSchema is TJSONObject) and
-          TJSONObject(lTargetSchema).TryGetValue('$recursiveAnchor', lTargetRecursiveAnchor) and
-          (lTargetRecursiveAnchor is TJSONBool) and
-          TJSONBool(lTargetRecursiveAnchor).AsBoolean) then
-  begin
-    lOriginalScope := Visitor.CurrentScope;
-    try
-      inherited VisitRef(pValue);
-    finally
-      lScopeAfterRef := Visitor.CurrentScope;
-      if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
-      begin
-        lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
-        Visitor.UpdateScope(lScopeAfterRef);
-      end;
-    end;
-    Exit;
-  end;
-
-  lRecursiveBaseURI := '';
+function TDraft2019_09CoreVisitor.FindRecursiveAnchorInDynamicScope: string;
+var
+  lScopes: TList<TScope>;
+  lScopeIndex: Integer;
+  lOffset: Integer;
+  lScope: TScope;
+  lAnchorValue: TJSONValue;
+  lHasRecursiveAnchor: Boolean;
+begin
+  Result := '';
 
   lScopes := TList<TScope>.Create;
   try
@@ -361,43 +322,61 @@ begin
 
       if lHasRecursiveAnchor then
       begin
-        lRecursiveBaseURI := lScope.BaseURI;
+        Result := lScope.BaseURI;
         Break;
       end;
     end;
   finally
     lScopes.Free;
   end;
+end;
 
+procedure TDraft2019_09CoreVisitor.VisitRecursiveRef(const pValue: TJSONString);
+var
+  lScope: TScope;
+  lFinalURI: TURIReference;
+  lTargetResource: TResource;
+  lTargetSchema: TJSONValue;
+  lResolvedBaseURI: string;
+  lTargetRecursiveAnchor: TJSONValue;
+  lRecursiveBaseURI: string;
+  lRecursiveRefValue: TJSONString;
+begin
+  lScope := Visitor.CurrentScope;
+  lFinalURI := TURIReference.From(pValue.Value).ResolveWith(TURIReference.From(lScope.BaseURI));
+
+  if not Visitor.Registry.TryFindResource(lFinalURI.Unsplit, lTargetResource) then
+  begin
+    ExecuteRefWithBaseURIRestoration(pValue);
+    Exit;
+  end;
+
+  lTargetSchema := lTargetResource.ResolveFragment(lFinalURI.Fragment, lResolvedBaseURI);
+  if not Assigned(lTargetSchema) then
+  begin
+    ExecuteRefWithBaseURIRestoration(pValue);
+    Exit;
+  end;
+
+  if not ((lTargetSchema is TJSONObject) and
+          TJSONObject(lTargetSchema).TryGetValue('$recursiveAnchor', lTargetRecursiveAnchor) and
+          (lTargetRecursiveAnchor is TJSONBool) and
+          TJSONBool(lTargetRecursiveAnchor).AsBoolean) then
+  begin
+    ExecuteRefWithBaseURIRestoration(pValue);
+    Exit;
+  end;
+
+  lRecursiveBaseURI := FindRecursiveAnchorInDynamicScope;
   if lRecursiveBaseURI.IsEmpty then
   begin
-    lOriginalScope := Visitor.CurrentScope;
-    try
-      inherited VisitRef(pValue);
-    finally
-      lScopeAfterRef := Visitor.CurrentScope;
-      if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
-      begin
-        lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
-        Visitor.UpdateScope(lScopeAfterRef);
-      end;
-    end;
+    ExecuteRefWithBaseURIRestoration(pValue);
     Exit;
   end;
 
   lRecursiveRefValue := TJSONString.Create(lRecursiveBaseURI + '#');
   try
-    lOriginalScope := Visitor.CurrentScope;
-    try
-      inherited VisitRef(lRecursiveRefValue);
-    finally
-      lScopeAfterRef := Visitor.CurrentScope;
-      if not SameText(lScopeAfterRef.BaseURI, lOriginalScope.BaseURI) then
-      begin
-        lScopeAfterRef.BaseURI := lOriginalScope.BaseURI;
-        Visitor.UpdateScope(lScopeAfterRef);
-      end;
-    end;
+    ExecuteRefWithBaseURIRestoration(lRecursiveRefValue);
   finally
     lRecursiveRefValue.Free;
   end;
@@ -406,26 +385,6 @@ end;
 procedure TDraft2019_09CoreVisitor.VisitSchema(const pValue: TJSONString);
 const
   CValidationVocabularyURI = 'https://json-schema.org/draft/2019-09/vocab/validation';
-  CValidationKeywords: array[0..17] of string = (
-    'type',
-    'multipleOf',
-    'maximum',
-    'exclusiveMaximum',
-    'minimum',
-    'exclusiveMinimum',
-    'maxLength',
-    'minLength',
-    'pattern',
-    'maxItems',
-    'minItems',
-    'uniqueItems',
-    'maxProperties',
-    'minProperties',
-    'required',
-    'enum',
-    'const',
-    'format'
-  );
 var
   lScope: TScope;
   lSchemaURI: TURIReference;
@@ -479,26 +438,6 @@ const
     'https://json-schema.org/draft/2019-09/vocab/hyper-schema'
   );
   CValidationVocabularyURI = 'https://json-schema.org/draft/2019-09/vocab/validation';
-  CValidationKeywords: array[0..17] of string = (
-    'type',
-    'multipleOf',
-    'maximum',
-    'exclusiveMaximum',
-    'minimum',
-    'exclusiveMinimum',
-    'maxLength',
-    'minLength',
-    'pattern',
-    'maxItems',
-    'minItems',
-    'uniqueItems',
-    'maxProperties',
-    'minProperties',
-    'required',
-    'enum',
-    'const',
-    'format'
-  );
 var
   lVocabulary: TJSONPair;
   lRequired: Boolean;
@@ -557,6 +496,10 @@ function TDraft2019_09ValidationVisitor.ValidationVocabularySilent: Boolean;
 begin
   Result := TDraft2019_09Visitor(Visitor).IsValidationVocabularySilent;
 end;
+
+// These methods guard against executing validation vocabulary keywords when the
+// meta-schema marks the validation vocabulary as non-required ($vocabulary: false).
+// Each delegates to the base class implementation when the vocabulary is active.
 
 procedure TDraft2019_09ValidationVisitor.VisitConst(const pValue: TJSONValue);
 begin
@@ -927,11 +870,6 @@ begin
       Visitor.AddError(vetContains)
     else
       Visitor.AddError(vetMinContains, [lMinimum, lScope.ContainsCount]);
-end;
-
-procedure TDraft2019_09ValidationVisitor.VisitPropertyNames(const pValue: TJSONValue);
-begin
-  inherited VisitPropertyNames(pValue);
 end;
 
 { TDraft2019_09ApplicatorVisitor }
