@@ -5,7 +5,8 @@ interface
 uses
   System.SysUtils,
   System.StrUtils,
-  JsonSchema;
+  JsonSchema,
+  JsonSchema.Types;
 
 function ResolveDraftFolderName(const pDraft: string): string;
 function ResolveDraftVersion(const pDraft: string): TDraftVersion;

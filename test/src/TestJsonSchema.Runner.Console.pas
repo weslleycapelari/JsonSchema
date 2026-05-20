@@ -9,6 +9,8 @@ uses
   System.StrUtils,
   System.SysUtils,
   JsonSchema,
+  JsonSchema.Types,
+  JsonSchema.Interfaces,
   TestJsonSchema.Types;
 
 type
@@ -24,11 +26,11 @@ type
 
     function ResolveTestFiles(const pRootPath, pFileFilter: string): TArray<string>;
 
-    { Fase 1: Contagem para inicialização correta das barras de progresso }
+    { Fase 1: Contagem para inicializaï¿½ï¿½o correta das barras de progresso }
     procedure CountTestsInDraft(const pDraftPath, pFileFilter: string);
     procedure CountTestsInFile(const pFilePath: string);
 
-    { Fase 2: Execução dos Testes }
+    { Fase 2: Execuï¿½ï¿½o dos Testes }
     procedure RunDraft(const pDraftName: string; const pDraftVersion: TDraftVersion;
       const pDraftPath, pFileFilter: string);
     procedure RunFile(const pDraftName: string; const pDraftVersion: TDraftVersion;
@@ -351,7 +353,7 @@ begin
     Inc(lIndex);
   end;
 
-  // Fase 2: Execução
+  // Fase 2: Execuï¿½ï¿½o
   lIndex := 0;
   while (not FStop) and (lIndex < Length(lDrafts)) do
   begin
