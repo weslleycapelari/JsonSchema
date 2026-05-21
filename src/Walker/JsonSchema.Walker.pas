@@ -51,8 +51,8 @@ type
   /// <summary>Factory class for creating validation walkers with automatic draft detection.</summary>
   TValidationWalker = class
   public
-    class function New(const pSchema: TJSONValue; const pData: TJSONValue;
-      const pCustomHint: TJSONValue = nil): IWalker; static;
+    class function New(const pSchema: TJSONValue; const pData: TJSONValue; const pCustomHint: TJSONValue = nil;
+      const pDraft: TDraftVersion = TDraftVersion.dvUnknown): IWalker; static;
   end;
 
 implementation
@@ -145,9 +145,11 @@ begin
 
       // Garante assinatura compatível: método deve receber uma classe derivada de TJSONValue.
       if (lMethod.GetParameters[0].ParamType = nil) or
-         (lMethod.GetParameters[0].ParamType.TypeKind <> tkClass) or
-         (not lMethod.GetParameters[0].ParamType.AsInstance.MetaclassType.InheritsFrom(TJSONValue)) then
+        (lMethod.GetParameters[0].ParamType.TypeKind <> tkClass) or
+        (not lMethod.GetParameters[0].ParamType.AsInstance.MetaclassType.InheritsFrom(TJSONValue)) then
+      begin
         Continue;
+      end;
 
       for lAttr in lMethod.GetAttributes do
       begin
@@ -157,8 +159,7 @@ begin
         lMethodPtr.Code := lMethod.CodeAddress;
         lMethodPtr.Data := pObject;
         pTargetMap.AddOrSetValue(VisitorKeywordAttribute(lAttr).Name, TVisitorProc(lMethodPtr));
-        FVisitorMethodParamType.AddOrSetValue(
-          VisitorKeywordAttribute(lAttr).Name,
+        FVisitorMethodParamType.AddOrSetValue(VisitorKeywordAttribute(lAttr).Name,
           TJSONValueClass(lMethod.GetParameters[0].ParamType.AsInstance.MetaclassType));
       end;
     end;
@@ -173,7 +174,7 @@ var
   lKey: string;
 begin
   if Supports(FVisitor, IDraft2019_09ValidationVocabularyMode, lVocabMode) and
-     lVocabMode.IsValidationVocabularySilent then
+    lVocabMode.IsValidationVocabularySilent then
   begin
     FSilentMode := True;
     for lKey in CValidationKeywords do
@@ -245,16 +246,15 @@ begin
     raise EJsonSchemaError.CreateFmt('Keyword "%s" has nil JSON value during dispatch.', [pName]);
 
   if FVisitorMethodParamType.TryGetValue(pName, lExpectedType) and
-     Assigned(lExpectedType) and
-     (not pValue.InheritsFrom(lExpectedType)) then
-    raise EJsonSchemaError.CreateFmt(
-      'Invalid JSON type for keyword "%s": expected %s, got %s.',
+    Assigned(lExpectedType) and
+    (not pValue.InheritsFrom(lExpectedType)) then
+  begin
+    raise EJsonSchemaError.CreateFmt('Invalid JSON type for keyword "%s": expected %s, got %s.',
       [pName, lExpectedType.ClassName, pValue.ClassName]);
+  end;
 
   if FVisitorMethod.TryGetValue(pName, lProc) then
-  begin
     lProc(pValue);
-  end;
 end;
 
 procedure TWalker<T>.Walk;
@@ -288,12 +288,13 @@ begin
   if lDraft = TDraftVersion.dvUnknown then
   begin
     for lSchemaDraft in FVisitor.KeywordPrecedence do
-      if (lSchemaDraft = '$recursiveRef') or (lSchemaDraft = '$dynamicRef') or
-         (lSchemaDraft = 'unevaluatedProperties') then
+    begin
+      if (lSchemaDraft = '$recursiveRef') or (lSchemaDraft = '$dynamicRef') or (lSchemaDraft = 'unevaluatedProperties') then
       begin
         lDraft := TDraftVersion.dvDraft2019_09;
         Break;
       end;
+    end;
   end;
 
   // For drafts prior to 2019‑09, process $ref first (legacy behavior)
@@ -346,8 +347,7 @@ end;
 
 { TValidationWalker }
 
-class function TValidationWalker.New(const pSchema, pData: TJSONValue;
-  const pCustomHint: TJSONValue): IWalker;
+class function TValidationWalker.New(const pSchema, pData: TJSONValue; const pCustomHint: TJSONValue; const pDraft: TDraftVersion): IWalker;
 var
   lDraft: TDraftVersion;
   lSchemaDraft: string;
@@ -355,41 +355,24 @@ var
 begin
   lBaseURI := TUtils.UriGenerateRandom;
 
-  if (pSchema is TJSONObject) and TJSONObject(pSchema).TryGetValue('$schema', lSchemaDraft) then
+  if pDraft <> TDraftVersion.dvUnknown then
+    lDraft := pDraft
+  else if (pSchema is TJSONObject) and TJSONObject(pSchema).TryGetValue('$schema', lSchemaDraft) then
     lDraft := TDraftVersion.FromSchema(lSchemaDraft)
   else
     lDraft := TDraftVersion.dvDraft2020_12;
+
   case lDraft of
     dvDraft6:
-      begin
-      Result := TWalker<TDraft6Visitor>.Create(
-        pSchema,
-        TDraft6Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
-      end;
+      Result := TWalker<TDraft6Visitor>.Create(pSchema, TDraft6Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
     dvDraft7:
-      begin
-      Result := TWalker<TDraft7Visitor>.Create(
-        pSchema,
-        TDraft7Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
-      end;
+      Result := TWalker<TDraft7Visitor>.Create(pSchema, TDraft7Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
     dvDraft2019_09:
-      begin
-      Result := TWalker<TDraft2019_09Visitor>.Create(
-        pSchema,
-        TDraft2019_09Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
-      end;
+      Result := TWalker<TDraft2019_09Visitor>.Create(pSchema, TDraft2019_09Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
     dvDraft2020_12:
-      begin
-      Result := TWalker<TDraft2020_12Visitor>.Create(
-        pSchema,
-        TDraft2020_12Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
-      end;
+        Result := TWalker<TDraft2020_12Visitor>.Create(pSchema, TDraft2020_12Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
   else
-    begin
-    Result := TWalker<TDraft2020_12Visitor>.Create(
-      pSchema,
-      TDraft2020_12Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
-    end;
+    Result := TWalker<TDraft2020_12Visitor>.Create(pSchema, TDraft2020_12Visitor.Create(pSchema, pData, lBaseURI, pCustomHint));
   end;
 end;
 
