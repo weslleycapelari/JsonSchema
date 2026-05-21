@@ -1,4 +1,4 @@
-program TestJsonSchemaConsole;
+ï»¿program TestJsonSchemaConsole;
 
 {$APPTYPE CONSOLE}
 
@@ -13,37 +13,61 @@ uses
   TestJsonSchema.Mock.HttpServer in '..\src\TestJsonSchema.Mock.HttpServer.pas',
   TestJsonSchema.Utils.Paths in '..\src\TestJsonSchema.Utils.Paths.pas',
   TestJsonSchema.Utils.DraftResolver in '..\src\TestJsonSchema.Utils.DraftResolver.pas',
-  JsonSchema.Common.Utils in '..\..\src\JsonSchema.Common.Utils.pas',
-  JsonSchema in '..\..\src\JsonSchema.pas',
-  JsonSchema.Registry.Base in '..\..\src\JsonSchema.Registry.Base.pas',
-  JsonSchema.Registry.Resource in '..\..\src\JsonSchema.Registry.Resource.pas',
-  JsonSchema.Registry.Types in '..\..\src\JsonSchema.Registry.Types.pas',
-  JsonSchema.Registry.Uri.Builder in '..\..\src\JsonSchema.Registry.Uri.Builder.pas',
-  JsonSchema.Registry.Uri.ParseResult in '..\..\src\JsonSchema.Registry.Uri.ParseResult.pas',
-  JsonSchema.Registry.Uri in '..\..\src\JsonSchema.Registry.Uri.pas',
-  JsonSchema.Registry.Uri.Validator in '..\..\src\JsonSchema.Registry.Uri.Validator.pas',
-  JsonSchema.Registry.Utils in '..\..\src\JsonSchema.Registry.Utils.pas',
-  JsonSchema.Translate.enUS in '..\..\src\JsonSchema.Translate.enUS.pas',
-  JsonSchema.Translate.Interfaces in '..\..\src\JsonSchema.Translate.Interfaces.pas',
-  JsonSchema.Translate.ptBR in '..\..\src\JsonSchema.Translate.ptBR.pas',
-  JsonSchema.Translate.Types in '..\..\src\JsonSchema.Translate.Types.pas',
-  JsonSchema.Translate.Utils in '..\..\src\JsonSchema.Translate.Utils.pas',
-  JsonSchema.Validation.Base in '..\..\src\JsonSchema.Validation.Base.pas',
-  JsonSchema.Validation.Draft6 in '..\..\src\JsonSchema.Validation.Draft6.pas',
-  JsonSchema.Validation.Draft7 in '..\..\src\JsonSchema.Validation.Draft7.pas',
-  JsonSchema.Validation.Draft2019_09 in '..\..\src\JsonSchema.Validation.Draft2019_09.pas',
-  JsonSchema.Validation.Draft2020_12 in '..\..\src\JsonSchema.Validation.Draft2020_12.pas',
-  JsonSchema.Validation.Interfaces in '..\..\src\JsonSchema.Validation.Interfaces.pas',
-  JsonSchema.Validation.Types in '..\..\src\JsonSchema.Validation.Types.pas',
-  JsonSchema.Validation.Visitor.Applicator in '..\..\src\JsonSchema.Validation.Visitor.Applicator.pas',
-  JsonSchema.Validation.Visitor.Core in '..\..\src\JsonSchema.Validation.Visitor.Core.pas',
-  JsonSchema.Validation.Visitor.HyperSchema in '..\..\src\JsonSchema.Validation.Visitor.HyperSchema.pas',
-  JsonSchema.Validation.Visitor.Validation in '..\..\src\JsonSchema.Validation.Visitor.Validation.pas',
-  JsonSchema.Visitors.Base in '..\..\src\JsonSchema.Visitors.Base.pas',
-  JsonSchema.Visitors.Interfaces in '..\..\src\JsonSchema.Visitors.Interfaces.pas',
-  JsonSchema.Visitors.Types in '..\..\src\JsonSchema.Visitors.Types.pas',
-  JsonSchema.Walker in '..\..\src\JsonSchema.Walker.pas',
-  JsonSchema.Walker.Types in '..\..\src\JsonSchema.Walker.Types.pas';
+  JsonSchema.Consts in '..\..\src\Core\JsonSchema.Consts.pas',
+  JsonSchema.Exceptions in '..\..\src\Core\JsonSchema.Exceptions.pas',
+  JsonSchema.Interfaces in '..\..\src\Core\JsonSchema.Interfaces.pas',
+  JsonSchema.Types in '..\..\src\Core\JsonSchema.Types.pas',
+  JsonSchema.Registry.Base in '..\..\src\Registry\JsonSchema.Registry.Base.pas',
+  JsonSchema.Registry.Loader in '..\..\src\Registry\JsonSchema.Registry.Loader.pas',
+  JsonSchema.Registry.Resource in '..\..\src\Registry\JsonSchema.Registry.Resource.pas',
+  JsonSchema.Registry.Types in '..\..\src\Registry\JsonSchema.Registry.Types.pas',
+  JsonSchema.Registry.Uri.Builder in '..\..\src\Registry\JsonSchema.Registry.Uri.Builder.pas',
+  JsonSchema.Registry.Uri in '..\..\src\Registry\JsonSchema.Registry.Uri.pas',
+  JsonSchema.Registry.Uri.Validator in '..\..\src\Registry\JsonSchema.Registry.Uri.Validator.pas',
+  JsonSchema.Registry.Utils in '..\..\src\Registry\JsonSchema.Registry.Utils.pas',
+  JsonSchema.Translate.enUS in '..\..\src\Translate\JsonSchema.Translate.enUS.pas',
+  JsonSchema.Translate.Interfaces in '..\..\src\Translate\JsonSchema.Translate.Interfaces.pas',
+  JsonSchema.Translate.Provider in '..\..\src\Translate\JsonSchema.Translate.Provider.pas',
+  JsonSchema.Translate.ptBR in '..\..\src\Translate\JsonSchema.Translate.ptBR.pas',
+  JsonSchema.Translate.Types in '..\..\src\Translate\JsonSchema.Translate.Types.pas',
+  JsonSchema.CollectionUtils in '..\..\src\Utils\JsonSchema.CollectionUtils.pas',
+  JsonSchema.Common.Utils in '..\..\src\Utils\JsonSchema.Common.Utils.pas',
+  JsonSchema.FormatValidator in '..\..\src\Utils\JsonSchema.FormatValidator.pas',
+  JsonSchema.JsonPathUtils in '..\..\src\Utils\JsonSchema.JsonPathUtils.pas',
+  JsonSchema.ReflectionCache in '..\..\src\Utils\JsonSchema.ReflectionCache.pas',
+  JsonSchema.Validation.Base in '..\..\src\Validation\JsonSchema.Validation.Base.pas',
+  JsonSchema.Validation.ErrorHandler in '..\..\src\Validation\JsonSchema.Validation.ErrorHandler.pas',
+  JsonSchema.Validation.Interfaces in '..\..\src\Validation\JsonSchema.Validation.Interfaces.pas',
+  JsonSchema.Validation.RefResolver in '..\..\src\Validation\JsonSchema.Validation.RefResolver.pas',
+  JsonSchema.Validation.Result in '..\..\src\Validation\JsonSchema.Validation.Result.pas',
+  JsonSchema.Validation.Scope in '..\..\src\Validation\JsonSchema.Validation.Scope.pas',
+  JsonSchema.Validation.Draft6 in '..\..\src\Validation\Drafts\JsonSchema.Validation.Draft6.pas',
+  JsonSchema.Validation.Draft7 in '..\..\src\Validation\Drafts\JsonSchema.Validation.Draft7.pas',
+  JsonSchema.Validation.Draft2019_09 in '..\..\src\Validation\Drafts\JsonSchema.Validation.Draft2019_09.pas',
+  JsonSchema.Validation.Draft2020_12 in '..\..\src\Validation\Drafts\JsonSchema.Validation.Draft2020_12.pas',
+  JsonSchema.Validation.DraftCommon in '..\..\src\Validation\Drafts\JsonSchema.Validation.DraftCommon.pas',
+  JsonSchema.Visitors.Base in '..\..\src\Validation\Visitors\JsonSchema.Visitors.Base.pas',
+  JsonSchema.Visitors.Interfaces in '..\..\src\Validation\Visitors\JsonSchema.Visitors.Interfaces.pas',
+  JsonSchema.Visitors.Types in '..\..\src\Validation\Visitors\JsonSchema.Visitors.Types.pas',
+  JsonSchema.Visitor.Applicator.&Array in '..\..\src\Validation\Visitors\Applicator\JsonSchema.Visitor.Applicator.Array.pas',
+  JsonSchema.Visitor.Applicator.Base in '..\..\src\Validation\Visitors\Applicator\JsonSchema.Visitor.Applicator.Base.pas',
+  JsonSchema.Visitor.Applicator.Combiner in '..\..\src\Validation\Visitors\Applicator\JsonSchema.Visitor.Applicator.Combiner.pas',
+  JsonSchema.Visitor.Applicator.Conditional in '..\..\src\Validation\Visitors\Applicator\JsonSchema.Visitor.Applicator.Conditional.pas',
+  JsonSchema.Visitor.Applicator.Evaluated in '..\..\src\Validation\Visitors\Applicator\JsonSchema.Visitor.Applicator.Evaluated.pas',
+  JsonSchema.Visitor.Applicator.&Object in '..\..\src\Validation\Visitors\Applicator\JsonSchema.Visitor.Applicator.Object.pas',
+  JsonSchema.Visitor.Core.Base in '..\..\src\Validation\Visitors\Core\JsonSchema.Visitor.Core.Base.pas',
+  JsonSchema.Visitor.Core.Registry in '..\..\src\Validation\Visitors\Core\JsonSchema.Visitor.Core.Registry.pas',
+  JsonSchema.Visitor.HyperSchema.Stub in '..\..\src\Validation\Visitors\HyperSchema\JsonSchema.Visitor.HyperSchema.Stub.pas',
+  JsonSchema.Visitor.RelativePointer.Stub in '..\..\src\Validation\Visitors\RelativeJsonPointer\JsonSchema.Visitor.RelativePointer.Stub.pas',
+  JsonSchema.Visitor.Validation.&Array in '..\..\src\Validation\Visitors\Validation\JsonSchema.Visitor.Validation.Array.pas',
+  JsonSchema.Visitor.Validation.Base in '..\..\src\Validation\Visitors\Validation\JsonSchema.Visitor.Validation.Base.pas',
+  JsonSchema.Visitor.Validation.Format in '..\..\src\Validation\Visitors\Validation\JsonSchema.Visitor.Validation.Format.pas',
+  JsonSchema.Visitor.Validation.Numeric in '..\..\src\Validation\Visitors\Validation\JsonSchema.Visitor.Validation.Numeric.pas',
+  JsonSchema.Visitor.Validation.&Object in '..\..\src\Validation\Visitors\Validation\JsonSchema.Visitor.Validation.Object.pas',
+  JsonSchema.Visitor.Validation.&String in '..\..\src\Validation\Visitors\Validation\JsonSchema.Visitor.Validation.String.pas',
+  JsonSchema.Walker in '..\..\src\Walker\JsonSchema.Walker.pas',
+  JsonSchema.Walker.Types in '..\..\src\Walker\JsonSchema.Walker.Types.pas',
+  JsonSchema in '..\..\src\JsonSchema.pas';
 
 {$R *.RES}
 
@@ -89,7 +113,7 @@ begin
       lQuiet := TCommandLineParser.HasSwitch('quiet') or TCommandLineParser.HasSwitch('q');
       lFailFast := TCommandLineParser.HasSwitch('fail-fast') or TCommandLineParser.HasSwitch('failfast');
 
-      { Inicialização da Infraestrutura e Runner }
+      { InicializaÃ§Ã£o da Infraestrutura e Runner }
       lServer := TMockHttpServer.Create;
       try
         lServer.Start(PORTA_SERVIDOR_REMOTO);
@@ -117,10 +141,10 @@ begin
             end);
 
           try
-            { Execução dos Testes }
+            { ExecuÃ§Ã£o dos Testes }
             lFilterIndex := 0;
 
-            // Laço condicionado sem uso de Break (Normas de Codificação)
+            // LaÃ§o condicionado sem uso de Break (Normas de CodificaÃ§Ã£o)
             while (not lStop) and (lFilterIndex < Length(lFileFilters)) do
             begin
               if (Length(lFileFilters) > 1) and (not lQuiet) then
@@ -142,7 +166,7 @@ begin
             lRunner.Free;
           end;
 
-          { Finalização e Relatórios }
+          { FinalizaÃ§Ã£o e RelatÃ³rios }
           if not lQuiet and (lTotal > 0) then
             lRenderer.RenderBars(lTotal, lTotal, lPassed, lFailed);
 
@@ -167,7 +191,7 @@ begin
       lRenderer.Free;
     end;
 
-    { Saída do Sistema }
+    { SaÃ­da do Sistema }
     if lFailed > 0 then
       Halt(1);
 

@@ -1,4 +1,4 @@
-unit TestJsonSchema.Runner.Console;
+ï»¿unit TestJsonSchema.Runner.Console;
 
 interface
 
@@ -9,6 +9,8 @@ uses
   System.StrUtils,
   System.SysUtils,
   JsonSchema,
+  JsonSchema.Types,
+  JsonSchema.Interfaces,
   TestJsonSchema.Types;
 
 type
@@ -24,30 +26,24 @@ type
 
     function ResolveTestFiles(const pRootPath, pFileFilter: string): TArray<string>;
 
-    { Fase 1: Contagem para inicialização correta das barras de progresso }
+    { Fase 1: Contagem para inicializaÃ§Ã£o correta das barras de progresso }
     procedure CountTestsInDraft(const pDraftPath, pFileFilter: string);
     procedure CountTestsInFile(const pFilePath: string);
 
-    { Fase 2: Execução dos Testes }
-    procedure RunDraft(const pDraftName: string; const pDraftVersion: TDraftVersion;
-      const pDraftPath, pFileFilter: string);
-    procedure RunFile(const pDraftName: string; const pDraftVersion: TDraftVersion;
-      const pFilePath: string);
-    procedure RunTestSet(const pDraftName: string; const pDraftVersion: TDraftVersion;
-      const pFilePath: string; const pSetObj: TJSONObject);
-    procedure RunTestCase(const pDraftName: string; const pDraftVersion: TDraftVersion;
-      const pFilePath: string; const pSchema: TJSONValue; const pTestObj: TJSONObject);
-    procedure ValidateTest(const pDraftName: string; const pDraftVersion: TDraftVersion;
-      const pFilePath, pTestDescription: string; const pExpectedValid: Boolean;
-      const pSchemaParsed, pDataParsed: TJSONValue);
-    procedure BuildFailureAndNotify(const pDraftName, pFilePath, pTestDescription: string;
-      const pExpectedValid: Boolean; const pResult: IValidationResult);
+    { Fase 2: ExecuÃ§Ã£o dos Testes }
+    procedure RunDraft(const pDraftName: string; const pDraftVersion: TDraftVersion; const pDraftPath, pFileFilter: string);
+    procedure RunFile(const pDraftName: string; const pDraftVersion: TDraftVersion; const pFilePath: string);
+    procedure RunTestSet(const pDraftName: string; const pDraftVersion: TDraftVersion; const pFilePath: string; const pSetObj: TJSONObject);
+    procedure RunTestCase(const pDraftName: string; const pDraftVersion: TDraftVersion; const pFilePath: string; const pSchema: TJSONValue;
+      const pTestObj: TJSONObject);
+    procedure ValidateTest(const pDraftName: string; const pDraftVersion: TDraftVersion; const pFilePath, pTestDescription: string;
+      const pExpectedValid: Boolean; const pSchemaParsed, pDataParsed: TJSONValue);
+    procedure BuildFailureAndNotify(const pDraftName, pFilePath, pTestDescription: string; const pExpectedValid: Boolean;
+      const pResult: IValidationResult);
   public
-    constructor Create(const pFailFast: Boolean; const pOnProgress: TJsonSchemaProgressCallback;
-      const pOnFailure: TJsonSchemaFailureCallback);
+    constructor Create(const pFailFast: Boolean; const pOnProgress: TJsonSchemaProgressCallback; const pOnFailure: TJsonSchemaFailureCallback);
 
-    procedure Execute(const pDraft, pFileFilter: string; const pDraftVersion: TDraftVersion;
-      out pTotal, pPassed, pFailed: Integer);
+    procedure Execute(const pDraft, pFileFilter: string; const pDraftVersion: TDraftVersion; out pTotal, pPassed, pFailed: Integer);
   end;
 
 implementation
@@ -56,8 +52,8 @@ uses
   TestJsonSchema.Utils.Paths,
   TestJsonSchema.Utils.DraftResolver;
 
-constructor TConsoleRunner.Create(const pFailFast: Boolean;
-  const pOnProgress: TJsonSchemaProgressCallback; const pOnFailure: TJsonSchemaFailureCallback);
+constructor TConsoleRunner.Create(const pFailFast: Boolean; const pOnProgress: TJsonSchemaProgressCallback;
+  const pOnFailure: TJsonSchemaFailureCallback);
 begin
   FTotal := 0;
   FPassed := 0;
@@ -90,8 +86,7 @@ begin
     Exit;
   end;
 
-  Result := TDirectory.GetFiles(pRootPath, TPath.GetFileName(pFileFilter),
-    TSearchOption.soAllDirectories);
+  Result := TDirectory.GetFiles(pRootPath, TPath.GetFileName(pFileFilter), TSearchOption.soAllDirectories);
 end;
 
 procedure TConsoleRunner.CountTestsInFile(const pFilePath: string);
@@ -137,8 +132,8 @@ begin
   end;
 end;
 
-procedure TConsoleRunner.RunTestCase(const pDraftName: string; const pDraftVersion: TDraftVersion;
-  const pFilePath: string; const pSchema: TJSONValue; const pTestObj: TJSONObject);
+procedure TConsoleRunner.RunTestCase(const pDraftName: string; const pDraftVersion: TDraftVersion; const pFilePath: string;
+  const pSchema: TJSONValue; const pTestObj: TJSONObject);
 var
   lData: TJSONValue;
   lTestDescription: string;
@@ -147,8 +142,8 @@ var
   lDataParsed: TJSONValue;
 begin
   if pTestObj.TryGetValue<TJSONValue>('data', lData) and
-     pTestObj.TryGetValue<string>('description', lTestDescription) and
-     pTestObj.TryGetValue<Boolean>('valid', lValid) then
+    pTestObj.TryGetValue<string>('description', lTestDescription) and
+    pTestObj.TryGetValue<Boolean>('valid', lValid) then
   begin
     lSchemaParsed := TJSONObject.ParseJSONValue(pSchema.ToJSON);
     if Assigned(lSchemaParsed) then
@@ -158,8 +153,7 @@ begin
         if Assigned(lDataParsed) then
         begin
           try
-            ValidateTest(pDraftName, pDraftVersion, pFilePath, lTestDescription, lValid,
-              lSchemaParsed, lDataParsed);
+            ValidateTest(pDraftName, pDraftVersion, pFilePath, lTestDescription, lValid, lSchemaParsed, lDataParsed);
           finally
             lDataParsed.Free; // 1 recurso por finally, conforme a norma
           end;
@@ -171,8 +165,8 @@ begin
   end;
 end;
 
-procedure TConsoleRunner.RunTestSet(const pDraftName: string; const pDraftVersion: TDraftVersion;
-  const pFilePath: string; const pSetObj: TJSONObject);
+procedure TConsoleRunner.RunTestSet(const pDraftName: string; const pDraftVersion: TDraftVersion; const pFilePath: string;
+  const pSetObj: TJSONObject);
 var
   lSchema: TJSONValue;
   lTestArray: TJSONArray;
@@ -180,7 +174,7 @@ var
   lTestObj: TJSONObject;
 begin
   if pSetObj.TryGetValue<TJSONValue>('schema', lSchema) and
-     pSetObj.TryGetValue<TJSONArray>('tests', lTestArray) then
+    pSetObj.TryGetValue<TJSONArray>('tests', lTestArray) then
   begin
     lTestIndex := 0;
     while (not FStop) and (lTestIndex < lTestArray.Count) do
@@ -192,8 +186,7 @@ begin
   end;
 end;
 
-procedure TConsoleRunner.RunFile(const pDraftName: string; const pDraftVersion: TDraftVersion;
-  const pFilePath: string);
+procedure TConsoleRunner.RunFile(const pDraftName: string; const pDraftVersion: TDraftVersion; const pFilePath: string);
 var
   lJsonRootArray: TJSONArray;
   lSetIndex: Integer;
@@ -217,8 +210,7 @@ begin
   end;
 end;
 
-procedure TConsoleRunner.RunDraft(const pDraftName: string; const pDraftVersion: TDraftVersion;
-  const pDraftPath, pFileFilter: string);
+procedure TConsoleRunner.RunDraft(const pDraftName: string; const pDraftVersion: TDraftVersion; const pDraftPath, pFileFilter: string);
 var
   lFiles: TArray<string>;
   lFileIndex: Integer;
@@ -233,8 +225,8 @@ begin
   end;
 end;
 
-procedure TConsoleRunner.BuildFailureAndNotify(const pDraftName, pFilePath, pTestDescription: string;
-  const pExpectedValid: Boolean; const pResult: IValidationResult);
+procedure TConsoleRunner.BuildFailureAndNotify(const pDraftName, pFilePath, pTestDescription: string; const pExpectedValid: Boolean;
+  const pResult: IValidationResult);
 var
   lFailure: TJsonSchemaFailure;
   lErrorIndex: Integer;
@@ -286,32 +278,44 @@ begin
   end;
 end;
 
-procedure TConsoleRunner.ValidateTest(const pDraftName: string; const pDraftVersion: TDraftVersion;
-  const pFilePath, pTestDescription: string; const pExpectedValid: Boolean;
-  const pSchemaParsed, pDataParsed: TJSONValue);
+procedure TConsoleRunner.ValidateTest(const pDraftName: string; const pDraftVersion: TDraftVersion; const pFilePath, pTestDescription: string;
+  const pExpectedValid: Boolean; const pSchemaParsed, pDataParsed: TJSONValue);
 var
   lResult: IValidationResult;
 begin
-  lResult := TJsonSchema.Validate(pSchemaParsed, pDataParsed, pDraftVersion);
+  try
+    lResult := TJsonSchema.Validate(pSchemaParsed, pDataParsed, pDraftVersion);
 
-  if lResult.IsValid = pExpectedValid then
-  begin
-    Inc(FPassed);
-  end else
-  begin
-    Inc(FFailed);
-    BuildFailureAndNotify(pDraftName, pFilePath, pTestDescription, pExpectedValid, lResult);
+    if lResult.IsValid = pExpectedValid then
+    begin
+      Inc(FPassed);
+    end else
+    begin
+      Inc(FFailed);
+      BuildFailureAndNotify(pDraftName, pFilePath, pTestDescription, pExpectedValid, lResult);
 
-    if FFailFast then
-      FStop := True;
+      if FFailFast then
+        FStop := True;
+    end;
+  except
+    on E: Exception do
+    begin
+      Inc(FFailed);
+      Writeln;
+      Writeln(Format('Draft Name: %s', [pDraftName]));
+      Writeln(Format('Draft Schema: %s', [pDraftVersion.ToSchema]));
+      Writeln(Format('File Path: %s', [pFilePath]));
+      Writeln(Format('Test Description: %s', [pTestDescription]));
+      Writeln(Format('Exception: %s', [E.Message]));
+      Writeln;
+    end;
   end;
 
   if Assigned(FOnProgress) then
     FOnProgress(FPassed + FFailed, FTotal, FPassed, FFailed);
 end;
 
-procedure TConsoleRunner.Execute(const pDraft, pFileFilter: string; const pDraftVersion: TDraftVersion;
-  out pTotal, pPassed, pFailed: Integer);
+procedure TConsoleRunner.Execute(const pDraft, pFileFilter: string; const pDraftVersion: TDraftVersion; out pTotal, pPassed, pFailed: Integer);
 var
   lDrafts: TArray<string>;
   lDraftVersions: TArray<TDraftVersion>;
@@ -351,7 +355,7 @@ begin
     Inc(lIndex);
   end;
 
-  // Fase 2: Execução
+  // Fase 2: ExecuÃ§Ã£o
   lIndex := 0;
   while (not FStop) and (lIndex < Length(lDrafts)) do
   begin
