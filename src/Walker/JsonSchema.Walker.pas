@@ -51,8 +51,7 @@ type
   /// <summary>Factory class for creating validation walkers with automatic draft detection.</summary>
   TValidationWalker = class
   public
-    class function New(const pSchema: TJSONValue; const pData: TJSONValue;
-      const pCustomHint: TJSONValue = nil): IWalker; static;
+    class function New(const pSchema: TJSONValue; const pData: TJSONValue; const pCustomHint: TJSONValue = nil): IWalker; static;
   end;
 
 implementation
@@ -84,31 +83,31 @@ begin
   try
     MapMethodsForObject((FVisitor.Core as IInterface) as TObject, FVisitorMethod);
   except
-    // Ignore visitors that are not object-backed interfaces.
+    raise EJsonSchemaError.Create('Visitor core component must be an object-backed interface to support method mapping.');
   end;
 
   try
     MapMethodsForObject((FVisitor.Applicator as IInterface) as TObject, FVisitorMethod);
   except
-    // Ignore visitors that are not object-backed interfaces.
+    raise EJsonSchemaError.Create('Visitor applicator component must be an object-backed interface to support method mapping.');
   end;
 
   try
     MapMethodsForObject((FVisitor.Validation as IInterface) as TObject, FVisitorMethod);
   except
-    // Ignore visitors that are not object-backed interfaces.
+    raise EJsonSchemaError.Create('Visitor validation component must be an object-backed interface to support method mapping.');
   end;
 
   try
     MapMethodsForObject((FVisitor.HyperSchema as IInterface) as TObject, FVisitorMethod);
   except
-    // Ignore visitors that are not object-backed interfaces.
+    raise EJsonSchemaError.Create('Visitor hyper schema component must be an object-backed interface to support method mapping.');
   end;
 
   try
     MapMethodsForObject((FVisitor.RelativeJsonPointer as IInterface) as TObject, FVisitorMethod);
   except
-    // Ignore visitors that are not object-backed interfaces.
+    raise EJsonSchemaError.Create('Visitor relative JSON pointer component must be an object-backed interface to support method mapping.');
   end;
 end;
 
@@ -324,7 +323,7 @@ begin
     raise EJsonSchemaError.Create('Validation walker has no visitor instance.');
 
   // Try interface-based resolution first.
-  if Supports(IInterface(FVisitor), IResultProvider, lProvider) then
+  if Supports(FVisitor, IResultProvider, lProvider) then
   begin
     Result := lProvider.GetValidationResult;
     if not Assigned(Result) then
@@ -346,8 +345,7 @@ end;
 
 { TValidationWalker }
 
-class function TValidationWalker.New(const pSchema, pData: TJSONValue;
-  const pCustomHint: TJSONValue): IWalker;
+class function TValidationWalker.New(const pSchema, pData: TJSONValue; const pCustomHint: TJSONValue): IWalker;
 var
   lDraft: TDraftVersion;
   lSchemaDraft: string;

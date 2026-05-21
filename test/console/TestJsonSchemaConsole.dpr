@@ -1,4 +1,4 @@
-program TestJsonSchemaConsole;
+﻿program TestJsonSchemaConsole;
 
 {$APPTYPE CONSOLE}
 
@@ -113,7 +113,7 @@ begin
       lQuiet := TCommandLineParser.HasSwitch('quiet') or TCommandLineParser.HasSwitch('q');
       lFailFast := TCommandLineParser.HasSwitch('fail-fast') or TCommandLineParser.HasSwitch('failfast');
 
-      { Inicializa��o da Infraestrutura e Runner }
+      { Inicialização da Infraestrutura e Runner }
       lServer := TMockHttpServer.Create;
       try
         lServer.Start(PORTA_SERVIDOR_REMOTO);
@@ -141,10 +141,10 @@ begin
             end);
 
           try
-            { Execu��o dos Testes }
+            { Execução dos Testes }
             lFilterIndex := 0;
 
-            // La�o condicionado sem uso de Break (Normas de Codifica��o)
+            // Laço condicionado sem uso de Break (Normas de Codificação)
             while (not lStop) and (lFilterIndex < Length(lFileFilters)) do
             begin
               if (Length(lFileFilters) > 1) and (not lQuiet) then
@@ -166,7 +166,7 @@ begin
             lRunner.Free;
           end;
 
-          { Finaliza��o e Relat�rios }
+          { Finalização e Relatórios }
           if not lQuiet and (lTotal > 0) then
             lRenderer.RenderBars(lTotal, lTotal, lPassed, lFailed);
 
@@ -191,7 +191,7 @@ begin
       lRenderer.Free;
     end;
 
-    { Sa�da do Sistema }
+    { Saída do Sistema }
     if lFailed > 0 then
       Halt(1);
 
