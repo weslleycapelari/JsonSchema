@@ -1,4 +1,4 @@
-﻿unit JsonSchema;
+unit JsonSchema;
 
 interface
 
@@ -29,7 +29,8 @@ type
     ///   Optional JSON object with per‑field custom error hints.
     ///   Structure: { "path/to/field": { "errorType": "custom hint" } }
     /// </param>
-    class function Validate(const pSchema, pData: TJSONValue; const pDraft: TDraftVersion = TDraftVersion.dvUnknown;
+    class function Validate(const pSchema, pData: TJSONValue;
+      const pDraft: TDraftVersion = TDraftVersion.dvUnknown;
       const pCustomHints: TJSONValue = nil): IValidationResult; static;
   end;
 
@@ -48,11 +49,13 @@ uses
 
 { TJsonSchema }
 
-class function TJsonSchema.Validate(const pSchema, pData: TJSONValue; const pDraft: TDraftVersion;
-  const pCustomHints: TJSONValue): IValidationResult;
+class function TJsonSchema.Validate(const pSchema, pData: TJSONValue;
+  const pDraft: TDraftVersion; const pCustomHints: TJSONValue): IValidationResult;
 var
   lWalker: IWalker;
   lBaseURI: string;
+  lEffectiveDraft: TDraftVersion;
+  lSchemaDraft: string;
 begin
   if not Assigned(pSchema) then
     raise EJsonSchemaError.Create('Schema cannot be nil');
@@ -60,8 +63,29 @@ begin
   if not Assigned(pData) then
     raise EJsonSchemaError.Create('Data cannot be nil');
 
+  // Determine draft version
+  if pDraft <> TDraftVersion.dvUnknown then
+    lEffectiveDraft := pDraft
+  else if (pSchema is TJSONObject) and
+          TJSONObject(pSchema).TryGetValue('$schema', lSchemaDraft) then
+    lEffectiveDraft := TDraftVersion.FromSchema(lSchemaDraft)
+  else
+    lEffectiveDraft := TDraftVersion.dvDraft2020_12;
+
   lBaseURI := TUtils.UriGenerateRandom;
-  lWalker := TValidationWalker.New(pSchema, pData, pCustomHints, pDraft);
+
+  case lEffectiveDraft of
+    dvDraft6:
+      lWalker := TValidationWalker.New(pSchema, pData, pCustomHints);
+    dvDraft7:
+      lWalker := TValidationWalker.New(pSchema, pData, pCustomHints);
+    dvDraft2019_09:
+      lWalker := TValidationWalker.New(pSchema, pData, pCustomHints);
+    dvDraft2020_12:
+      lWalker := TValidationWalker.New(pSchema, pData, pCustomHints);
+  else
+    lWalker := TValidationWalker.New(pSchema, pData, pCustomHints);
+  end;
 
   if not Assigned(lWalker) then
     raise EJsonSchemaError.Create('Validation walker could not be created for the selected draft.');
