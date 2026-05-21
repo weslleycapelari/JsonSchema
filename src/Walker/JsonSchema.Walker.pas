@@ -34,7 +34,6 @@ type
     FSilentMode: Boolean;
 
     procedure MapMethodsForObject(const pObject: TObject; const pTargetMap: TDictionary<string, TVisitorProc>);
-    procedure MapVisitorComponent(const pComponent: IInterface; const pComponentName: string);
     procedure InitializeSilentMode;
     function IsValidationKeyword(const pKeyword: string): Boolean;
     function ShouldVisit(const pKeyword: string): Boolean;
@@ -60,8 +59,8 @@ implementation
 
 uses
   System.Rtti,
-  System.TypInfo,
   System.SysUtils,
+  System.TypInfo,
   JsonSchema.Exceptions,
   JsonSchema.Validation.Base,
   JsonSchema.Validation.Draft6,
@@ -82,11 +81,35 @@ begin
   FProcessedKeywords := THashSet<string>.Create;
   FSilentMode := False;
 
-  MapVisitorComponent(FVisitor.Core, 'Core');
-  MapVisitorComponent(FVisitor.Applicator, 'Applicator');
-  MapVisitorComponent(FVisitor.Validation, 'Validation');
-  MapVisitorComponent(FVisitor.HyperSchema, 'HyperSchema');
-  MapVisitorComponent(FVisitor.RelativeJsonPointer , 'RelativeJsonPointer');
+  try
+    MapMethodsForObject((FVisitor.Core as IInterface) as TObject, FVisitorMethod);
+  except
+    raise EJsonSchemaError.Create('Visitor core component must be an object-backed interface to support method mapping.');
+  end;
+
+  try
+    MapMethodsForObject((FVisitor.Applicator as IInterface) as TObject, FVisitorMethod);
+  except
+    raise EJsonSchemaError.Create('Visitor applicator component must be an object-backed interface to support method mapping.');
+  end;
+
+  try
+    MapMethodsForObject((FVisitor.Validation as IInterface) as TObject, FVisitorMethod);
+  except
+    raise EJsonSchemaError.Create('Visitor validation component must be an object-backed interface to support method mapping.');
+  end;
+
+  try
+    MapMethodsForObject((FVisitor.HyperSchema as IInterface) as TObject, FVisitorMethod);
+  except
+    raise EJsonSchemaError.Create('Visitor hyper schema component must be an object-backed interface to support method mapping.');
+  end;
+
+  try
+    MapMethodsForObject((FVisitor.RelativeJsonPointer as IInterface) as TObject, FVisitorMethod);
+  except
+    raise EJsonSchemaError.Create('Visitor relative JSON pointer component must be an object-backed interface to support method mapping.');
+  end;
 end;
 
 destructor TWalker<T>.Destroy;
@@ -97,14 +120,14 @@ begin
   inherited;
 end;
 
-procedure TWalker<T>.MapMethodsForObject(const pObject: TObject; const pTargetMap: TDictionary<string, TVisitorProc>);
+procedure TWalker<T>.MapMethodsForObject(const pObject: TObject;
+  const pTargetMap: TDictionary<string, TVisitorProc>);
 var
   lContext: TRttiContext;
   lType: TRttiType;
   lMethod: TRttiMethod;
   lAttr: TCustomAttribute;
   lMethodPtr: TMethod;
-  lHasKeyword: Boolean;
 begin
   if not Assigned(pObject) then
     Exit;
@@ -143,17 +166,6 @@ begin
   finally
     lContext.Free;
   end;
-end;
-
-procedure TWalker<T>.MapVisitorComponent(const pComponent: IInterface; const pComponentName: string);
-begin
-  if not Assigned(pComponent) then
-    raise EJsonSchemaError.CreateFmt('Visitor component "%s" is not assigned.', [pComponentName]);
-
-  if not (pComponent is TObject) then
-    raise EJsonSchemaError.CreateFmt('Visitor component "%s" must be object-backed to support RTTI dispatch.', [pComponentName]);
-
-  MapMethodsForObject(pComponent as TObject, FVisitorMethod);
 end;
 
 procedure TWalker<T>.InitializeSilentMode;
