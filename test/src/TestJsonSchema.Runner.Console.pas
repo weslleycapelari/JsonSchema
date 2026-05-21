@@ -283,18 +283,32 @@ procedure TConsoleRunner.ValidateTest(const pDraftName: string; const pDraftVers
 var
   lResult: IValidationResult;
 begin
-  lResult := TJsonSchema.Validate(pSchemaParsed, pDataParsed, pDraftVersion);
+  try
+    lResult := TJsonSchema.Validate(pSchemaParsed, pDataParsed, pDraftVersion);
 
-  if lResult.IsValid = pExpectedValid then
-  begin
-    Inc(FPassed);
-  end else
-  begin
-    Inc(FFailed);
-    BuildFailureAndNotify(pDraftName, pFilePath, pTestDescription, pExpectedValid, lResult);
+    if lResult.IsValid = pExpectedValid then
+    begin
+      Inc(FPassed);
+    end else
+    begin
+      Inc(FFailed);
+      BuildFailureAndNotify(pDraftName, pFilePath, pTestDescription, pExpectedValid, lResult);
 
-    if FFailFast then
-      FStop := True;
+      if FFailFast then
+        FStop := True;
+    end;
+  except
+    on E: Exception do
+    begin
+      Inc(FFailed);
+      Writeln;
+      Writeln(Format('Draft Name: %s', [pDraftName]));
+      Writeln(Format('Draft Schema: %s', [pDraftVersion.ToSchema]));
+      Writeln(Format('File Path: %s', [pFilePath]));
+      Writeln(Format('Test Description: %s', [pTestDescription]));
+      Writeln(Format('Exception: %s', [E.Message]));
+      Writeln;
+    end;
   end;
 
   if Assigned(FOnProgress) then
