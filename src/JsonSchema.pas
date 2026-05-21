@@ -4,31 +4,50 @@ interface
 
 uses
   System.JSON,
-  JsonSchema.Types,
-  JsonSchema.Interfaces,
-  JsonSchema.Walker;
+  JsonSchema.Common.Utils,
+  JsonSchema.Translate.enUS,
+  JsonSchema.Translate.ptBR,
+  JsonSchema.Translate.Utils,
+  JsonSchema.Translate.Types,
+  JsonSchema.Translate.Interfaces,
+  JsonSchema.Visitors.Base,
+  JsonSchema.Visitors.Types,
+  JsonSchema.Visitors.Interfaces,
+  JsonSchema.Validation.Base,
+  JsonSchema.Validation.Types,
+  JsonSchema.Validation.Interfaces,
+  JsonSchema.Validation.Draft6,
+  JsonSchema.Validation.Draft7,
+  JsonSchema.Validation.Draft2019_09,
+  JsonSchema.Validation.Draft2020_12,
+  JsonSchema.Walker,
+  JsonSchema.Walker.Types;
 
 type
+  TLanguage = JsonSchema.Translate.Types.TLanguage;
+
+  TValidationResult = JsonSchema.Validation.Types.TValidationResult;
+  TError            = JsonSchema.Validation.Types.TError;
+  IValidationResult = JsonSchema.Validation.Interfaces.IValidationResult;
+  IError            = JsonSchema.Validation.Interfaces.IError;
+
+  TDraftVersion       = JsonSchema.Walker.Types.TDraftVersion;
+  TDraftVersionHelper = JsonSchema.Walker.Types.TDraftVersionHelper;
+
   /// <summary>
-  ///   Main entry point for JSON Schema validation.
-  ///   Automatically detects the draft version from the $schema keyword
-  ///   or falls back to Draft 2020‑12.
+  /// Main entry point for JSON Schema validation.
+  /// Selects the correct draft visitor based on the $schema keyword or explicit parameter.
   /// </summary>
   TJsonSchema = class
   public
     /// <summary>
-    ///   Validates pData against pSchema and returns the validation result.
-    ///   The draft is auto‑detected from the $schema keyword when pDraft is dvUnknown.
+    /// Validates pData against pSchema and returns the validation result.
+    /// The draft is auto-detected from the $schema keyword when pDraft is dvUnknown.
     /// </summary>
     /// <param name="pSchema">The JSON Schema document.</param>
     /// <param name="pData">The JSON value to validate.</param>
-    /// <param name="pDraft">
-    ///   Draft version override; dvUnknown means auto‑detect.
-    /// </param>
-    /// <param name="pCustomHints">
-    ///   Optional JSON object with per‑field custom error hints.
-    ///   Structure: { "path/to/field": { "errorType": "custom hint" } }
-    /// </param>
+    /// <param name="pDraft">Draft version override; dvUnknown means auto-detect.</param>
+    /// <param name="pCustomHints">Optional JSON object with per-field custom error hints.</param>
     class function Validate(const pSchema, pData: TJSONValue;
       const pDraft: TDraftVersion = TDraftVersion.dvUnknown;
       const pCustomHints: TJSONValue = nil): IValidationResult; static;
@@ -37,67 +56,62 @@ type
 implementation
 
 uses
-  System.SysUtils,
-  JsonSchema.Exceptions,
-  JsonSchema.Validation.Result,
-  JsonSchema.Validation.Draft6,
-  JsonSchema.Validation.Draft7,
-  JsonSchema.Validation.Draft2019_09,
-  JsonSchema.Validation.Draft2020_12,
-  JsonSchema.Common.Utils,
-  JsonSchema.Registry.Uri;
+  System.SysUtils;
 
 { TJsonSchema }
 
-class function TJsonSchema.Validate(const pSchema, pData: TJSONValue;
-  const pDraft: TDraftVersion; const pCustomHints: TJSONValue): IValidationResult;
+class function TJsonSchema.Validate(const pSchema, pData: TJSONValue; const pDraft: TDraftVersion;
+  const pCustomHints: TJSONValue): IValidationResult;
 var
+  lDraft: string;
   lWalker: IWalker;
   lBaseURI: string;
-  lEffectiveDraft: TDraftVersion;
-  lSchemaDraft: string;
+  lDraftVersion: TDraftVersion;
+  lVisitorDraft6: TDraft6Visitor;
+  lVisitorDraft7: TDraft7Visitor;
+  lVisitorDraft2019_09: TDraft2019_09Visitor;
+  lVisitorDraft2020_12: TDraft2020_12Visitor;
 begin
-  if not Assigned(pSchema) then
-    raise EJsonSchemaError.Create('Schema cannot be nil');
+  lDraft := pDraft.ToSchema;
+  if pDraft = TDraftVersion.dvUnknown then
+    if not pSchema.TryGetValue('$schema', lDraft) then
+      lDraft := TDraftVersion.dvDraft2020_12.ToSchema;
 
-  if not Assigned(pData) then
-    raise EJsonSchemaError.Create('Data cannot be nil');
-
-  // Determine draft version
-  if pDraft <> TDraftVersion.dvUnknown then
-    lEffectiveDraft := pDraft
-  else if (pSchema is TJSONObject) and
-          TJSONObject(pSchema).TryGetValue('$schema', lSchemaDraft) then
-    lEffectiveDraft := TDraftVersion.FromSchema(lSchemaDraft)
-  else
-    lEffectiveDraft := TDraftVersion.dvDraft2020_12;
-
+  lDraftVersion := TDraftVersion.FromSchema(lDraft);
   lBaseURI := TUtils.UriGenerateRandom;
 
-  case lEffectiveDraft of
+  case lDraftVersion of
     dvDraft6:
-      lWalker := TValidationWalker.New(pSchema, pData, pCustomHints);
+      begin
+        lVisitorDraft6 := TDraft6Visitor.Create(pSchema, pData, lBaseURI, pCustomHints);
+        lWalker := TWalker<TDraft6Visitor>.Create(pSchema, lVisitorDraft6);
+        lWalker.Walk;
+        Result  := lVisitorDraft6.Result;
+      end;
     dvDraft7:
-      lWalker := TValidationWalker.New(pSchema, pData, pCustomHints);
+      begin
+        lVisitorDraft7 := TDraft7Visitor.Create(pSchema, pData, lBaseURI, pCustomHints);
+        lWalker := TWalker<TDraft7Visitor>.Create(pSchema, lVisitorDraft7);
+        lWalker.Walk;
+        Result  := lVisitorDraft7.Result;
+      end;
     dvDraft2019_09:
-      lWalker := TValidationWalker.New(pSchema, pData, pCustomHints);
+      begin
+        lVisitorDraft2019_09 := TDraft2019_09Visitor.Create(pSchema, pData, lBaseURI, pCustomHints);
+        lWalker := TWalker<TDraft2019_09Visitor>.Create(pSchema, lVisitorDraft2019_09);
+        lWalker.Walk;
+        Result  := lVisitorDraft2019_09.Result;
+      end;
     dvDraft2020_12:
-      lWalker := TValidationWalker.New(pSchema, pData, pCustomHints);
+      begin
+        lVisitorDraft2020_12 := TDraft2020_12Visitor.Create(pSchema, pData, lBaseURI, pCustomHints);
+        lWalker := TWalker<TDraft2020_12Visitor>.Create(pSchema, lVisitorDraft2020_12);
+        lWalker.Walk;
+        Result  := lVisitorDraft2020_12.Result;
+      end
   else
-    lWalker := TValidationWalker.New(pSchema, pData, pCustomHints);
+    raise Exception.Create('Invalid or unsupported JSON Schema draft version.');
   end;
-
-  if not Assigned(lWalker) then
-    raise EJsonSchemaError.Create('Validation walker could not be created for the selected draft.');
-
-  lWalker.Walk;
-
-  // The walker must expose the validation result.
-  // This assumes IWalker has a method GetValidationResult: IValidationResult.
-  // In a complete refactoring, that method would be present.
-  Result := lWalker.GetValidationResult;
-  if not Assigned(Result) then
-    raise EJsonSchemaError.Create('Validation finished without producing a validation result.');
 end;
 
 end.
