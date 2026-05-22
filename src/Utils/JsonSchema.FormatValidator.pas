@@ -218,8 +218,10 @@ var
 
     lOffsetSign := pTimezone[1];
     if not TryStrToInt(Copy(pTimezone, 2, 2), lOffsetHour) or
-       not TryStrToInt(Copy(pTimezone, 5, 2), lOffsetMinute) then
+      not TryStrToInt(Copy(pTimezone, 5, 2), lOffsetMinute) then
+    begin
       Exit(False);
+    end;
 
     if (lOffsetHour > 23) or (lOffsetMinute > 59) then
       Exit(False);
@@ -239,9 +241,7 @@ var
   end;
 
 begin
-  lMatch := TRegEx.Match(pValue,
-    '^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?([Zz]|[+\-]\d{2}:\d{2})$',
-    [roCompiled]);
+  lMatch := TRegEx.Match(pValue, '^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?([Zz]|[+\-]\d{2}:\d{2})$', [roCompiled]);
   if not lMatch.Success then
     Exit(False);
 
@@ -251,7 +251,9 @@ begin
           TryStrToInt(lMatch.Groups[4].Value, lHour) and
           TryStrToInt(lMatch.Groups[5].Value, lMinute) and
           TryStrToInt(lMatch.Groups[6].Value, lSecond)) then
+  begin
     Exit(False);
+  end;
 
   if not TryEncodeDate(Word(lYear), Word(lMonth), Word(lDay), lDateTime) then
     Exit(False);
@@ -273,16 +275,16 @@ var
   lDay: Integer;
   lDateTime: TDateTime;
 begin
-  lMatch := TRegEx.Match(pValue,
-    '^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$',
-    [roCompiled]);
+  lMatch := TRegEx.Match(pValue, '^([0-9]{4})-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$', [roCompiled]);
   if not lMatch.Success then
     Exit(False);
 
   if not (TryStrToInt(lMatch.Groups[1].Value, lYear) and
           TryStrToInt(lMatch.Groups[2].Value, lMonth) and
           TryStrToInt(lMatch.Groups[3].Value, lDay)) then
+  begin
     Exit(False);
+  end;
 
   Result := TryEncodeDate(Word(lYear), Word(lMonth), Word(lDay), lDateTime);
 end;
@@ -302,16 +304,18 @@ var
     if SameText(pTimezone, 'Z') then
       Exit((pHour = 23) and (pMinute = 59));
 
-    if (pTimezone.Length < 6) or not TryStrToInt(pTimezone.Substring(1, 2), lOffsetHourVal) or
-       not TryStrToInt(pTimezone.Substring(4, 2), lOffsetMinuteVal) then
+    if (pTimezone.Length < 6) or
+      (not TryStrToInt(pTimezone.Substring(1, 2), lOffsetHourVal)) or
+      (not TryStrToInt(pTimezone.Substring(4, 2), lOffsetMinuteVal)) then
+    begin
       Exit(False);
+    end;
 
     Result := (lOffsetHourVal <= 23) and (lOffsetMinuteVal <= 59);
   end;
 
 begin
-  lMatch := TRegEx.Match(pValue,
-    '^([01][0-9]|2[0-3]):([0-5][0-9]):((?:[0-5][0-9]|60))(?:\.[0-9]+)?([Zz]|[+\-]([01][0-9]|2[0-3]):([0-5][0-9]))$',
+  lMatch := TRegEx.Match(pValue, '^([01][0-9]|2[0-3]):([0-5][0-9]):((?:[0-5][0-9]|60))(?:\.[0-9]+)?([Zz]|[+\-]([01][0-9]|2[0-3]):([0-5][0-9]))$',
     [roCompiled]);
   if not lMatch.Success then
     Exit(False);
@@ -345,8 +349,7 @@ end;
 class function TFormatValidator.IsIDNEmail(const pValue: string): Boolean;
 begin
   // Simplified IDN email: Unicode letters, digits, and some symbols, with local@domain
-  Result := TRegEx.IsMatch(pValue,
-    '^[^\s@]+@(?=.{1,253}$)(?:(?!-)[\p{L}\p{N}-]{1,63}(?<!-))(?:\.(?:(?!-)[\p{L}\p{N}-]{1,63}(?<!-)))*$',
+  Result := TRegEx.IsMatch(pValue, '^[^\s@]+@(?=.{1,253}$)(?:(?!-)[\p{L}\p{N}-]{1,63}(?<!-))(?:\.(?:(?!-)[\p{L}\p{N}-]{1,63}(?<!-)))*$',
     [roCompiled]);
 end;
 
@@ -447,32 +450,24 @@ end;
 
 class function TFormatValidator.IsHostname(const pValue: string): Boolean;
 begin
-  Result := TRegEx.IsMatch(pValue,
-    '^(?=.{1,253}$)(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-))(?:\.(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-)))*$',
-    [roCompiled]);
+  Result := TRegEx.IsMatch(pValue, '^(?=.{1,253}$)(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-))(?:\.(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-)))*$', [roCompiled]);
 end;
 
 class function TFormatValidator.IsUUID(const pValue: string): Boolean;
 begin
-  Result := TRegEx.IsMatch(pValue,
-    '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$',
-    [roCompiled]);
+  Result := TRegEx.IsMatch(pValue, '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$', [roCompiled]);
 end;
 
 class function TFormatValidator.IsDuration(const pValue: string): Boolean;
 begin
   // ISO 8601 duration: PnY nM nDTnH nM nS
-  Result := TRegEx.IsMatch(pValue,
-    '^P(?!$)((\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?|(\d+W))$',
-    [roCompiled]);
+  Result := TRegEx.IsMatch(pValue, '^P(?!$)((\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?|(\d+W))$', [roCompiled]);
 end;
 
 class function TFormatValidator.IsURITemplate(const pValue: string): Boolean;
 begin
   // Simplified URI Template validation (RFC 6570)
-  Result := TRegEx.IsMatch(pValue,
-    '^[A-Za-z][A-Za-z0-9+.-]*:[^\s]*$',
-    [roCompiled]);
+  Result := TRegEx.IsMatch(pValue, '^[A-Za-z][A-Za-z0-9+.-]*:[^\s]*$', [roCompiled]);
 end;
 
 end.

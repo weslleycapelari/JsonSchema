@@ -57,6 +57,8 @@ type
   /// </summary>
   EInvalidSchema = class(EJsonSchemaError);
 
+  EJsonSchemaDispatchError = class(EJsonSchemaError);
+
 implementation
 
 end.

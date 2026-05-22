@@ -27,21 +27,18 @@ type
     ///   Merges multiple arrays into a single array containing unique values,
     ///   using a custom equality comparer.
     /// </summary>
-    class function MergeUniqueWithComparer<T>(const pComparer: IEqualityComparer<T>;
-      const pArrays: array of TArray<T>): TArray<T>;
+    class function MergeUniqueWithComparer<T>(const pComparer: IEqualityComparer<T>; const pArrays: array of TArray<T>): TArray<T>;
 
     /// <summary>
     ///   Adds a value to a dynamic array if it does not already exist.
     ///   Returns True if the value was added, False if it was already present.
     /// </summary>
-    class function AddUnique<T>(var pArray: TArray<T>; const pValue: T;
-      const pComparer: IEqualityComparer<T> = nil): Boolean;
+    class function AddUnique<T>(var pArray: TArray<T>; const pValue: T; const pComparer: IEqualityComparer<T> = nil): Boolean;
 
     /// <summary>
     ///   Converts a dynamic array to a HashSet for more efficient operations.
     /// </summary>
-    class function ToHashSet<T>(const pArray: TArray<T>;
-      const pComparer: IEqualityComparer<T> = nil): THashSet<T>;
+    class function ToHashSet<T>(const pArray: TArray<T>; const pComparer: IEqualityComparer<T> = nil): THashSet<T>;
   end;
 
 implementation
@@ -53,9 +50,7 @@ begin
   Result := MergeUniqueWithComparer<T>(TEqualityComparer<T>.Default, pArrays);
 end;
 
-class function TCollectionUtils.MergeUniqueWithComparer<T>(
-  const pComparer: IEqualityComparer<T>;
-  const pArrays: array of TArray<T>): TArray<T>;
+class function TCollectionUtils.MergeUniqueWithComparer<T>( const pComparer: IEqualityComparer<T>; const pArrays: array of TArray<T>): TArray<T>;
 var
   lHashSet: THashSet<T>;
   lArray: TArray<T>;
@@ -81,8 +76,7 @@ begin
   end;
 end;
 
-class function TCollectionUtils.AddUnique<T>(var pArray: TArray<T>;
-  const pValue: T; const pComparer: IEqualityComparer<T>): Boolean;
+class function TCollectionUtils.AddUnique<T>(var pArray: TArray<T>; const pValue: T; const pComparer: IEqualityComparer<T>): Boolean;
 var
   lLocalComparer: IEqualityComparer<T>;
   lValue: T;
@@ -101,8 +95,7 @@ begin
   Result := True;
 end;
 
-class function TCollectionUtils.ToHashSet<T>(const pArray: TArray<T>;
-  const pComparer: IEqualityComparer<T>): THashSet<T>;
+class function TCollectionUtils.ToHashSet<T>(const pArray: TArray<T>; const pComparer: IEqualityComparer<T>): THashSet<T>;
 var
   lValue: T;
 begin

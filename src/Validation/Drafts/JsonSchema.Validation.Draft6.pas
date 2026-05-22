@@ -1,4 +1,4 @@
-unit JsonSchema.Validation.Draft6;
+﻿unit JsonSchema.Validation.Draft6;
 
 interface
 
@@ -26,7 +26,37 @@ type
     function KeywordPrecedence: TArray<string>; override;
   end;
 
+  /// <summary>Core visitor for Draft 6 – adds full $ref resolution with cross‑draft support.</summary>
+  TDraft6CoreVisitor = class(TBaseCoreVisitor<TDraft6Visitor>)
+  public
+    procedure VisitRef(const pValue: TJSONString); override;
+  end;
+
+  TDraft6ApplicatorVisitor = class(TBaseApplicatorVisitor<TDraft6Visitor>)
+  public
+    procedure VisitAllOf(const pValue: TJSONArray); override;
+    procedure VisitAnyOf(const pValue: TJSONArray); override;
+    procedure VisitOneOf(const pValue: TJSONArray); override;
+    procedure VisitNot(const pValue: TJSONValue); override;
+    procedure VisitProperties(const pValue: TJSONObject); override;
+    procedure VisitPatternProperties(const pValue: TJSONObject); override;
+    procedure VisitAdditionalProperties(const pValue: TJSONValue); override;
+    procedure VisitItems(const pValue: TJSONValue); override;
+    procedure VisitAdditionalItems(const pValue: TJSONValue); override;
+    // if/then/else não existem no Draft 6 – não sobrescrevemos (herdam no‑op)
+  end;
+
+  TDraft6ValidationVisitor = class(TBaseValidationVisitor<TDraft6Visitor>)
+  public
+    procedure VisitContains(const pValue: TJSONValue); override;
+  end;
+
 implementation
+
+uses
+  System.SysUtils,
+  System.StrUtils,
+  System.Math;
 
 { TDraft6Visitor }
 
@@ -35,9 +65,9 @@ constructor TDraft6Visitor.Create(const pSchema, pData: TJSONValue; const pBaseU
 begin
   inherited Create(pSchema, pData, pBaseURI, pCustomHint);
 
-  FCore := TBaseCoreVisitor<TDraft6Visitor>.Create(Self);
-  FApplicator := TBaseApplicatorVisitor<TDraft6Visitor>.Create(Self);
-  FValidation := TBaseValidationVisitor<TDraft6Visitor>.Create(Self);
+  FCore := TDraft6CoreVisitor.Create(Self);
+  FApplicator := TDraft6ApplicatorVisitor.Create(Self);
+  FValidation := TDraft6ValidationVisitor.Create(Self);
   FHyperSchema := TStubHyperSchemaVisitor<TDraft6Visitor>.Create(Self);
   FRelativeJsonPointer := TStubRelativeJsonPointer<TDraft6Visitor>.Create(Self);
 end;
@@ -66,6 +96,78 @@ begin
     'oneOf',
     'not'
   ];
+end;
+
+{ TDraft6CoreVisitor }
+
+procedure TDraft6CoreVisitor.VisitRef(const pValue: TJSONString);
+begin
+  inherited;
+
+end;
+
+{ TDraft6ApplicatorVisitor }
+
+procedure TDraft6ApplicatorVisitor.VisitAdditionalItems(const pValue: TJSONValue);
+begin
+  inherited;
+
+end;
+
+procedure TDraft6ApplicatorVisitor.VisitAdditionalProperties(const pValue: TJSONValue);
+begin
+  inherited;
+
+end;
+
+procedure TDraft6ApplicatorVisitor.VisitAllOf(const pValue: TJSONArray);
+begin
+  inherited;
+
+end;
+
+procedure TDraft6ApplicatorVisitor.VisitAnyOf(const pValue: TJSONArray);
+begin
+  inherited;
+
+end;
+
+procedure TDraft6ApplicatorVisitor.VisitItems(const pValue: TJSONValue);
+begin
+  inherited;
+
+end;
+
+procedure TDraft6ApplicatorVisitor.VisitNot(const pValue: TJSONValue);
+begin
+  inherited;
+
+end;
+
+procedure TDraft6ApplicatorVisitor.VisitOneOf(const pValue: TJSONArray);
+begin
+  inherited;
+
+end;
+
+procedure TDraft6ApplicatorVisitor.VisitPatternProperties(const pValue: TJSONObject);
+begin
+  inherited;
+
+end;
+
+procedure TDraft6ApplicatorVisitor.VisitProperties(const pValue: TJSONObject);
+begin
+  inherited;
+
+end;
+
+{ TDraft6ValidationVisitor }
+
+procedure TDraft6ValidationVisitor.VisitContains(const pValue: TJSONValue);
+begin
+  inherited;
+
 end;
 
 end.

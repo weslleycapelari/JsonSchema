@@ -1,4 +1,4 @@
-unit JsonSchema.JsonPathUtils;
+﻿unit JsonSchema.JsonPathUtils;
 
 interface
 
@@ -52,10 +52,8 @@ type
     ///   Builds a set of evaluated property paths from a validation result
     ///   for use in unevaluatedProperties/unevaluatedItems.
     /// </summary>
-    class function BuildEvaluatedSet(const pBasePath: string;
-      const pEvaluatedProperties: TEnumerable<string>;
-      const pCoveredProperties: TArray<string>;
-      const pCoveredItems: TArray<Integer>): THashSet<string>; static;
+    class function BuildEvaluatedSet(const pBasePath: string; const pEvaluatedProperties: TEnumerable<string>;
+      const pCoveredProperties: TArray<string>; const pCoveredItems: TArray<Integer>): THashSet<string>; static;
 
     /// <summary>
     ///   Joins a base path with a suffix, ensuring exactly one '/' separator.
@@ -153,11 +151,13 @@ begin
       if lSegment[lIndex] = '~' then
       begin
         if (lIndex = lSegment.Length) or
-           ((lSegment[lIndex + 1] <> '0') and (lSegment[lIndex + 1] <> '1')) then
+          ((lSegment[lIndex + 1] <> '0') and (lSegment[lIndex + 1] <> '1')) then
+        begin
           Exit(False);
+        end;
+
         Inc(lIndex, 2);
-      end
-      else
+      end else
         Inc(lIndex);
     end;
   end;
@@ -197,23 +197,21 @@ begin
     else if lCurrent is TJSONArray then
     begin
       if TryStrToInt(lDecoded, lIndex) and
-         (lIndex >= 0) and
-         (lIndex < TJSONArray(lCurrent).Count) then
-        lCurrent := TJSONArray(lCurrent).Items[lIndex]
-      else
+        (lIndex >= 0) and
+        (lIndex < TJSONArray(lCurrent).Count) then
+      begin
+        lCurrent := TJSONArray(lCurrent).Items[lIndex];
+      end else
         Exit(nil);
-    end
-    else
+    end else
       Exit(nil);
   end;
 
   Result := lCurrent;
 end;
 
-class function TJsonPathUtils.BuildEvaluatedSet(const pBasePath: string;
-  const pEvaluatedProperties: TEnumerable<string>;
-  const pCoveredProperties: TArray<string>;
-  const pCoveredItems: TArray<Integer>): THashSet<string>;
+class function TJsonPathUtils.BuildEvaluatedSet(const pBasePath: string; const pEvaluatedProperties: TEnumerable<string>;
+  const pCoveredProperties: TArray<string>; const pCoveredItems: TArray<Integer>): THashSet<string>;
 var
   lCanonicalBase: string;
   lItem: string;

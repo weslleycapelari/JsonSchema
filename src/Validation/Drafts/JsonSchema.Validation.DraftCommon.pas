@@ -1,4 +1,4 @@
-unit JsonSchema.Validation.DraftCommon;
+﻿unit JsonSchema.Validation.DraftCommon;
 
 interface
 
@@ -44,8 +44,7 @@ type
   ///   specific vocabulary configuration.
   /// </summary>
   /// <typeparam name="T">The concrete draft visitor type (CRTP).</typeparam>
-  TDraft2019_2020Visitor<T: IValidationVisitor<T>> = class abstract(TValidationVisitor<T>,
-    IDraft2019_09ValidationVocabularyMode)
+  TDraft2019_2020Visitor<T: IValidationVisitor<T>> = class abstract(TValidationVisitor<T>, IDraft2019_09ValidationVocabularyMode)
   private
     FValidationVocabularySilent: Boolean;
 
@@ -92,8 +91,7 @@ type
     /// </summary>
     procedure CommonVisitUnevaluatedItems(const pValue: TJSONValue);
   public
-    constructor Create(const pSchema, pData: TJSONValue; const pBaseURI: string;
-      const pCustomHint: TJSONValue = nil);
+    constructor Create(const pSchema, pData: TJSONValue; const pBaseURI: string; const pCustomHint: TJSONValue = nil);
 
     // IDraft2019_09ValidationVocabularyMode
     function IsValidationVocabularySilent: Boolean;
@@ -108,17 +106,19 @@ uses
 
 { TDraft2019_2020Visitor<T> }
 
-constructor TDraft2019_2020Visitor<T>.Create(const pSchema, pData: TJSONValue;
-  const pBaseURI: string; const pCustomHint: TJSONValue);
+constructor TDraft2019_2020Visitor<T>.Create(const pSchema, pData: TJSONValue; const pBaseURI: string; const pCustomHint: TJSONValue);
 var
   lSchemaURI: string;
 begin
   inherited Create(pSchema, pData, pBaseURI, pCustomHint);
+
   FValidationVocabularySilent := False;
   if (pSchema is TJSONObject) and
-     TJSONObject(pSchema).TryGetValue<string>('$schema', lSchemaURI) and
-     ContainsText(lSchemaURI, META_SCHEMA_NO_VALIDATION_URI) then
+    TJSONObject(pSchema).TryGetValue<string>('$schema', lSchemaURI) and
+    ContainsText(lSchemaURI, META_SCHEMA_NO_VALIDATION_URI) then
+  begin
     FValidationVocabularySilent := True;
+  end;
 end;
 
 class function TDraft2019_2020Visitor<T>.GetDefaultMinContains: Integer;

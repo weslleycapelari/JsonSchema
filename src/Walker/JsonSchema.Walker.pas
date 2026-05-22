@@ -82,11 +82,11 @@ begin
   FProcessedKeywords := THashSet<string>.Create;
   FSilentMode := False;
 
-  MapVisitorComponent(FVisitor.Core, 'Core');
-  MapVisitorComponent(FVisitor.Applicator, 'Applicator');
-  MapVisitorComponent(FVisitor.Validation, 'Validation');
-  MapVisitorComponent(FVisitor.HyperSchema, 'HyperSchema');
-  MapVisitorComponent(FVisitor.RelativeJsonPointer , 'RelativeJsonPointer');
+  MapVisitorComponent(FVisitor.Core as IInterface, 'Core');
+  MapVisitorComponent(FVisitor.Applicator as IInterface, 'Applicator');
+  MapVisitorComponent(FVisitor.Validation as IInterface, 'Validation');
+  MapVisitorComponent(FVisitor.HyperSchema as IInterface, 'HyperSchema');
+  MapVisitorComponent(FVisitor.RelativeJsonPointer as IInterface, 'RelativeJsonPointer');
 end;
 
 destructor TWalker<T>.Destroy;
@@ -105,6 +105,8 @@ var
   lAttr: TCustomAttribute;
   lMethodPtr: TMethod;
   lHasKeyword: Boolean;
+  lKeywordName: string;
+  lParams: TArray<TRttiParameter>;
 begin
   if not Assigned(pObject) then
     Exit;
@@ -117,15 +119,32 @@ begin
 
     for lMethod in lType.GetMethods do
     begin
-      if Length(lMethod.GetParameters) <> 1 then
+      lHasKeyword := False;
+
+      // Primeiro detecta se método possui VisitorKeywordAttribute
+      for lAttr in lMethod.GetAttributes do
+      begin
+        if lAttr is VisitorKeywordAttribute then
+        begin
+          lHasKeyword := True;
+          Break;
+        end;
+      end;
+
+      // Se não possui atributo, ignora
+      if not lHasKeyword then
         Continue;
 
-      // Garante assinatura compatível: método deve receber uma classe derivada de TJSONValue.
-      if (lMethod.GetParameters[0].ParamType = nil) or
-        (lMethod.GetParameters[0].ParamType.TypeKind <> tkClass) or
-        (not lMethod.GetParameters[0].ParamType.AsInstance.MetaclassType.InheritsFrom(TJSONValue)) then
+      lParams := lMethod.GetParameters;
+
+      if Length(lParams) <> 1 then
+        raise EJsonSchemaError.CreateFmt('Visitor method "%s.%s" must receive exactly one parameter.', [pObject.ClassName, lMethod.Name]);
+
+      if (lParams[0].ParamType = nil) or
+        (lParams[0].ParamType.TypeKind <> tkClass) or
+        (not lParams[0].ParamType.AsInstance.MetaclassType.InheritsFrom(TJSONValue)) then
       begin
-        Continue;
+        raise EJsonSchemaError.CreateFmt('Visitor method "%s.%s" must receive a TJSONValue descendant.', [pObject.ClassName, lMethod.Name]);
       end;
 
       for lAttr in lMethod.GetAttributes do
@@ -133,11 +152,16 @@ begin
         if not (lAttr is VisitorKeywordAttribute) then
           Continue;
 
+        lKeywordName := VisitorKeywordAttribute(lAttr).Name;
+
+        if pTargetMap.ContainsKey(lKeywordName) then
+          raise EJsonSchemaError.CreateFmt('Duplicate visitor mapping for keyword "%s".', [lKeywordName]);
+
         lMethodPtr.Code := lMethod.CodeAddress;
         lMethodPtr.Data := pObject;
-        pTargetMap.AddOrSetValue(VisitorKeywordAttribute(lAttr).Name, TVisitorProc(lMethodPtr));
-        FVisitorMethodParamType.AddOrSetValue(VisitorKeywordAttribute(lAttr).Name,
-          TJSONValueClass(lMethod.GetParameters[0].ParamType.AsInstance.MetaclassType));
+
+        pTargetMap.Add(lKeywordName, TVisitorProc(lMethodPtr));
+        FVisitorMethodParamType.Add(lKeywordName, TJSONValueClass(lParams[0].ParamType.AsInstance.MetaclassType));
       end;
     end;
   finally
@@ -146,14 +170,23 @@ begin
 end;
 
 procedure TWalker<T>.MapVisitorComponent(const pComponent: IInterface; const pComponentName: string);
+var
+  lObject: TObject;
 begin
   if not Assigned(pComponent) then
     raise EJsonSchemaError.CreateFmt('Visitor component "%s" is not assigned.', [pComponentName]);
 
-  if not (pComponent is TObject) then
-    raise EJsonSchemaError.CreateFmt('Visitor component "%s" must be object-backed to support RTTI dispatch.', [pComponentName]);
+  try
+    lObject := TObject(pComponent);
+  except
+    on E: Exception do
+      raise EJsonSchemaError.CreateFmt('Visitor component "%s" must be object-backed to support RTTI dispatch. %s', [pComponentName, E.Message]);
+  end;
 
-  MapMethodsForObject(pComponent as TObject, FVisitorMethod);
+  if not Assigned(lObject) then
+    raise EJsonSchemaError.CreateFmt('Visitor component "%s" resolved to nil object instance.', [pComponentName]);
+
+  MapMethodsForObject(lObject, FVisitorMethod);
 end;
 
 procedure TWalker<T>.InitializeSilentMode;
@@ -231,13 +264,13 @@ var
   lExpectedType: TJSONValueClass;
 begin
   if not Assigned(pValue) then
-    raise EJsonSchemaError.CreateFmt('Keyword "%s" has nil JSON value during dispatch.', [pName]);
+    raise EJsonSchemaDispatchError.CreateFmt('Keyword "%s" has nil JSON value during dispatch.', [pName]);
 
   if FVisitorMethodParamType.TryGetValue(pName, lExpectedType) and
     Assigned(lExpectedType) and
     (not pValue.InheritsFrom(lExpectedType)) then
   begin
-    raise EJsonSchemaError.CreateFmt('Invalid JSON type for keyword "%s": expected %s, got %s.',
+    raise EJsonSchemaDispatchError.CreateFmt('Invalid JSON type for keyword "%s": expected %s, got %s.',
       [pName, lExpectedType.ClassName, pValue.ClassName]);
   end;
 
@@ -252,8 +285,11 @@ var
   lSchemaObj: TJSONObject;
   lSchemaDraft: string;
 begin
-  if not Assigned(FSchema) or not Assigned(FVisitor) then
-    Exit;
+  if not Assigned(FSchema) then
+    raise EJsonSchemaError.Create('Walker schema is not assigned.');
+
+  if not Assigned(FVisitor) then
+    raise EJsonSchemaError.Create('Walker visitor is not assigned.');
 
   // Boolean schema
   if FSchema is TJSONBool then
@@ -321,15 +357,6 @@ begin
     Exit;
   end;
 
-  // Fallback for object-backed generic visitors.
-  if Supports(TObject(PPointer(@FVisitor)^), IResultProvider, lProvider) then
-  begin
-    Result := lProvider.GetValidationResult;
-    if not Assigned(Result) then
-      raise EJsonSchemaError.Create('Validation visitor returned a nil validation result.');
-    Exit;
-  end;
-
   raise EJsonSchemaError.Create('Validation visitor does not implement IResultProvider.');
 end;
 
@@ -341,6 +368,12 @@ var
   lSchemaDraft: string;
   lBaseURI: string;
 begin
+  if not Assigned(pSchema) then
+    raise EJsonSchemaError.Create('Schema cannot be nil.');
+
+  if not Assigned(pData) then
+    raise EJsonSchemaError.Create('Validation data cannot be nil.');
+
   lBaseURI := TUtils.UriGenerateRandom;
 
   if pDraft <> TDraftVersion.dvUnknown then
