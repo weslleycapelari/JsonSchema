@@ -1,4 +1,4 @@
-unit JsonSchema.ReflectionCache;
+﻿unit JsonSchema.ReflectionCache;
 
 interface
 
@@ -11,36 +11,83 @@ uses
 
 type
   /// <summary>
-  ///   Thread-safe cache that stores method dispatch maps for visitor classes.
-  ///   For each visitor class, it scans methods decorated with [VisitorKeyword]
-  ///   and builds a dictionary mapping keyword names to method pointers.
-  ///   This eliminates repetitive RTTI scanning each time a walker is created.
+  ///   Cache singleton thread-safe que armazena mapas de despacho de métodos para
+  ///   classes visitor. Para cada classe, escaneia via RTTI os métodos decorados
+  ///   com <c>[VisitorKeyword]</c> e constrói um dicionário mapeando nomes de
+  ///   keyword para ponteiros de método.
   /// </summary>
+  /// <remarks>
+  ///   O cache elimina o escaneamento repetitivo de RTTI toda vez que um walker
+  ///   é criado: o mapa é construído uma única vez por classe e compartilhado
+  ///   entre todas as instâncias.
+  ///
+  ///   Thread safety:
+  ///   - O acesso à instância singleton é protegido por <c>TMonitor</c> com
+  ///     double-checked locking.
+  ///   - O acesso ao dicionário de cache interno é protegido por <c>TCriticalSection</c>.
+  ///   - Os mapas retornados por <c>GetMethodMap</c> são compartilhados e devem
+  ///     ser tratados como somente leitura pelo chamador.
+  ///
+  ///   Ciclo de vida: o singleton é criado na primeira chamada a <c>GetMethodMap</c>
+  ///   e destruído automaticamente na seção <c>finalization</c> da unit.
+  /// </remarks>
   TReflectionCache = class
-  private
-    class var FInstance: TReflectionCache;
-    class var FLock: TObject;
-    class function GetInstance: TReflectionCache; static;
-
-  private
+  strict private
+    /// <summary>
+    ///   Mapa principal: classe visitor → dicionário (keyword → proc).
+    ///   Cada dicionário interno é de propriedade deste cache e liberado no destrutor.
+    /// </summary>
     FCache: TDictionary<TClass, TDictionary<string, TVisitorProc>>;
+
+    /// <summary>Protege o acesso concorrente a <c>FCache</c>.</summary>
     FLockCache: TCriticalSection;
 
+    /// <summary>
+    ///   Retorna o mapa de despacho para <paramref name="pClass"/>, criando-o
+    ///   se ainda não existir. Operação thread-safe via <c>FLockCache</c>.
+    /// </summary>
     function GetOrCreateMapForClass(const pClass: TClass): TDictionary<string, TVisitorProc>;
+
+    /// <summary>
+    ///   Escaneia via RTTI todos os métodos de <paramref name="pClass"/> e
+    ///   registra em <paramref name="pMap"/> aqueles decorados com
+    ///   <c>[VisitorKeyword]</c> que possuam exatamente um parâmetro.
+    ///   O RTTI já inclui métodos herdados, portanto a hierarquia completa
+    ///   é coberta em uma única chamada.
+    /// </summary>
     procedure ScanMethodsForClass(const pClass: TClass; const pMap: TDictionary<string, TVisitorProc>);
 
+    /// <summary>Instância única (singleton). Acesso via <c>GetInstance</c>.</summary>
+    class var FInstance: TReflectionCache;
+
+    /// <summary>
+    ///   Retorna (criando se necessário) a instância singleton com double-checked
+    ///   locking para garantir thread-safety na criação.
+    /// </summary>
+    class function GetInstance: TReflectionCache; static;
+  private
+    /// <summary>
+    ///   Mutex para o double-checked locking de <c>GetInstance</c>.
+    ///   Criado em <c>initialization</c> e destruído em <c>finalization</c>.
+    /// </summary>
+    class var FLock: TObject;
   public
     constructor Create;
     destructor Destroy; override;
 
     /// <summary>
-    ///   Returns the method dispatch map for the given visitor instance.
-    ///   The map is shared among all instances of the same class.
+    ///   Retorna o mapa de despacho de métodos para a classe do visitor informado.
+    ///   O mapa é compartilhado entre todas as instâncias da mesma classe e não
+    ///   deve ser modificado pelo chamador.
     /// </summary>
+    /// <param name="pVisitor">Instância cujo <c>ClassType</c> será consultado.</param>
     class function GetMethodMap(const pVisitor: TObject): TDictionary<string, TVisitorProc>;
 
     /// <summary>
-    ///   Clears the entire cache (useful for testing or memory cleanup).
+    ///   Destrói o singleton e libera todos os mapas em cache.
+    ///   Útil em testes de unidade ou para forçar a liberação antecipada de memória.
+    ///   Thread-safe: usa <c>TMonitor</c> para garantir que apenas uma thread
+    ///   destrua a instância.
     /// </summary>
     class procedure Clear;
   end;
@@ -65,6 +112,7 @@ var
 begin
   for lPair in FCache do
     lPair.Value.Free;
+
   FCache.Free;
   FLockCache.Free;
   inherited;
@@ -72,6 +120,7 @@ end;
 
 class function TReflectionCache.GetInstance: TReflectionCache;
 begin
+  // Double-checked locking: evita o custo de TMonitor.Enter na maioria das chamadas
   if FInstance = nil then
   begin
     TMonitor.Enter(FLock);
@@ -82,6 +131,7 @@ begin
       TMonitor.Exit(FLock);
     end;
   end;
+
   Result := FInstance;
 end;
 
@@ -105,8 +155,7 @@ begin
   end;
 end;
 
-procedure TReflectionCache.ScanMethodsForClass(const pClass: TClass;
-  const pMap: TDictionary<string, TVisitorProc>);
+procedure TReflectionCache.ScanMethodsForClass(const pClass: TClass; const pMap: TDictionary<string, TVisitorProc>);
 var
   lContext: TRttiContext;
   lType: TRttiType;
@@ -117,41 +166,45 @@ begin
   lContext := TRttiContext.Create;
   try
     lType := lContext.GetType(pClass);
-    if lType = nil then
+
+    if not Assigned(lType) then
       Exit;
 
     for lMethod in lType.GetMethods do
     begin
       for lAttr in lMethod.GetAttributes do
       begin
+        // Apenas métodos com exatamente um parâmetro são registrados como handlers
         if (lAttr is VisitorKeywordAttribute) and (Length(lMethod.GetParameters) = 1) then
         begin
           lMethodPtr.Code := lMethod.CodeAddress;
-          lMethodPtr.Data := nil; // Data will be set when invoking (visitor instance)
-          pMap.AddOrSetValue(VisitorKeywordAttribute(lAttr).Name, TVisitorProc(lMethodPtr));
+          // Data é nil aqui; será preenchido com a instância visitor no momento da invocação
+          lMethodPtr.Data := nil;
+          pMap.AddOrSetValue(
+            VisitorKeywordAttribute(lAttr).Name,
+            TVisitorProc(lMethodPtr));
         end;
       end;
     end;
   finally
     lContext.Free;
   end;
-
-  // Also scan ancestor classes (already covered by RTTI, but ensure we don't miss if we stop early)
-  // RTTI already includes inherited methods, so no need to recurse.
 end;
 
 class procedure TReflectionCache.Clear;
 var
-  lInstance: TReflectionCache;
+  lOldInstance: TReflectionCache;
 begin
   TMonitor.Enter(FLock);
   try
-    lInstance := FInstance;
+    lOldInstance := FInstance;
     FInstance := nil;
   finally
     TMonitor.Exit(FLock);
   end;
-  lInstance.Free;
+
+  // Libera fora do lock para não bloquear outras threads durante a destruição
+  lOldInstance.Free;
 end;
 
 initialization
