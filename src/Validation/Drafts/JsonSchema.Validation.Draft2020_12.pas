@@ -18,11 +18,10 @@ uses
   JsonSchema.Visitor.Applicator.&Array,
   JsonSchema.Visitor.Applicator.Evaluated,
   JsonSchema.Visitor.Validation.Base,
-  JsonSchema.Visitor.Validation.Numeric,
   JsonSchema.Visitor.Validation.&String,
+  JsonSchema.Visitor.Validation.Numeric,
   JsonSchema.Visitor.Validation.&Array,
   JsonSchema.Visitor.Validation.&Object,
-  JsonSchema.Visitor.Validation.Format,
   JsonSchema.Visitor.RelativePointer.Stub,
   JsonSchema.Visitor.HyperSchema.Stub,
   JsonSchema.Validation.Base,
@@ -107,10 +106,10 @@ type
     function IsFormatAssertionEnabled: Boolean;
   public
     [VisitorKeyword('format')]
-    procedure VisitFormat(const pValue: TJSONString); override;
+    procedure VisitFormat(const pValue: TJSONString);
 
     [VisitorKeyword('contains')]
-    procedure VisitContains(const pValue: TJSONValue); override;
+    procedure VisitContains(const pValue: TJSONValue);
 
     [VisitorKeyword('maxContains')]
     procedure VisitMaxContains(const pValue: TJSONNumber);
@@ -512,7 +511,7 @@ begin
   if not IsFormatAssertionEnabled then
     Exit;
 
-  inherited VisitFormat(pValue);
+  //inherited VisitFormat(pValue);
 end;
 
 procedure TDraft2020_12ValidationVisitor.VisitContains(const pValue: TJSONValue);
@@ -690,7 +689,14 @@ begin
 
   FCore := TDraft2020_12CoreVisitor.Create(Self);
   FApplicator := TDraft2020_12ApplicatorVisitor.Create(Self);
-  FValidation := TDraft2020_12ValidationVisitor.Create(Self);
+  
+  SetLength(FValidationComponents, 5);
+  FValidationComponents[0] := TDraft2020_12ValidationVisitor.Create(Self);
+  FValidationComponents[1] := TStringValidationVisitor<TDraft2020_12Visitor>.Create(Self);
+  FValidationComponents[2] := TNumericValidationVisitor<TDraft2020_12Visitor>.Create(Self);
+  FValidationComponents[3] := TArrayValidationVisitor<TDraft2020_12Visitor>.Create(Self);
+  FValidationComponents[4] := TObjectValidationVisitor<TDraft2020_12Visitor>.Create(Self);
+
   FHyperSchema := TStubHyperSchemaVisitor<TDraft2020_12Visitor>.Create(Self);
   FRelativeJsonPointer := TStubRelativeJsonPointer<TDraft2020_12Visitor>.Create(Self);
 end;

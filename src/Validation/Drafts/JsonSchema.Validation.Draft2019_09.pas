@@ -17,8 +17,8 @@ uses
   JsonSchema.Visitor.Applicator.&Array,
   JsonSchema.Visitor.Applicator.Evaluated,
   JsonSchema.Visitor.Validation.Base,
-  JsonSchema.Visitor.Validation.Numeric,
   JsonSchema.Visitor.Validation.&String,
+  JsonSchema.Visitor.Validation.Numeric,
   JsonSchema.Visitor.Validation.&Array,
   JsonSchema.Visitor.Validation.&Object,
   JsonSchema.Visitor.Validation.Format,
@@ -97,10 +97,10 @@ type
     function IsValidationVocabularySilent: Boolean;
   public
     [VisitorKeyword('minimum')]
-    procedure VisitMinimum(const pValue: TJSONNumber); override;
+    procedure VisitMinimum(const pValue: TJSONNumber);
 
     [VisitorKeyword('contains')]
-    procedure VisitContains(const pValue: TJSONValue); override;
+    procedure VisitContains(const pValue: TJSONValue);
 
     [VisitorKeyword('maxContains')]
     procedure VisitMaxContains(const pValue: TJSONNumber);
@@ -600,7 +600,14 @@ begin
 
   FCore := TDraft2019_09CoreVisitor.Create(Self);
   FApplicator := TDraft2019_09ApplicatorVisitor.Create(Self);
-  FValidation := TDraft2019_09ValidationVisitor.Create(Self);
+  
+  SetLength(FValidationComponents, 5);
+  FValidationComponents[0] := TDraft2019_09ValidationVisitor.Create(Self);
+  FValidationComponents[1] := TStringValidationVisitor<TDraft2019_09Visitor>.Create(Self);
+  FValidationComponents[2] := TNumericValidationVisitor<TDraft2019_09Visitor>.Create(Self);
+  FValidationComponents[3] := TArrayValidationVisitor<TDraft2019_09Visitor>.Create(Self);
+  FValidationComponents[4] := TObjectValidationVisitor<TDraft2019_09Visitor>.Create(Self);
+
   FHyperSchema := TStubHyperSchemaVisitor<TDraft2019_09Visitor>.Create(Self);
   FRelativeJsonPointer := TStubRelativeJsonPointer<TDraft2019_09Visitor>.Create(Self);
 end;

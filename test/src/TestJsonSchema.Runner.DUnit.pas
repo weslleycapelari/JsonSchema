@@ -8,7 +8,9 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   TestFramework,
-  JsonSchema;
+  JsonSchema,
+  JsonSchema.Types,
+  JsonSchema.Interfaces;
 
 type
   TJsonSchemaValidationTest = class(TTestCase)

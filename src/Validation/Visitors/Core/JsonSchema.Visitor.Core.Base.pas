@@ -1,4 +1,4 @@
-unit JsonSchema.Visitor.Core.Base;
+﻿unit JsonSchema.Visitor.Core.Base;
 
 interface
 
@@ -198,8 +198,7 @@ begin
 
   lScope := Visitor.CurrentScope;
 
-  if not ResolveRefTarget(pValue.Value, lScope.BaseURI, lFinalURI, lTargetResource,
-                          lTargetSchema, lResolvedBaseURI) then
+  if not ResolveRefTarget(pValue.Value, lScope.BaseURI, lFinalURI, lTargetResource, lTargetSchema, lResolvedBaseURI) then
     Exit;
 
   // Prepare new scope for the referenced schema

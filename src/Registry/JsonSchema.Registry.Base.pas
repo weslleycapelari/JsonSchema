@@ -1,4 +1,4 @@
-unit JsonSchema.Registry.Base;
+﻿unit JsonSchema.Registry.Base;
 
 interface
 
@@ -156,7 +156,6 @@ begin
 
   FCore := TBaseRegistryCoreVisitor.Create(Self);
   FApplicator := TBaseRegistryApplicatorVisitor.Create(Self);
-  FValidation := TBaseRegistryValidationVisitor.Create(Self);
   FHyperSchema := TBaseRegistryHyperSchemaVisitor.Create(Self);
   FRelativeJsonPointer := TBaseRegistryRelativeJsonPointer.Create(Self);
 end;

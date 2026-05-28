@@ -19,7 +19,7 @@ type
   ///   minimum, exclusiveMinimum.
   ///   This class is meant to be composed into a full validation visitor.
   /// </summary>
-  TNumericValidationVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IBaseValidationVisitor<T>)
+  TNumericValidationVisitor<T: IValidationVisitor<T>> = class(TBase<T>, INumericValidationVisitor<T>)
   private
     function GetValidationVisitor: IValidationVisitor<T>;
     function GetSilentMode: Boolean;
@@ -40,20 +40,6 @@ type
     [VisitorKeyword('exclusiveMinimum')]
     procedure VisitExclusiveMinimum(const pValue: TJSONValue);
 
-    // Unsupported validation methods – no‑op to satisfy the interface
-    procedure VisitType(const pValue: TJSONValue); virtual;
-    procedure VisitEnum(const pValue: TJSONArray); virtual;
-    procedure VisitConst(const pValue: TJSONValue); virtual;
-    procedure VisitMaxLength(const pValue: TJSONNumber); virtual;
-    procedure VisitMinLength(const pValue: TJSONNumber); virtual;
-    procedure VisitPattern(const pValue: TJSONString); virtual;
-    procedure VisitFormat(const pValue: TJSONString); virtual;
-    procedure VisitMaxItems(const pValue: TJSONNumber); virtual;
-    procedure VisitMinItems(const pValue: TJSONNumber); virtual;
-    procedure VisitUniqueItems(const pValue: TJSONBool); virtual;
-    procedure VisitMaxProperties(const pValue: TJSONNumber); virtual;
-    procedure VisitMinProperties(const pValue: TJSONNumber); virtual;
-    procedure VisitRequired(const pValue: TJSONArray); virtual;
   end;
 
 implementation
@@ -275,70 +261,6 @@ begin
     lVisitor.AddError(TErrorType.vetExclusiveMinimum, [lLimitValue.ToString]);
 end;
 
-// Unsupported methods – no‑op to satisfy the interface
-procedure TNumericValidationVisitor<T>.VisitType(const pValue: TJSONValue);
-begin
-  // Empty - this visitor does not handle type validation
-end;
 
-procedure TNumericValidationVisitor<T>.VisitEnum(const pValue: TJSONArray);
-begin
-  // Empty - this visitor does not handle enum validation
-end;
-
-procedure TNumericValidationVisitor<T>.VisitConst(const pValue: TJSONValue);
-begin
-  // Empty - this visitor does not handle const validation
-end;
-
-procedure TNumericValidationVisitor<T>.VisitMaxLength(const pValue: TJSONNumber);
-begin
-  // Empty - this visitor does not handle max length validation
-end;
-
-procedure TNumericValidationVisitor<T>.VisitMinLength(const pValue: TJSONNumber);
-begin
-  // Empty - this visitor does not handle min length validation
-end;
-
-procedure TNumericValidationVisitor<T>.VisitPattern(const pValue: TJSONString);
-begin
-  // Empty - this visitor does not handle pattern validation
-end;
-
-procedure TNumericValidationVisitor<T>.VisitFormat(const pValue: TJSONString);
-begin
-  // Empty - this visitor does not handle format validation
-end;
-
-procedure TNumericValidationVisitor<T>.VisitMaxItems(const pValue: TJSONNumber);
-begin
-  // Empty - this visitor does not handle max items validation
-end;
-
-procedure TNumericValidationVisitor<T>.VisitMinItems(const pValue: TJSONNumber);
-begin
-  // Empty - this visitor does not handle min items validation
-end;
-
-procedure TNumericValidationVisitor<T>.VisitUniqueItems(const pValue: TJSONBool);
-begin
-  // Empty - this visitor does not handle unique items validation
-end;
-
-procedure TNumericValidationVisitor<T>.VisitMaxProperties(const pValue: TJSONNumber);
-begin
-  // Empty - this visitor does not handle max properties validation
-end;
-
-procedure TNumericValidationVisitor<T>.VisitMinProperties(const pValue: TJSONNumber);
-begin
-  // Empty - this visitor does not handle min properties validation
-end;
-
-procedure TNumericValidationVisitor<T>.VisitRequired(const pValue: TJSONArray);
-begin
-  // Empty - this visitor does not handle required validation
-end;
 
 end.

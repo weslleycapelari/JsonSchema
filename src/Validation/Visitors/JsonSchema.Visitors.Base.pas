@@ -19,7 +19,7 @@ type
   protected
     FCore: IBaseCoreVisitor<T>;
     FApplicator: IBaseApplicatorVisitor<T>;
-    FValidation: IBaseValidationVisitor<T>;
+    FValidationComponents: TArray<IInterface>;
     FHyperSchema: IBaseHyperSchemaVisitor<T>;
     FRelativeJsonPointer: IBaseRelativeJsonPointer<T>;
 
@@ -34,7 +34,7 @@ type
 
     function Core: IBaseCoreVisitor<T>;
     function Applicator: IBaseApplicatorVisitor<T>;
-    function Validation: IBaseValidationVisitor<T>;
+    function ValidationComponents: TArray<IInterface>;
     function HyperSchema: IBaseHyperSchemaVisitor<T>;
     function RelativeJsonPointer: IBaseRelativeJsonPointer<T>;
 
@@ -127,9 +127,9 @@ begin
   Result := FApplicator;
 end;
 
-function TBaseVisitor<T>.Validation: IBaseValidationVisitor<T>;
+function TBaseVisitor<T>.ValidationComponents: TArray<IInterface>;
 begin
-  Result := FValidation;
+  Result := FValidationComponents;
 end;
 
 function TBaseVisitor<T>.HyperSchema: IBaseHyperSchemaVisitor<T>;

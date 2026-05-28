@@ -21,7 +21,7 @@ type
   ///   Visitor for string validation keywords: maxLength, minLength, pattern, format.
   ///   This class is meant to be composed into a full validation visitor.
   /// </summary>
-  TStringValidationVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IBaseValidationVisitor<T>)
+  TStringValidationVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IStringValidationVisitor<T>)
   private
     function GetValidationVisitor: IValidationVisitor<T>;
     function GetFormatAssertionEnabled: Boolean;
@@ -38,21 +38,6 @@ type
     [VisitorKeyword('format')]
     procedure VisitFormat(const pValue: TJSONString);
 
-    // Unsupported validation methods – no‑op to satisfy the interface
-    procedure VisitType(const pValue: TJSONValue); virtual;
-    procedure VisitEnum(const pValue: TJSONArray); virtual;
-    procedure VisitConst(const pValue: TJSONValue); virtual;
-    procedure VisitMultipleOf(const pValue: TJSONNumber); virtual;
-    procedure VisitMaximum(const pValue: TJSONNumber); virtual;
-    procedure VisitExclusiveMaximum(const pValue: TJSONValue); virtual;
-    procedure VisitMinimum(const pValue: TJSONNumber); virtual;
-    procedure VisitExclusiveMinimum(const pValue: TJSONValue); virtual;
-    procedure VisitMaxItems(const pValue: TJSONNumber); virtual;
-    procedure VisitMinItems(const pValue: TJSONNumber); virtual;
-    procedure VisitUniqueItems(const pValue: TJSONBool); virtual;
-    procedure VisitMaxProperties(const pValue: TJSONNumber); virtual;
-    procedure VisitMinProperties(const pValue: TJSONNumber); virtual;
-    procedure VisitRequired(const pValue: TJSONArray); virtual;
   end;
 
 implementation
@@ -211,75 +196,6 @@ begin
     lVisitor.AddError(TErrorType.vetInvalidFormat, [pValue.Value]);
 end;
 
-// Unsupported methods – no‑op to satisfy the interface
-procedure TStringValidationVisitor<T>.VisitType(const pValue: TJSONValue);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
 
-procedure TStringValidationVisitor<T>.VisitEnum(const pValue: TJSONArray);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
-
-procedure TStringValidationVisitor<T>.VisitConst(const pValue: TJSONValue);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
-
-procedure TStringValidationVisitor<T>.VisitMultipleOf(const pValue: TJSONNumber);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
-
-procedure TStringValidationVisitor<T>.VisitMaximum(const pValue: TJSONNumber);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
-
-procedure TStringValidationVisitor<T>.VisitExclusiveMaximum(const pValue: TJSONValue);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
-
-procedure TStringValidationVisitor<T>.VisitMinimum(const pValue: TJSONNumber);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
-
-procedure TStringValidationVisitor<T>.VisitExclusiveMinimum(const pValue: TJSONValue);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
-
-procedure TStringValidationVisitor<T>.VisitMaxItems(const pValue: TJSONNumber);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
-
-procedure TStringValidationVisitor<T>.VisitMinItems(const pValue: TJSONNumber);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
-
-procedure TStringValidationVisitor<T>.VisitUniqueItems(const pValue: TJSONBool);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
-
-procedure TStringValidationVisitor<T>.VisitMaxProperties(const pValue: TJSONNumber);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
-
-procedure TStringValidationVisitor<T>.VisitMinProperties(const pValue: TJSONNumber);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
-
-procedure TStringValidationVisitor<T>.VisitRequired(const pValue: TJSONArray);
-begin
-  // Empty - no registration needed for validation keywords in registry phase
-end;
 
 end.

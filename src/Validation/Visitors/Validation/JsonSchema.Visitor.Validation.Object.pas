@@ -23,7 +23,7 @@ type
   ///   required, propertyNames, dependencies, dependentRequired.
   ///   This class is meant to be composed into a full validation visitor.
   /// </summary>
-  TObjectValidationVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IBaseValidationVisitor<T>)
+  TObjectValidationVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IObjectValidationVisitor<T>)
   private
     function GetValidationVisitor: IValidationVisitor<T>;
   public
@@ -45,22 +45,6 @@ type
     [VisitorKeyword('dependentRequired')]
     procedure VisitDependentRequired(const pValue: TJSONObject);
 
-    // Unsupported validation methods – no‑op to satisfy the interface
-    procedure VisitType(const pValue: TJSONValue); virtual;
-    procedure VisitEnum(const pValue: TJSONArray); virtual;
-    procedure VisitConst(const pValue: TJSONValue); virtual;
-    procedure VisitMultipleOf(const pValue: TJSONNumber); virtual;
-    procedure VisitMaximum(const pValue: TJSONNumber); virtual;
-    procedure VisitExclusiveMaximum(const pValue: TJSONValue); virtual;
-    procedure VisitMinimum(const pValue: TJSONNumber); virtual;
-    procedure VisitExclusiveMinimum(const pValue: TJSONValue); virtual;
-    procedure VisitMaxLength(const pValue: TJSONNumber); virtual;
-    procedure VisitMinLength(const pValue: TJSONNumber); virtual;
-    procedure VisitPattern(const pValue: TJSONString); virtual;
-    procedure VisitFormat(const pValue: TJSONString); virtual;
-    procedure VisitMaxItems(const pValue: TJSONNumber); virtual;
-    procedure VisitMinItems(const pValue: TJSONNumber); virtual;
-    procedure VisitUniqueItems(const pValue: TJSONBool); virtual;
   end;
 
 implementation
@@ -294,81 +278,6 @@ begin
   end;
 end;
 
-// Unsupported methods – no‑op to satisfy the interface
 
-procedure TObjectValidationVisitor<T>.VisitType(const pValue: TJSONValue);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitEnum(const pValue: TJSONArray);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitConst(const pValue: TJSONValue);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitMultipleOf(const pValue: TJSONNumber);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitMaximum(const pValue: TJSONNumber);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitExclusiveMaximum(const pValue: TJSONValue);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitMinimum(const pValue: TJSONNumber);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitExclusiveMinimum(const pValue: TJSONValue);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitMaxLength(const pValue: TJSONNumber);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitMinLength(const pValue: TJSONNumber);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitPattern(const pValue: TJSONString);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitFormat(const pValue: TJSONString);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitMaxItems(const pValue: TJSONNumber);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitMinItems(const pValue: TJSONNumber);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
-
-procedure TObjectValidationVisitor<T>.VisitUniqueItems(const pValue: TJSONBool);
-begin
-  // Empty - no validation logic for this keyword in this visitor
-end;
 
 end.

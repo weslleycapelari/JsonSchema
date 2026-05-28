@@ -11,6 +11,10 @@ uses
   JsonSchema.Visitor.Core.Base,
   JsonSchema.Visitor.Applicator.Base,
   JsonSchema.Visitor.Validation.Base,
+  JsonSchema.Visitor.Validation.&String,
+  JsonSchema.Visitor.Validation.Numeric,
+  JsonSchema.Visitor.Validation.&Array,
+  JsonSchema.Visitor.Validation.&Object,
   JsonSchema.Visitor.RelativePointer.Stub,
   JsonSchema.Visitor.HyperSchema.Stub,
   JsonSchema.Validation.Base,
@@ -48,7 +52,7 @@ type
 
   TDraft6ValidationVisitor = class(TBaseValidationVisitor<TDraft6Visitor>)
   public
-    procedure VisitContains(const pValue: TJSONValue); override;
+    procedure VisitContains(const pValue: TJSONValue);
   end;
 
 implementation
@@ -67,7 +71,14 @@ begin
 
   FCore := TDraft6CoreVisitor.Create(Self);
   FApplicator := TDraft6ApplicatorVisitor.Create(Self);
-  FValidation := TDraft6ValidationVisitor.Create(Self);
+  
+  SetLength(FValidationComponents, 5);
+  FValidationComponents[0] := TDraft6ValidationVisitor.Create(Self);
+  FValidationComponents[1] := TStringValidationVisitor<TDraft6Visitor>.Create(Self);
+  FValidationComponents[2] := TNumericValidationVisitor<TDraft6Visitor>.Create(Self);
+  FValidationComponents[3] := TArrayValidationVisitor<TDraft6Visitor>.Create(Self);
+  FValidationComponents[4] := TObjectValidationVisitor<TDraft6Visitor>.Create(Self);
+
   FHyperSchema := TStubHyperSchemaVisitor<TDraft6Visitor>.Create(Self);
   FRelativeJsonPointer := TStubRelativeJsonPointer<TDraft6Visitor>.Create(Self);
 end;

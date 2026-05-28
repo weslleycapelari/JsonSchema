@@ -1,4 +1,4 @@
-﻿unit JsonSchema.Walker;
+unit JsonSchema.Walker;
 
 interface
 
@@ -84,7 +84,8 @@ begin
 
   MapVisitorComponent(FVisitor.Core as IInterface, 'Core');
   MapVisitorComponent(FVisitor.Applicator as IInterface, 'Applicator');
-  MapVisitorComponent(FVisitor.Validation as IInterface, 'Validation');
+  for var lComp in FVisitor.ValidationComponents do
+    MapVisitorComponent(lComp, 'ValidationComponent');
   MapVisitorComponent(FVisitor.HyperSchema as IInterface, 'HyperSchema');
   MapVisitorComponent(FVisitor.RelativeJsonPointer as IInterface, 'RelativeJsonPointer');
 end;

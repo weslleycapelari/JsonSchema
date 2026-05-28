@@ -1,4 +1,4 @@
-unit JsonSchema.Validation.Draft7;
+﻿unit JsonSchema.Validation.Draft7;
 
 interface
 
@@ -11,6 +11,10 @@ uses
   JsonSchema.Visitor.Core.Base,
   JsonSchema.Visitor.Applicator.Base,
   JsonSchema.Visitor.Validation.Base,
+  JsonSchema.Visitor.Validation.&String,
+  JsonSchema.Visitor.Validation.Numeric,
+  JsonSchema.Visitor.Validation.&Array,
+  JsonSchema.Visitor.Validation.&Object,
   JsonSchema.Visitor.RelativePointer.Stub,
   JsonSchema.Visitor.HyperSchema.Stub,
   JsonSchema.Validation.Base,
@@ -52,7 +56,7 @@ type
   TDraft7ValidationVisitor = class(TBaseValidationVisitor<TDraft7Visitor>)
   public
     [VisitorKeyword('contains')]
-    procedure VisitContains(const pValue: TJSONValue); override;
+    procedure VisitContains(const pValue: TJSONValue);
   end;
 
 implementation
@@ -248,7 +252,14 @@ begin
 
   FCore := TDraft7CoreVisitor.Create(Self);
   FApplicator := TDraft7ApplicatorVisitor.Create(Self);
-  FValidation := TDraft7ValidationVisitor.Create(Self);
+  
+  SetLength(FValidationComponents, 5);
+  FValidationComponents[0] := TDraft7ValidationVisitor.Create(Self);
+  FValidationComponents[1] := TStringValidationVisitor<TDraft7Visitor>.Create(Self);
+  FValidationComponents[2] := TNumericValidationVisitor<TDraft7Visitor>.Create(Self);
+  FValidationComponents[3] := TArrayValidationVisitor<TDraft7Visitor>.Create(Self);
+  FValidationComponents[4] := TObjectValidationVisitor<TDraft7Visitor>.Create(Self);
+
   FHyperSchema := TStubHyperSchemaVisitor<TDraft7Visitor>.Create(Self);
   FRelativeJsonPointer := TStubRelativeJsonPointer<TDraft7Visitor>.Create(Self);
 end;

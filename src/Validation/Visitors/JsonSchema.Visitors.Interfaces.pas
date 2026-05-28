@@ -11,6 +11,10 @@ type
   IBaseCoreVisitor<T> = interface;
   IBaseApplicatorVisitor<T> = interface;
   IBaseValidationVisitor<T> = interface;
+  IStringValidationVisitor<T> = interface;
+  INumericValidationVisitor<T> = interface;
+  IArrayValidationVisitor<T> = interface;
+  IObjectValidationVisitor<T> = interface;
   IBaseHyperSchemaVisitor<T> = interface;
   IBaseRelativeJsonPointer<T> = interface;
 
@@ -31,7 +35,7 @@ type
     ['{A86BDE88-3D1D-4AA7-BDE6-92949C001B3C}']
     function Core: IBaseCoreVisitor<T>;
     function Applicator: IBaseApplicatorVisitor<T>;
-    function Validation: IBaseValidationVisitor<T>;
+    function ValidationComponents: TArray<IInterface>;
     function HyperSchema: IBaseHyperSchemaVisitor<T>;
     function RelativeJsonPointer: IBaseRelativeJsonPointer<T>;
 
@@ -91,21 +95,40 @@ type
     procedure VisitType(const pValue: TJSONValue);
     procedure VisitEnum(const pValue: TJSONArray);
     procedure VisitConst(const pValue: TJSONValue);
+  end;
+
+  IStringValidationVisitor<T> = interface(IBase<T>)
+    ['{12937DB2-6ED4-4286-B9BC-0D0BC4DCE060}']
+    procedure VisitMaxLength(const pValue: TJSONNumber);
+    procedure VisitMinLength(const pValue: TJSONNumber);
+    procedure VisitPattern(const pValue: TJSONString);
+    procedure VisitFormat(const pValue: TJSONString);
+  end;
+
+  INumericValidationVisitor<T> = interface(IBase<T>)
+    ['{153A04DA-A41B-4523-96BE-8647DDAEDDED}']
     procedure VisitMultipleOf(const pValue: TJSONNumber);
     procedure VisitMaximum(const pValue: TJSONNumber);
     procedure VisitExclusiveMaximum(const pValue: TJSONValue);
     procedure VisitMinimum(const pValue: TJSONNumber);
     procedure VisitExclusiveMinimum(const pValue: TJSONValue);
-    procedure VisitMaxLength(const pValue: TJSONNumber);
-    procedure VisitMinLength(const pValue: TJSONNumber);
-    procedure VisitPattern(const pValue: TJSONString);
-    procedure VisitFormat(const pValue: TJSONString);
+  end;
+
+  IArrayValidationVisitor<T> = interface(IBase<T>)
+    ['{F213A31F-72CC-4D2A-BCF1-3180FA2CD40C}']
     procedure VisitMaxItems(const pValue: TJSONNumber);
     procedure VisitMinItems(const pValue: TJSONNumber);
     procedure VisitUniqueItems(const pValue: TJSONBool);
+  end;
+
+  IObjectValidationVisitor<T> = interface(IBase<T>)
+    ['{A91B4C93-DE46-4B17-A6E5-FC9BD0C9E0EF}']
     procedure VisitMaxProperties(const pValue: TJSONNumber);
     procedure VisitMinProperties(const pValue: TJSONNumber);
     procedure VisitRequired(const pValue: TJSONArray);
+    procedure VisitPropertyNames(const pValue: TJSONValue);
+    procedure VisitDependencies(const pValue: TJSONObject);
+    procedure VisitDependentRequired(const pValue: TJSONObject);
   end;
 
   /// <summary>

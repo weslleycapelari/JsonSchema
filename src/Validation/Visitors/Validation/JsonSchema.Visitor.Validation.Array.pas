@@ -22,7 +22,7 @@ type
   ///   contains, maxContains, minContains.
   ///   This class is meant to be composed into a full validation visitor.
   /// </summary>
-  TArrayValidationVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IBaseValidationVisitor<T>)
+  TArrayValidationVisitor<T: IValidationVisitor<T>> = class(TBase<T>, IArrayValidationVisitor<T>)
   private
     function GetValidationVisitor: IValidationVisitor<T>;
   public
@@ -44,22 +44,6 @@ type
     [VisitorKeyword('minContains')]
     procedure VisitMinContains(const pValue: TJSONNumber);
 
-    // Unsupported validation methods – no‑op or raise? Keeping no‑op for compatibility
-    procedure VisitType(const pValue: TJSONValue); virtual;
-    procedure VisitEnum(const pValue: TJSONArray); virtual;
-    procedure VisitConst(const pValue: TJSONValue); virtual;
-    procedure VisitMultipleOf(const pValue: TJSONNumber); virtual;
-    procedure VisitMaximum(const pValue: TJSONNumber); virtual;
-    procedure VisitExclusiveMaximum(const pValue: TJSONValue); virtual;
-    procedure VisitMinimum(const pValue: TJSONNumber); virtual;
-    procedure VisitExclusiveMinimum(const pValue: TJSONValue); virtual;
-    procedure VisitMaxLength(const pValue: TJSONNumber); virtual;
-    procedure VisitMinLength(const pValue: TJSONNumber); virtual;
-    procedure VisitPattern(const pValue: TJSONString); virtual;
-    procedure VisitFormat(const pValue: TJSONString); virtual;
-    procedure VisitMaxProperties(const pValue: TJSONNumber); virtual;
-    procedure VisitMinProperties(const pValue: TJSONNumber); virtual;
-    procedure VisitRequired(const pValue: TJSONArray); virtual;
   end;
 
 implementation
@@ -296,81 +280,6 @@ begin
       lVisitor.AddError(TErrorType.vetMinContains, [lMinimum, lScope.ContainsCount]);
 end;
 
-// Unsupported methods – kept as no‑op to satisfy the interface
 
-procedure TArrayValidationVisitor<T>.VisitType(const pValue: TJSONValue);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitEnum(const pValue: TJSONArray);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitConst(const pValue: TJSONValue);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitMultipleOf(const pValue: TJSONNumber);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitMaximum(const pValue: TJSONNumber);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitExclusiveMaximum(const pValue: TJSONValue);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitMinimum(const pValue: TJSONNumber);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitExclusiveMinimum(const pValue: TJSONValue);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitMaxLength(const pValue: TJSONNumber);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitMinLength(const pValue: TJSONNumber);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitPattern(const pValue: TJSONString);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitFormat(const pValue: TJSONString);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitMaxProperties(const pValue: TJSONNumber);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitMinProperties(const pValue: TJSONNumber);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
-
-procedure TArrayValidationVisitor<T>.VisitRequired(const pValue: TJSONArray);
-begin
-  // Empty - no validation performed for unsupported keywords in this visitor
-end;
 
 end.
