@@ -1,5 +1,5 @@
 param(
-  [string]$RootPath = (Resolve-Path (Join-Path $PSScriptRoot "..\.." )).Path,
+  [string]$RootPath = (Resolve-Path (Join-Path $PSScriptRoot ".." )).Path,
   [switch]$StageChanges,
   [switch]$DryRun
 )
@@ -97,22 +97,22 @@ function Get-DetectedEncoding {
   }
 }
 
-function Normalize-ForWindows1252 {
+function Convert-ToWindows1252 {
   param([string]$Text)
 
-  $normalized = $Text
-  $normalized = $normalized.Replace([string][char]0x2018, "'")
-  $normalized = $normalized.Replace([string][char]0x2019, "'")
-  $normalized = $normalized.Replace([string][char]0x201C, '"')
-  $normalized = $normalized.Replace([string][char]0x201D, '"')
-  $normalized = $normalized.Replace([string][char]0x2013, '-')
-  $normalized = $normalized.Replace([string][char]0x2014, '-')
-  $normalized = $normalized.Replace([string][char]0x2026, '...')
-  $normalized = $normalized.Replace([string][char]0x00A0, ' ')
-  $normalized = $normalized.Replace([string][char]0xFEFF, '')
-  $normalized = $normalized.Replace([string][char]0xFFFD, '?')
+  $converted = $Text
+  $converted = $converted.Replace([string][char]0x2018, "'")
+  $converted = $converted.Replace([string][char]0x2019, "'")
+  $converted = $converted.Replace([string][char]0x201C, '"')
+  $converted = $converted.Replace([string][char]0x201D, '"')
+  $converted = $converted.Replace([string][char]0x2013, '-')
+  $converted = $converted.Replace([string][char]0x2014, '-')
+  $converted = $converted.Replace([string][char]0x2026, '...')
+  $converted = $converted.Replace([string][char]0x00A0, ' ')
+  $converted = $converted.Replace([string][char]0xFEFF, '')
+  $converted = $converted.Replace([string][char]0xFFFD, '?')
 
-  return $normalized
+  return $converted
 }
 
 $windows1252 = [System.Text.Encoding]::GetEncoding(
@@ -136,7 +136,7 @@ foreach ($file in $allPasFiles) {
 
   try {
     $text = $detected.Encoding.GetString($originalBytes, $offset, $length)
-    $normalizedText = Normalize-ForWindows1252 -Text $text
+    $normalizedText = Convert-ToWindows1252 -Text $text
     $convertedBytes = $windows1252.GetBytes($normalizedText)
   }
   catch {
