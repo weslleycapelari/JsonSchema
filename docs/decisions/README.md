@@ -29,6 +29,9 @@ Status legend:
 - ADR-0018 - Deferred visitor pattern adoption (Accepted)
 - ADR-0019 - RFC-compliant URI and JSON Pointer subsystem (Accepted)
 - ADR-0020 - Draft-aware format modularization (Accepted)
+- ADR-0021 - Dynamic stack-based validation loop detection (Accepted)
+- ADR-0022 - Metaschema vocabulary activation (Accepted)
+- ADR-0023 - Unevaluated properties and items tracking (Accepted)
 
 ## Scope notes
 

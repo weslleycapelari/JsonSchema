@@ -35,6 +35,12 @@ constructor Create(const pLocale: TLocale = TLocale.EnUS);
 - Initializes the validator with the target localization mapping.
 - Defaults to `TLocale.EnUS`. Supported values include `TLocale.EnUS` and `TLocale.PtBR`.
 
+### Properties
+
+- **`EnforceFormats: Boolean`**: Enables or disables format validation assertions.
+  - Defaults to `True`.
+  - **Draft 2019-09/2020-12 Compliance**: In Draft 2019-09 and later, the `format` keyword behaves purely as an annotation and does not raise validation errors by default. Setting `EnforceFormats` to `True` overrides this behavior, forcing format rules to act as assertions.
+
 ### Validation Methods
 
 ```pascal

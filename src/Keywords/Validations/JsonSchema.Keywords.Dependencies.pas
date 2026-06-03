@@ -116,6 +116,7 @@ var
   lPropIdx: Integer;
   lRule: TDependencyRule;
   lCtx: TJSONObject;
+  lPropertyValue: TJSONValue;
 begin
   if not pInstance.IsJSONObject then
   begin
@@ -132,7 +133,7 @@ begin
     lRule := FRules[lRuleIdx];
 
     // Trigger only if the trigger property name is present in the instance
-    if lObj.TryGetValue(lRule.TriggerProperty, lCtx) then
+    if lObj.TryGetValue<TJSONValue>(lRule.TriggerProperty, lPropertyValue) then
     begin
       if lRule.RuleType = TDependencyType.dtProperty then
       begin
@@ -140,7 +141,7 @@ begin
         while lPropIdx < Length(lRule.RequiredProperties) do
         begin
           // If the required property is missing, fail validation
-          if not lObj.TryGetValue(lRule.RequiredProperties[lPropIdx], lCtx) then
+          if not lObj.TryGetValue<TJSONValue>(lRule.RequiredProperties[lPropIdx], lPropertyValue) then
           begin
             lCtx := TJSONObject.Create;
             try

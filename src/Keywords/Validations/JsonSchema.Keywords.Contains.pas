@@ -2,7 +2,8 @@ unit JsonSchema.Keywords.Contains;
 
 (*
 --------------------------------------------------------------------------------
-Implements the validation rule for the 'contains' keyword.
+Implements the validation rule for the 'contains' keyword, supporting
+minContains and maxContains.
 --------------------------------------------------------------------------------
 *)
 
@@ -17,14 +18,16 @@ uses
   JsonSchema.Results;
 
 type
-  /// <summary>Validates whether at least one element in a JSON array conforms to a sub-schema.</summary>
+  /// <summary>Validates whether elements in a JSON array conform to a sub-schema within contains limits.</summary>
   TContainsKeyword = class(TInterfacedObject, IJsonSchemaKeyword)
   strict private
     FContainsSchema: ICompiledSchema;
+    FMinContains: Integer;
+    FMaxContains: Integer;
     function GetKeywordName: string;
   public
-    /// <summary>Initializes the contains keyword validator with the compiled sub-schema.</summary>
-    constructor Create(const pContainsSchema: ICompiledSchema);
+    /// <summary>Initializes contains keyword validator with limits.</summary>
+    constructor Create(const pContainsSchema: ICompiledSchema; const pMinContains: Integer = 1; const pMaxContains: Integer = -1);
 
     /// <summary>Validates the JSON instance array against the contains schema.</summary>
     function Validate(const pInstance: TJSONValue): IValidationResult;
@@ -40,20 +43,36 @@ type
 implementation
 
 uses
-  JsonSchema.JSONHelper;
+  JsonSchema.JSONHelper,
+  JsonSchema.Core.ValidationContext;
 
 { TContainsKeyword }
 
 class function TContainsKeyword.CreateKeyword(const pKeywordValue: TJSONValue; const pParentSchema: TJSONObject;
   const pCompileFunc: TCompileSchemaFunc): IJsonSchemaKeyword;
+var
+  lMin: Integer;
+  lMax: Integer;
+  lVal: TJSONValue;
 begin
-  Result := TContainsKeyword.Create(pCompileFunc(pKeywordValue));
+  lMin := 1;
+  lMax := -1;
+  if Assigned(pParentSchema) then
+  begin
+    if pParentSchema.TryGetValue('minContains', lVal) and (lVal is TJSONNumber) then
+      lMin := Trunc(TJSONNumber(lVal).AsDouble);
+    if pParentSchema.TryGetValue('maxContains', lVal) and (lVal is TJSONNumber) then
+      lMax := Trunc(TJSONNumber(lVal).AsDouble);
+  end;
+  Result := TContainsKeyword.Create(pCompileFunc(pKeywordValue), lMin, lMax);
 end;
 
-constructor TContainsKeyword.Create(const pContainsSchema: ICompiledSchema);
+constructor TContainsKeyword.Create(const pContainsSchema: ICompiledSchema; const pMinContains: Integer; const pMaxContains: Integer);
 begin
   inherited Create;
   FContainsSchema := pContainsSchema;
+  FMinContains := pMinContains;
+  FMaxContains := pMaxContains;
 end;
 
 function TContainsKeyword.GetKeywordName: string;
@@ -65,9 +84,9 @@ function TContainsKeyword.Validate(const pInstance: TJSONValue): IValidationResu
 var
   lArray: TJSONArray;
   lIndex: Integer;
-  lContainsValid: Boolean;
+  lMatchCount: Integer;
+  lIsValid: Boolean;
 begin
-  // contains validation only applies to JSON arrays. Other types are ignored (valid).
   if not pInstance.IsJSONArray then
   begin
     Result := TValidationResult.ValidResult;
@@ -75,19 +94,24 @@ begin
   end;
 
   lArray := TJSONArray(pInstance);
-  lContainsValid := False;
+  lMatchCount := 0;
 
   lIndex := 0;
-  while (not lContainsValid) and (lIndex < lArray.Count) do
+  while lIndex < lArray.Count do
   begin
     if FContainsSchema.Validate(lArray.Items[lIndex]).IsValid then
     begin
-      lContainsValid := True;
+      Inc(lMatchCount);
+      TValidationContext.MarkItemEvaluated(pInstance, lIndex);
     end;
     Inc(lIndex);
   end;
 
-  if lContainsValid then
+  lIsValid := (lMatchCount >= FMinContains);
+  if lIsValid and (FMaxContains >= 0) then
+    lIsValid := (lMatchCount <= FMaxContains);
+
+  if lIsValid then
     Result := TValidationResult.ValidResult
   else
     Result := TValidationResult.InvalidResult(GetKeywordName);

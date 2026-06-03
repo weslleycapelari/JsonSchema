@@ -25,6 +25,7 @@ type
   strict private
     FLocale: TLocale;
     FEngine: TLocalizationEngine;
+    FEnforceFormats: Boolean;
   public
     /// <summary>Creates a validator instance. Registers default translations (EnUS and PtBR).</summary>
     /// <param name="pLocale">The default active locale. If omitted, defaults to TLocale.EnUS.</param>
@@ -51,6 +52,9 @@ type
 
     /// <summary>Active localization registry engine.</summary>
     property Engine: TLocalizationEngine read FEngine;
+
+    /// <summary>Whether to validate format keyword constraints (defaults to True).</summary>
+    property EnforceFormats: Boolean read FEnforceFormats write FEnforceFormats;
   end;
 
 implementation
@@ -61,7 +65,8 @@ uses
   JsonSchema.Draft7.Parser,
   JsonSchema.Draft2019_09.Parser,
   JsonSchema.Draft2020_12.Parser,
-  JsonSchema.Core.SchemaRegistry;
+  JsonSchema.Core.SchemaRegistry,
+  JsonSchema.Core.ValidationContext;
 
 { TJsonSchemaValidator }
 
@@ -70,6 +75,7 @@ begin
   inherited Create;
   FLocale := pLocale;
   FEngine := TLocalizationEngine.Create;
+  FEnforceFormats := True;
 
   // Register default localizations
   FEngine.RegisterLocalization(TLocalizationEnUS.Create);
@@ -94,8 +100,10 @@ var
   lLocalization: ILocalization;
   lTranslation: TTranslation;
 begin
+  TSchemaRegistry.Clear;
   // Reset global base URI before each top-level compilation to avoid cross-test contamination
   TSchemaRegistry.CurrentBaseURI := '';
+  TValidationContext.EnforceFormats := FEnforceFormats;
 
   // Accept schema as either a JSON object or a boolean literal
   if pSchema is TJSONObject then
@@ -130,7 +138,12 @@ begin
   end else
     raise EArgumentException.Create('Schema must be a JSON object or a boolean literal');
 
-  Result := lCompiled.Validate(pInstance);
+  TValidationContext.StartSession;
+  try
+    Result := lCompiled.Validate(pInstance);
+  finally
+    TValidationContext.EndSession;
+  end;
 
   // Localize error messages if the validation result contains errors
   if not Result.IsValid then

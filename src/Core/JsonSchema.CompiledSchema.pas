@@ -16,7 +16,7 @@ uses
   JsonSchema.Results;
 
 type
-  /// <summary>Class responsible for managing and executing the validation of all compiled keywords.</summary>
+  /// <summary>Class representing boolean false schema validation.</summary>
   TFalseSchemaKeyword = class(TInterfacedObject, IJsonSchemaKeyword)
   strict private
     function GetKeywordName: string;
@@ -29,25 +29,31 @@ type
   TCompiledSchema = class(TInterfacedObject, ICompiledSchema)
   strict private
     FKeywords: TArray<IJsonSchemaKeyword>;
+    FSchemaObj: TJSONObject;
   public
-    constructor Create(const pKeywords: TArray<IJsonSchemaKeyword>);
+    /// <summary>Initializes compiled schema with its keywords and raw schema context.</summary>
+    constructor Create(const pKeywords: TArray<IJsonSchemaKeyword>; const pSchemaObj: TJSONObject = nil);
 
-    /// <summary>Executes the validation of all schema keywords against the JSON value.</summary>
-    /// <param name="pInstance">JSON value to validate.</param>
-    /// <returns>The consolidated result containing any validation errors.</returns>
+    /// <summary>Executes validation under the active validation traversal stack.</summary>
     function Validate(const pInstance: TJSONValue): IValidationResult;
 
-    /// <summary>Creates a compiled schema representing boolean false (always invalid).</summary>
+    /// <summary>Creates a compiled schema representing boolean false.</summary>
     class function CreateFalseSchema: ICompiledSchema; static;
 
-    /// <summary>Creates a compiled schema representing boolean true (always valid).</summary>
+    /// <summary>Creates a compiled schema representing boolean true.</summary>
     class function CreateTrueSchema: ICompiledSchema; static;
 
     /// <summary>List of active keyword validators in the compiled schema.</summary>
     property Keywords: TArray<IJsonSchemaKeyword> read FKeywords;
+
+    /// <summary>Raw JSON Schema object from which this schema was compiled.</summary>
+    property SchemaObj: TJSONObject read FSchemaObj;
   end;
 
 implementation
+
+uses
+  JsonSchema.Core.ValidationContext;
 
 { TFalseSchemaKeyword }
 
@@ -63,10 +69,11 @@ end;
 
 { TCompiledSchema }
 
-constructor TCompiledSchema.Create(const pKeywords: TArray<IJsonSchemaKeyword>);
+constructor TCompiledSchema.Create(const pKeywords: TArray<IJsonSchemaKeyword>; const pSchemaObj: TJSONObject);
 begin
   inherited Create;
   FKeywords := pKeywords;
+  FSchemaObj := pSchemaObj;
 end;
 
 class function TCompiledSchema.CreateFalseSchema: ICompiledSchema;
@@ -74,7 +81,7 @@ var
   lKeywords: TArray<IJsonSchemaKeyword>;
 begin
   lKeywords := [TFalseSchemaKeyword.Create];
-  Result := TCompiledSchema.Create(lKeywords);
+  Result := TCompiledSchema.Create(lKeywords, nil);
 end;
 
 class function TCompiledSchema.CreateTrueSchema: ICompiledSchema;
@@ -82,7 +89,7 @@ var
   lKeywords: TArray<IJsonSchemaKeyword>;
 begin
   lKeywords := [];
-  Result := TCompiledSchema.Create(lKeywords);
+  Result := TCompiledSchema.Create(lKeywords, nil);
 end;
 
 function TCompiledSchema.Validate(const pInstance: TJSONValue): IValidationResult;
@@ -91,19 +98,28 @@ var
   lKeyword: IJsonSchemaKeyword;
   lIndex: Integer;
 begin
-  lResults := [];
+  TValidationContext.PushSchema(FSchemaObj, Self, pInstance);
+  TValidationContext.PushScope;
+  try
+    lResults := [];
+    SetLength(lResults, Length(FKeywords));
 
-  // We pre-allocate the array size to optimize memory allocation in loops
-  SetLength(lResults, Length(FKeywords));
+    lIndex := 0;
+    for lKeyword in FKeywords do
+    begin
+      lResults[lIndex] := lKeyword.Validate(pInstance);
+      Inc(lIndex);
+    end;
 
-  lIndex := 0;
-  for lKeyword in FKeywords do
-  begin
-    lResults[lIndex] := lKeyword.Validate(pInstance);
-    Inc(lIndex);
+    Result := TValidationResult.Combined(lResults);
+  finally
+    //if Assigned(Result) and (not Result.IsValid) then
+      //WriteLn('Validation failed. Keyword: ', Result.Errors[0].Keyword)
+    //else if not Assigned(Result) then
+      //WriteLn('Result is nil!');
+    TValidationContext.PopScope(Assigned(Result) and Result.IsValid);
+    TValidationContext.PopSchema;
   end;
-
-  Result := TValidationResult.Combined(lResults);
 end;
 
 end.

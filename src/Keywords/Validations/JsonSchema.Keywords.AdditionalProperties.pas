@@ -42,7 +42,9 @@ type
 implementation
 
 uses
-  JsonSchema.JSONHelper;
+  JsonSchema.Keywords.Pattern,
+  JsonSchema.JSONHelper,
+  JsonSchema.Core.ValidationContext;
 
 { TAdditionalPropertiesKeyword }
 
@@ -86,7 +88,8 @@ begin
         for lPair in TJSONObject(lPropVal) do
         begin
           SetLength(FPatternRegexes, Length(FPatternRegexes) + 1);
-          FPatternRegexes[High(FPatternRegexes)] := TRegEx.Create('(*UCP)' + lPair.JsonString.Value, [roCompiled]);
+          FPatternRegexes[High(FPatternRegexes)] :=
+            TRegEx.Create(TPatternKeyword.NormalizeEcma262Pattern(lPair.JsonString.Value), [roCompiled]);
         end;
       end;
     end;
@@ -156,6 +159,7 @@ begin
     // If key is not matched by properties or patternProperties, validate against additionalProperties
     if not lIsDeclared then
     begin
+      TValidationContext.MarkPropertyEvaluated(pInstance, lKeyName);
       if Assigned(FAdditionalSchema) then
       begin
         lSubResult := FAdditionalSchema.Validate(lPair.JsonValue);

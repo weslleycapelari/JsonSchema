@@ -15,6 +15,7 @@ uses
   JsonSchema.Core.Constants,
   JsonSchema.Core.Interfaces,
   JsonSchema.Core.SchemaRegistry,
+  JsonSchema.Draft6.Parser,
   JsonSchema.Keywords.Schema,
   JsonSchema.Keywords.Id,
   JsonSchema.Keywords.Ref,
@@ -26,6 +27,9 @@ type
     procedure TestSchemaKeywordAlwaysValid;
     procedure TestIdKeywordRegistration;
     procedure TestLocalRefPointerResolution;
+    procedure TestPercentEncodedPointerResolution;
+    procedure TestFragmentRefKeepsTargetSchemaBaseUri;
+    procedure TestFragmentRefPreservesNestedBaseUri;
     procedure TestRecursiveRefGuard;
   end;
 
@@ -33,7 +37,8 @@ implementation
 
 uses
   JsonSchema.CompiledSchema,
-  JsonSchema.Keywords.TypeKeyword;
+  JsonSchema.Keywords.TypeKeyword,
+  JsonSchema.Core.ValidationContext;
 
 { TTestCoreKeywords }
 
@@ -65,10 +70,10 @@ begin
   try
     // Set thread base URI
     TSchemaRegistry.CurrentBaseURI := 'http://example.com/';
-    
+
     lVal := lParent.GetValue('$id');
     lKeyword := TIdKeyword.CreateKeyword(lVal, lParent, nil);
-    
+
     CheckTrue(TSchemaRegistry.FindSchema('http://example.com/schema.json', lFoundSchema), 'Schema should be registered in the registry');
     CheckEquals(lParent.ToJSON, lFoundSchema.ToJSON, 'Registered schema must be identical to parent schema');
   finally
@@ -129,6 +134,121 @@ begin
   end;
 end;
 
+procedure TTestCoreKeywords.TestPercentEncodedPointerResolution;
+var
+  lKeyword: IJsonSchemaKeyword;
+  lParent: TJSONObject;
+  lDefinitions: TJSONObject;
+  lSubSchema: TJSONObject;
+  lInstance: TJSONValue;
+  lResult: IValidationResult;
+begin
+  lParent := TJSONObject.Create;
+  lDefinitions := TJSONObject.Create;
+  lSubSchema := TJSONObject.Create;
+  lSubSchema.AddPair('type', 'integer');
+  lDefinitions.AddPair('percent%field', lSubSchema);
+  lParent.AddPair('definitions', lDefinitions);
+
+  lInstance := TJSONNumber.Create(123);
+  try
+    TSchemaRegistry.CurrentRootSchema := lParent;
+    TSchemaRegistry.CurrentBaseURI := 'http://example.com/root.json';
+
+    lKeyword := TRefKeyword.CreateKeyword(
+      TJSONString.Create('#/definitions/percent%25field'),
+      lParent,
+      TDraft6Parser.ParseSchema
+    );
+
+    lResult := lKeyword.Validate(lInstance);
+    CheckTrue(lResult.IsValid, 'JSON Pointer fragments should decode percent-encoded tokens before schema lookup');
+  finally
+    lInstance.Free;
+    lParent.Free;
+    TSchemaRegistry.Clear;
+    TSchemaRegistry.CurrentRootSchema := nil;
+    TSchemaRegistry.CurrentBaseURI := '';
+  end;
+end;
+
+procedure TTestCoreKeywords.TestFragmentRefKeepsTargetSchemaBaseUri;
+var
+  lCompiledSchema: ICompiledSchema;
+  lParent: TJSONObject;
+  lRemoteIntegerSchema: TJSONObject;
+  lInstance: TJSONValue;
+  lResult: IValidationResult;
+begin
+  lParent := TJSONObject.ParseJSONValue(
+    '{"$id":"http://example.com/scope_change_defs1.json","type":"object","properties":{"list":{"$ref":"#/definitions/baz"}},"definitions":{"baz":{"$id":"baseUriChangeFolder/","type":"array","items":{"$ref":"folderInteger.json"}}}}'
+  ) as TJSONObject;
+  lRemoteIntegerSchema := TJSONObject.ParseJSONValue('{"type":"integer"}') as TJSONObject;
+  try
+    TSchemaRegistry.Clear;
+    TSchemaRegistry.CurrentRootSchema := lParent;
+    TSchemaRegistry.CurrentBaseURI := 'http://example.com/scope_change_defs1.json';
+    TSchemaRegistry.PreScanSchema(TSchemaRegistry.CurrentBaseURI, lParent);
+    TSchemaRegistry.RegisterSchema('http://example.com/baseUriChangeFolder/folderInteger.json', lRemoteIntegerSchema);
+
+    lCompiledSchema := TDraft6Parser.Parse(lParent);
+    lInstance := TJSONObject.ParseJSONValue('{"list":[1]}');
+    try
+      lResult := lCompiledSchema.Validate(lInstance);
+      CheckTrue(lResult.IsValid, 'Fragment refs must compile the target schema using its parent base URI before reprocessing $id');
+    finally
+      lInstance.Free;
+    end;
+  finally
+    lParent.Free;
+    lRemoteIntegerSchema.Free;
+    TSchemaRegistry.Clear;
+    TSchemaRegistry.CurrentRootSchema := nil;
+    TSchemaRegistry.CurrentBaseURI := '';
+  end;
+end;
+
+procedure TTestCoreKeywords.TestFragmentRefPreservesNestedBaseUri;
+var
+  lKeyword: IJsonSchemaKeyword;
+  lParent: TJSONObject;
+  lRemoteIntegerSchema: TJSONObject;
+  lInstance: TJSONValue;
+  lResult: IValidationResult;
+begin
+  lParent := TJSONObject.ParseJSONValue(
+    '{"$id":"http://example.com/scope_change_defs2.json","type":"object","properties":{"list":{"$ref":"#/definitions/baz/definitions/bar"}},"definitions":{"baz":{"$id":"baseUriChangeFolderInSubschema/","definitions":{"bar":{"type":"array","items":{"$ref":"folderInteger.json"}}}}}}'
+  ) as TJSONObject;
+  lRemoteIntegerSchema := TJSONObject.ParseJSONValue('{"type":"integer"}') as TJSONObject;
+  try
+    TSchemaRegistry.Clear;
+    TSchemaRegistry.CurrentRootSchema := lParent;
+    TSchemaRegistry.CurrentBaseURI := 'http://example.com/scope_change_defs2.json';
+    TSchemaRegistry.PreScanSchema(TSchemaRegistry.CurrentBaseURI, lParent);
+    TSchemaRegistry.RegisterSchema('http://example.com/baseUriChangeFolderInSubschema/folderInteger.json', lRemoteIntegerSchema);
+
+    lKeyword := TRefKeyword.CreateKeyword(
+      TJSONString.Create('#/definitions/baz/definitions/bar'),
+      lParent,
+      TDraft6Parser.ParseSchema
+    );
+
+    lInstance := TJSONObject.ParseJSONValue('[1]') as TJSONArray;
+    try
+      lResult := lKeyword.Validate(lInstance);
+      CheckTrue(lResult.IsValid, 'Fragment refs into nested subschemas must keep the effective base URI established by parent $id');
+    finally
+      lInstance.Free;
+    end;
+  finally
+    lParent.Free;
+    lRemoteIntegerSchema.Free;
+    TSchemaRegistry.Clear;
+    TSchemaRegistry.CurrentRootSchema := nil;
+    TSchemaRegistry.CurrentBaseURI := '';
+  end;
+end;
+
 procedure TTestCoreKeywords.TestRecursiveRefGuard;
 var
   lKeyword: IJsonSchemaKeyword;
@@ -137,34 +257,39 @@ var
   lResult: IValidationResult;
   lRefKeywordInstance: TRefKeyword;
 begin
-  lParent := TJSONObject.Create;
-  lInstance := TJSONNull.Create;
+  TValidationContext.StartSession;
   try
-    TSchemaRegistry.CurrentRootSchema := lParent;
-    TSchemaRegistry.CurrentBaseURI := 'http://example.com/recursive.json';
+    lParent := TJSONObject.Create;
+    lInstance := TJSONNull.Create;
+    try
+      TSchemaRegistry.CurrentRootSchema := lParent;
+      TSchemaRegistry.CurrentBaseURI := 'http://example.com/recursive.json';
 
-    // Set up a recursive ref pointing back to the root schema:
-    // Create the keyword which compiles lazily.
-    // To mock the recursive compile, the compile function returns a compiled schema
-    // that contains the ref keyword itself, causing a loop.
-    lRefKeywordInstance := nil;
-    lKeyword := TRefKeyword.CreateKeyword(
-      TJSONString.Create('#'),
-      lParent,
-      function(const pVal: TJSONValue): ICompiledSchema
-      begin
-        Result := TCompiledSchema.Create([lRefKeywordInstance]);
-      end
-    );
-    lRefKeywordInstance := lKeyword as TRefKeyword;
+      // Set up a recursive ref pointing back to the root schema:
+      // Create the keyword which compiles lazily.
+      // To mock the recursive compile, the compile function returns a compiled schema
+      // that contains the ref keyword itself, causing a loop.
+      lRefKeywordInstance := nil;
+      lKeyword := TRefKeyword.CreateKeyword(
+        TJSONString.Create('#'),
+        lParent,
+        function(const pVal: TJSONValue): ICompiledSchema
+        begin
+          Result := TCompiledSchema.Create([lRefKeywordInstance], TJSONObject(pVal));
+        end
+      );
+      lRefKeywordInstance := lKeyword as TRefKeyword;
 
-    lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Circular reference validation loop must terminate through recursion guard');
+      lResult := lKeyword.Validate(lInstance);
+      CheckTrue(lResult.IsValid, 'Circular reference validation loop must terminate through recursion guard');
+    finally
+      lInstance.Free;
+      lParent.Free;
+      TSchemaRegistry.CurrentRootSchema := nil;
+      TSchemaRegistry.CurrentBaseURI := '';
+    end;
   finally
-    lInstance.Free;
-    lParent.Free;
-    TSchemaRegistry.CurrentRootSchema := nil;
-    TSchemaRegistry.CurrentBaseURI := '';
+    TValidationContext.EndSession;
   end;
 end;
 

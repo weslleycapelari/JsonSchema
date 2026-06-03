@@ -45,7 +45,8 @@ type
 implementation
 
 uses
-  JsonSchema.JSONHelper;
+  JsonSchema.JSONHelper,
+  JsonSchema.Core.ValidationContext;
 
 { TPropertiesKeyword }
 
@@ -109,6 +110,7 @@ begin
   begin
     if FProperties.TryGetValue(lPair.JsonString.Value, lSchema) then
     begin
+      TValidationContext.MarkPropertyEvaluated(pInstance, lPair.JsonString.Value);
       lResults := lResults + [lSchema.Validate(lPair.JsonValue)];
     end;
   end;

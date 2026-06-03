@@ -88,20 +88,15 @@ begin
   end;
 
   lResults := [];
-  lIdx := 0;
   lAnyValid := False;
 
-  while (not lAnyValid) and (lIdx < Length(FSubSchemas)) do
+  for lIdx := 0 to Length(FSubSchemas) - 1 do
   begin
     lSubRes := FSubSchemas[lIdx].Validate(pInstance);
     if lSubRes.IsValid then
-    begin
-      lAnyValid := True;
-    end else
-    begin
+      lAnyValid := True
+    else
       lResults := lResults + [lSubRes];
-    end;
-    Inc(lIdx);
   end;
 
   if lAnyValid then

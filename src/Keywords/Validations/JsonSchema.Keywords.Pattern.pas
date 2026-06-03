@@ -28,6 +28,9 @@ type
     /// <summary>Initializes the validator with the defined regular expression pattern.</summary>
     constructor Create(const pPattern: string);
 
+    /// <summary>Normalizes ECMA-262 Unicode class aliases to Delphi PCRE-compatible syntax.</summary>
+    class function NormalizeEcma262Pattern(const pPattern: string): string; static;
+
     /// <summary>Validates the JSON instance string against the regex pattern.</summary>
     function Validate(const pInstance: TJSONValue): IValidationResult;
 
@@ -60,15 +63,7 @@ begin
   FPattern := pPattern;
   FIsRegexValid := True;
 
-  // Translate JS/ECMA-262 regex features to PCRE equivalents
-  lPcrePattern := pPattern;
-  lPcrePattern := lPcrePattern
-    .Replace('\p{Letter}', '\p{L}')
-    .Replace('\P{Letter}', '\P{L}')
-    .Replace('\p{digit}', '\p{Nd}')
-    .Replace('\P{digit}', '\P{Nd}')
-    .Replace('\s', '[\s\x{00a0}\x{feff}\p{Zs}\p{Zl}\p{Zp}]')
-    .Replace('\S', '[^\s\x{00a0}\x{feff}\p{Zs}\p{Zl}\p{Zp}]');
+  lPcrePattern := NormalizeEcma262Pattern(pPattern);
 
   try
     FRegex := TRegEx.Create(lPcrePattern, [roCompiled]);
@@ -76,6 +71,18 @@ begin
     on E: Exception do
       FIsRegexValid := False;
   end;
+end;
+
+class function TPatternKeyword.NormalizeEcma262Pattern(const pPattern: string): string;
+begin
+  // Translate JS/ECMA-262 regex features to PCRE equivalents used by Delphi.
+  Result := pPattern
+    .Replace('\p{Letter}', '\p{L}')
+    .Replace('\P{Letter}', '\P{L}')
+    .Replace('\p{digit}', '\p{Nd}')
+    .Replace('\P{digit}', '\P{Nd}')
+    .Replace('\s', '[\s\x{00a0}\x{feff}\p{Zs}\p{Zl}\p{Zp}]')
+    .Replace('\S', '[^\s\x{00a0}\x{feff}\p{Zs}\p{Zl}\p{Zp}]');
 end;
 
 function TPatternKeyword.GetKeywordName: string;

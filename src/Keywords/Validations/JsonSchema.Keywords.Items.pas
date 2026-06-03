@@ -48,7 +48,8 @@ type
 implementation
 
 uses
-  JsonSchema.JSONHelper;
+  JsonSchema.JSONHelper,
+  JsonSchema.Core.ValidationContext;
 
 { TItemsKeyword }
 
@@ -125,6 +126,7 @@ begin
     // Sibling additionalItems keyword will handle items beyond the tuple length.
     while (lIndex < lArray.Count) and (lIndex < Length(FTupleSchemas)) do
     begin
+      TValidationContext.MarkItemEvaluated(pInstance, lIndex);
       lResults := lResults + [FTupleSchemas[lIndex].Validate(lArray.Items[lIndex])];
       Inc(lIndex);
     end;
@@ -135,6 +137,7 @@ begin
       lIndex := 0;
       while lIndex < lArray.Count do
       begin
+        TValidationContext.MarkItemEvaluated(pInstance, lIndex);
         lResults := lResults + [FSingleSchema.Validate(lArray.Items[lIndex])];
         Inc(lIndex);
       end;

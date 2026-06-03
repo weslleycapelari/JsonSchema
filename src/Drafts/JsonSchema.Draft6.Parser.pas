@@ -222,7 +222,7 @@ begin
       end;
     end;
 
-    Result := TCompiledSchema.Create(lKeywords);
+    Result := TCompiledSchema.Create(lKeywords, pSchema);
   finally
     TSchemaRegistry.CurrentRootSchema := lOldRoot;
     TSchemaRegistry.CurrentBaseURI := lOldBaseURI;

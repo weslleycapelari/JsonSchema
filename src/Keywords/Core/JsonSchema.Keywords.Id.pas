@@ -62,16 +62,19 @@ class function TIdKeyword.CreateKeyword(const pKeywordValue: TJSONValue; const p
 var
   lIdStr: string;
   lAbsoluteURI: string;
+  lRegisteredSchema: TJSONValue;
 begin
   if Assigned(pKeywordValue) and (pKeywordValue is TJSONString) then
   begin
     lIdStr := pKeywordValue.Value;
-    // Combine with current base URI
-    lAbsoluteURI := CombineURI(TSchemaRegistry.CurrentBaseURI, lIdStr);
-    
+    if TSchemaRegistry.FindSchema(TSchemaRegistry.CurrentBaseURI, lRegisteredSchema) and (lRegisteredSchema = pParentSchema) then
+      lAbsoluteURI := TSchemaRegistry.CurrentBaseURI
+    else
+      lAbsoluteURI := CombineURI(TSchemaRegistry.CurrentBaseURI, lIdStr);
+
     // Register the parent schema in the global schema registry under this URI
     TSchemaRegistry.RegisterSchema(lAbsoluteURI, pParentSchema);
-    
+
     // Update the base URI context for nested compile calls
     TSchemaRegistry.CurrentBaseURI := lAbsoluteURI;
 
@@ -84,6 +87,7 @@ class function TIdKeyword.CreateLegacyKeyword(const pKeywordValue: TJSONValue; c
 var
   lIdStr: string;
   lAbsoluteURI: string;
+  lRegisteredSchema: TJSONValue;
 begin
   // Legacy 'id' used in Draft 6/7
   if Assigned(pKeywordValue) and (pKeywordValue is TJSONString) then
@@ -91,7 +95,11 @@ begin
     lIdStr := pKeywordValue.Value;
     if not lIdStr.StartsWith('#') then
     begin
-      lAbsoluteURI := CombineURI(TSchemaRegistry.CurrentBaseURI, lIdStr);
+      if TSchemaRegistry.FindSchema(TSchemaRegistry.CurrentBaseURI, lRegisteredSchema) and (lRegisteredSchema = pParentSchema) then
+        lAbsoluteURI := TSchemaRegistry.CurrentBaseURI
+      else
+        lAbsoluteURI := CombineURI(TSchemaRegistry.CurrentBaseURI, lIdStr);
+
       TSchemaRegistry.RegisterSchema(lAbsoluteURI, pParentSchema);
       TSchemaRegistry.CurrentBaseURI := lAbsoluteURI;
     end;

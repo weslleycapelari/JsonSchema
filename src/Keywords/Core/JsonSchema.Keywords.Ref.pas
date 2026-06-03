@@ -12,6 +12,7 @@ uses
   System.JSON,
   System.SysUtils,
   System.Generics.Collections,
+  System.NetEncoding,
   JsonSchema.Core.Constants,
   JsonSchema.Core.Interfaces,
   JsonSchema.Core.SchemaRegistry,
@@ -28,9 +29,10 @@ type
     FRefTargetValue: TJSONValue;
     FRootSchema: TJSONObject;
     FBaseURI: string;
-    FValidating: Boolean;
     function GetKeywordName: string;
     class function ResolveJsonPointer(const pRoot: TJSONValue; const pPointer: string): TJSONValue; static;
+    class function ResolveJsonPointerWithBase(const pRoot: TJSONValue; const pPointer, pBaseURI: string;
+      out pResolvedBaseURI: string): TJSONValue; static;
   public
     /// <summary>Initializes ref keyword pointing to target resolved JSON value.</summary>
     constructor Create(const pRefPath: string; const pTargetValue: TJSONValue; const pRootSchema: TJSONObject; const pBaseURI: string;
@@ -49,6 +51,9 @@ type
 
 implementation
 
+uses
+  JsonSchema.Core.ValidationContext;
+
 { TRefKeyword }
 
 constructor TRefKeyword.Create(const pRefPath: string; const pTargetValue: TJSONValue; const pRootSchema: TJSONObject;
@@ -61,18 +66,28 @@ begin
   FBaseURI := pBaseURI;
   FCompileFunc := pCompileFunc;
   FResolvedSchema := nil;
-  FValidating := False;
 end;
 
 class function TRefKeyword.ResolveJsonPointer(const pRoot: TJSONValue; const pPointer: string): TJSONValue;
+var
+  lResolvedBaseURI: string;
+begin
+  Result := ResolveJsonPointerWithBase(pRoot, pPointer, '', lResolvedBaseURI);
+end;
+
+class function TRefKeyword.ResolveJsonPointerWithBase(const pRoot: TJSONValue; const pPointer, pBaseURI: string;
+  out pResolvedBaseURI: string): TJSONValue;
 var
   lNormalized: string;
   lTokens: TArray<string>;
   lToken: string;
   lCleanToken: string;
   lIdx: Integer;
+  lPair: TJSONPair;
+  lIdValue: string;
 begin
   Result := pRoot;
+  pResolvedBaseURI := pBaseURI;
   if not Assigned(pRoot) then
     Exit(nil);
 
@@ -92,11 +107,13 @@ begin
     if not Assigned(Result) then
       Exit(nil);
 
-    // Decode JSON Pointer escapes (~1 -> / and ~0 -> ~)
-    lCleanToken := lToken.Replace('~1', '/').Replace('~0', '~');
+    // URI fragment JSON Pointers are percent-encoded before JSON Pointer unescaping.
+    lCleanToken := TNetEncoding.URL.Decode(lToken).Replace('~1', '/').Replace('~0', '~');
 
     if Result is TJSONObject then
+    begin
       Result := TJSONObject(Result).Values[lCleanToken]
+    end
     else if Result is TJSONArray then
     begin
       if TryStrToInt(lCleanToken, lIdx) and (lIdx >= 0) and (lIdx < TJSONArray(Result).Count) then
@@ -105,6 +122,28 @@ begin
         Exit(nil);
     end else
       Exit(nil);
+
+    if Result is TJSONObject then
+    begin
+      lPair := TJSONObject(Result).Get('$id');
+      if Assigned(lPair) and (lPair.JsonValue is TJSONString) then
+      begin
+        lIdValue := lPair.JsonValue.Value;
+        pResolvedBaseURI := TSchemaRegistry.CombineURI(pResolvedBaseURI, lIdValue);
+        if lIdValue.StartsWith('#') then
+          pResolvedBaseURI := pBaseURI;
+      end else
+      begin
+        lPair := TJSONObject(Result).Get('id');
+        if Assigned(lPair) and (lPair.JsonValue is TJSONString) then
+        begin
+          lIdValue := lPair.JsonValue.Value;
+          pResolvedBaseURI := TSchemaRegistry.CombineURI(pResolvedBaseURI, lIdValue);
+          if lIdValue.StartsWith('#') then
+            pResolvedBaseURI := pBaseURI;
+        end;
+      end;
+    end;
   end;
 end;
 
@@ -120,6 +159,7 @@ var
   lTargetRoot: TJSONObject;
   lTargetBaseURI: string;
   lRemoteSchema: TJSONValue;
+  lResolvedBaseURI: string;
 begin
   lTargetValue := nil;
   lTargetRoot := nil;
@@ -146,35 +186,44 @@ begin
     begin
       // 1. Try exact lookup in schema registry (anchors/full URIs)
       if (lFragment = '') or (lFragment = '#') or (lFragment = '#/') or lFragment.StartsWith('#/') then
-        lTargetValue := ResolveJsonPointer(lRemoteSchema, lFragment)
+      begin
+        lTargetValue := ResolveJsonPointerWithBase(lRemoteSchema, lFragment, lBaseURI, lResolvedBaseURI);
+        lTargetBaseURI := lResolvedBaseURI;
+      end
       else
+      begin
         lTargetValue := lRemoteSchema;
+        lTargetBaseURI := lAbsoluteRefURI;
+      end;
 
       if lRemoteSchema is TJSONObject then
         lTargetRoot := TJSONObject(lRemoteSchema)
       else
         lTargetRoot := pParentSchema;
-
-      lTargetBaseURI := lAbsoluteRefURI;
     end else if (lBaseURI = '') or (Assigned(TSchemaRegistry.CurrentRootSchema) and (lBaseURI = TSchemaRegistry.CurrentBaseURI)) then
     begin
       // 2. Local reference inside current root schema
-      lTargetValue := ResolveJsonPointer(TSchemaRegistry.CurrentRootSchema, lFragment);
+      lTargetValue := ResolveJsonPointerWithBase(
+        TSchemaRegistry.CurrentRootSchema,
+        lFragment,
+        TSchemaRegistry.CurrentBaseURI,
+        lResolvedBaseURI
+      );
       lTargetRoot := TSchemaRegistry.CurrentRootSchema;
-      lTargetBaseURI := TSchemaRegistry.CurrentBaseURI;
+      lTargetBaseURI := lResolvedBaseURI;
     end else
     begin
       // 3. External schema reference
       if TSchemaRegistry.FindSchema(lBaseURI, lRemoteSchema) then
       begin
-        lTargetValue := ResolveJsonPointer(lRemoteSchema, lFragment);
+        lTargetValue := ResolveJsonPointerWithBase(lRemoteSchema, lFragment, lBaseURI, lResolvedBaseURI);
 
         if lRemoteSchema is TJSONObject then
           lTargetRoot := TJSONObject(lRemoteSchema)
         else
           lTargetRoot := nil;
 
-        lTargetBaseURI := lBaseURI;
+        lTargetBaseURI := lResolvedBaseURI;
       end;
     end;
 
@@ -194,7 +243,8 @@ var
   lOldBaseURI: string;
 begin
   // Validation loop recursion guard (prevents stack overflow on loop references)
-  if FValidating then
+  if Assigned(FRefTargetValue) and (FRefTargetValue is TJSONObject) and
+     TValidationContext.IsCurrentlyValidating(TJSONObject(FRefTargetValue), pInstance) then
   begin
     Result := TValidationResult.ValidResult;
     Exit;
@@ -206,26 +256,21 @@ begin
     Exit;
   end;
 
-  FValidating := True;
-  try
-    if not Assigned(FResolvedSchema) then
-    begin
-      lOldRoot := TSchemaRegistry.CurrentRootSchema;
-      lOldBaseURI := TSchemaRegistry.CurrentBaseURI;
-      TSchemaRegistry.CurrentRootSchema := FRootSchema;
-      TSchemaRegistry.CurrentBaseURI := FBaseURI;
-      try
-        FResolvedSchema := FCompileFunc(FRefTargetValue);
-      finally
-        TSchemaRegistry.CurrentRootSchema := lOldRoot;
-        TSchemaRegistry.CurrentBaseURI := lOldBaseURI;
-      end;
+  if not Assigned(FResolvedSchema) then
+  begin
+    lOldRoot := TSchemaRegistry.CurrentRootSchema;
+    lOldBaseURI := TSchemaRegistry.CurrentBaseURI;
+    TSchemaRegistry.CurrentRootSchema := FRootSchema;
+    TSchemaRegistry.CurrentBaseURI := FBaseURI;
+    try
+      FResolvedSchema := FCompileFunc(FRefTargetValue);
+    finally
+      TSchemaRegistry.CurrentRootSchema := lOldRoot;
+      TSchemaRegistry.CurrentBaseURI := lOldBaseURI;
     end;
-
-    Result := FResolvedSchema.Validate(pInstance);
-  finally
-    FValidating := False;
   end;
+
+  Result := FResolvedSchema.Validate(pInstance);
 end;
 
 end.

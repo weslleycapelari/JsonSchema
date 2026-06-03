@@ -164,7 +164,9 @@ It is responsible for:
 - resolving local and remote schemas
 - combining base and relative URIs
 
-`$ref` resolution uses JSON Pointer navigation and a recursion guard so cyclic references do not overflow the call stack.
+### Dynamic Recursion Guard
+
+Rather than utilizing static flags at the keyword instance level, reference resolution (both `$ref` and `$recursiveRef`) relies on `TValidationContext.IsCurrentlyValidating`. During validation, the context maintains a thread-local stack of active schemas, tracking `(SchemaObj, Compiled, Instance)`. A loop is detected only if validation attempts to check the **same schema object** against the **same JSON instance reference**, ensuring complex tree/nested schemas do not cause infinite recursion or premature loop-guard termination.
 
 The registry also keeps global compilation context for the current root schema and base URI so nested references can be compiled without threading that state through every call.
 
@@ -196,6 +198,14 @@ It consists of:
 - Extracted Validation Units: Focus on specific formats to keep the codebase clean (e.g. `IPv6`, `DateTime`, `Iri`, `UriTemplate`).
 - `TFormatRegistry`: Maps standard and custom format validators. Standard formats are mapped to their introduction draft version via a formats map.
 - Draft Compliance: Standard formats that are not supported in the active compiler draft version are skipped during validation (validation passes), ensuring strict compliance with specs.
+
+## Evaluation tracking and scope stack
+
+In Draft 2019-09+, keywords like `unevaluatedProperties` and `unevaluatedItems` require dynamic tracking of which parts of the JSON instance have already been validated.
+
+- **`TScope`**: Represents validation scopes. It maps JSON instances to lists of evaluated property names and array item indices.
+- **Scope Stack (`FScopeStack` in `TValidationContext`)**: Pushed and popped during validation.
+- **Evaluation Merging**: Sibling scopes inside logical combinators (e.g. `allOf`, `anyOf`, `oneOf`) merge their evaluated property/item lists back up to their parent scope upon successful validation, ensuring subsequent evaluation keywords have full visibility of validated elements.
 
 ## JSON helper layer
 

@@ -16,29 +16,30 @@ The code currently groups keywords by domain:
 
 This grouping is practical for the codebase and keeps related behavior close together.
 
-## Current behavior
+## Dynamic Vocabulary Activation (Draft 2019-09+)
 
-Keywords are registered per draft parser through the registry.
+Beginning with Draft 2019-09, the library dynamically models vocabulary activation. During schema compilation, the parser:
 
-That means the effective vocabulary of a draft is defined by what the parser registers.
+1. Retrieves the active schema's `$schema` meta-schema.
+2. Inspects the `$vocabulary` object of the meta-schema.
+3. Maps each keyword to its standard vocabulary URI (Core, Applicator, Validation, Format, Meta-Data).
+4. If a vocabulary is explicitly disabled (`false`) in the meta-schema, the parser dynamically disables compilation of its respective keywords (they will not validate).
+5. Core vocabulary keywords are always implicitly enabled.
+6. The `format` vocabulary can be explicitly overridden/forced via `TJsonSchemaValidator.EnforceFormats`.
 
 ## Extension boundary
 
 The registry and keyword factory design provide the main extension boundary for future vocabularies and custom keywords.
 
-## Future direction
+## Vocabulary mapping
 
-The product vision includes more explicit vocabulary separation, such as:
+The parser groups standard keywords under the following URIs:
 
-- core vocabulary
-- applicator vocabulary
-- validation vocabulary
-- format vocabulary
-- metadata vocabulary
-- content vocabulary
-- custom vocabularies
-
-That separation is not yet fully modeled in the runtime as a first-class type system.
+- **Core (`.../vocab/core`)**: `$id`, `$schema`, `$anchor`, `$ref`, `$recursiveRef`, `$recursiveAnchor`, `$vocabulary`, `$comment`, `$defs`
+- **Applicator (`.../vocab/applicator`)**: `allOf`, `anyOf`, `oneOf`, `not`, `if`, `then`, `else`, `dependentSchemas`, `propertyNames`, `properties`, `patternProperties`, `additionalProperties`, `items`, `additionalItems`, `contains`, `unevaluatedProperties`, `unevaluatedItems`
+- **Validation (`.../vocab/validation`)**: `type`, `enum`, `const`, `multipleOf`, `maximum`, `exclusiveMaximum`, `minimum`, `exclusiveMinimum`, `maxLength`, `minLength`, `pattern`, `maxItems`, `minItems`, `uniqueItems`, `maxContains`, `minContains`, `maxProperties`, `minProperties`, `required`, `dependentRequired`
+- **Format (`.../vocab/format`)**: `format`
+- **Meta-Data (`.../vocab/meta-data`)**: `title`, `description`, `default`, `deprecated`, `readOnly`, `writeOnly`, `examples`
 
 ## Rule
 

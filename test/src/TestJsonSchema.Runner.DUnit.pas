@@ -33,7 +33,6 @@ type
 
     function GetErrors(const pErrors: TArray<IValidationError>): string;
     class function ResolveTestFiles(const pRootPath, pFileFilter: string): TArray<string>;
-    class function HasUnimplementedKeywords(const pSchema: TJSONValue): Boolean;
 
     { SRP Methods for registering test trees }
     class procedure RegisterTestFile(const pSuite: ITestSuite; const pFilePath: string;
@@ -193,7 +192,8 @@ begin
     for lFile in lAllFiles do
     begin
       if not (lFile.Contains('idn-hostname') or lFile.Contains('idn-email') or
-              lFile.Contains('iri.json') or lFile.Contains('iri-reference')) then
+              lFile.Contains('iri.json') or lFile.Contains('iri-reference') or
+              lFile.Contains('cross-draft') or lFile.Contains('content.json')) then
       begin
         lFiltered.Add(lFile);
       end;
@@ -204,93 +204,6 @@ begin
   end;
 end;
 
-class function TJsonSchemaValidationTest.HasUnimplementedKeywords(const pSchema: TJSONValue): Boolean;
-var
-  lObj: TJSONObject;
-  lArr: TJSONArray;
-  lPair: TJSONPair;
-  lKey: string;
-  lVal: TJSONValue;
-  lUnimplemented: Boolean;
-  lIndex: Integer;
-begin
-  if not Assigned(pSchema) then
-  begin
-    Exit(False);
-  end;
-
-  if pSchema is TJSONArray then
-  begin
-    lArr := TJSONArray(pSchema);
-    lUnimplemented := False;
-    lIndex := 0;
-    while (not lUnimplemented) and (lIndex < lArr.Count) do
-    begin
-      if HasUnimplementedKeywords(lArr.Items[lIndex]) then
-      begin
-        lUnimplemented := True;
-      end;
-      Inc(lIndex);
-    end;
-    Exit(lUnimplemented);
-  end;
-
-  if not (pSchema is TJSONObject) then
-  begin
-    Exit(False);
-  end;
-
-  lObj := TJSONObject(pSchema);
-  lUnimplemented := False;
-  lIndex := 0;
-
-  while (not lUnimplemented) and (lIndex < lObj.Count) do
-  begin
-    lPair := lObj.Pairs[lIndex];
-    lKey := lPair.JsonString.Value;
-    lVal := lPair.JsonValue;
-
-    if (lKey = '$schema') or (lKey = '$id') or (lKey = 'id') or 
-       (lKey = 'title') or (lKey = 'description') or (lKey = 'default') or 
-       (lKey = 'examples') or (lKey = 'definitions') then
-    begin
-      // Metadata/structural keys - ignore/allow
-    end
-    else if SameText(lKey, 'type') or SameText(lKey, 'enum') or 
-            SameText(lKey, 'const') or SameText(lKey, 'minimum') or 
-            SameText(lKey, 'maximum') or SameText(lKey, 'minLength') or 
-            SameText(lKey, 'maxLength') or SameText(lKey, 'required') or 
-            SameText(lKey, 'minItems') or SameText(lKey, 'maxItems') or
-            SameText(lKey, 'multipleOf') or SameText(lKey, 'exclusiveMaximum') or
-            SameText(lKey, 'exclusiveMinimum') or SameText(lKey, 'pattern') or
-            SameText(lKey, 'uniqueItems') or SameText(lKey, 'contains') or
-            SameText(lKey, 'maxProperties') or SameText(lKey, 'minProperties') or
-            SameText(lKey, 'propertyNames') or SameText(lKey, 'properties') or
-            SameText(lKey, 'patternProperties') or SameText(lKey, 'items') or
-            SameText(lKey, 'additionalItems') or SameText(lKey, 'additionalProperties') or
-            SameText(lKey, 'dependencies') or SameText(lKey, 'allOf') or
-            SameText(lKey, 'anyOf') or SameText(lKey, 'oneOf') or
-            SameText(lKey, 'not') or SameText(lKey, '$ref') or
-            SameText(lKey, 'format') or SameText(lKey, 'if') or
-            SameText(lKey, 'then') or SameText(lKey, 'else') or
-            SameText(lKey, '$comment') then
-    begin
-      if HasUnimplementedKeywords(lVal) then
-      begin
-        lUnimplemented := True;
-      end;
-    end
-    else
-    begin
-      lUnimplemented := True;
-    end;
-
-    Inc(lIndex);
-  end;
-
-  Result := lUnimplemented;
-end;
-
 class procedure TJsonSchemaValidationTest.RegisterTestCase(const pSuite: ITestSuite;
   const pFilePath, pTestTitle: string; const pSchema: TJSONValue;
   const pTestObj: TJSONObject; const pDraftVersion: TDraftVersion);
@@ -299,11 +212,6 @@ var
   lDescription: string;
   lValid: Boolean;
 begin
-  if HasUnimplementedKeywords(pSchema) then
-  begin
-    Exit;
-  end;
-
   if pTestObj.TryGetValue<TJSONValue>('data', lData) and
      pTestObj.TryGetValue<string>('description', lDescription) and
      pTestObj.TryGetValue<Boolean>('valid', lValid) then
@@ -433,7 +341,7 @@ class procedure TJsonSchemaValidationTest.RegisterDefaultDrafts;
 begin
   RegisterTestsFromDraft('draft6', TDraftVersion.dvDraft6);
   RegisterTestsFromDraft('draft7', TDraftVersion.dvDraft7);
-  // RegisterTestsFromDraft('draft2019-09', TDraftVersion.dvDraft2019_09);
+  RegisterTestsFromDraft('draft2019-09', TDraftVersion.dvDraft2019_09);
   // RegisterTestsFromDraft('draft2020-12', TDraftVersion.dvDraft2020_12);
 end;
 

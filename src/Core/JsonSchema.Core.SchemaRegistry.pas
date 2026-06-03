@@ -20,6 +20,7 @@ type
   strict private
     class var FRegistry: TDictionary<string, TJSONValue>;
     class var FRoots: TList<TJSONValue>;
+    class var FRecursiveAnchors: TList<TJSONObject>;
     class var FCurrentBaseURI: string;
     class var FCurrentRootSchema: TJSONObject;
     class constructor Create;
@@ -41,6 +42,12 @@ type
     /// <summary>Pre-scans a schema recursively to find all internal identifiers and anchors.</summary>
     class procedure PreScanSchema(const pURI: string; const pSchema: TJSONValue); static;
 
+    /// <summary>Registers a JSON object as having a recursive anchor.</summary>
+    class procedure RegisterRecursiveAnchor(const pSchemaObj: TJSONObject); static;
+
+    /// <summary>Checks if a JSON object has a recursive anchor registered.</summary>
+    class function IsRecursiveAnchor(const pSchemaObj: TJSONObject): Boolean; static;
+
     /// <summary>Thread-local current base URI during schema compiling.</summary>
     class property CurrentBaseURI: string read FCurrentBaseURI write FCurrentBaseURI;
 
@@ -59,6 +66,7 @@ class constructor TSchemaRegistry.Create;
 begin
   FRegistry := TDictionary<string, TJSONValue>.Create;
   FRoots := TList<TJSONValue>.Create;
+  FRecursiveAnchors := TList<TJSONObject>.Create;
 end;
 
 class destructor TSchemaRegistry.Destroy;
@@ -66,6 +74,7 @@ begin
   Clear;
   FRegistry.Free;
   FRoots.Free;
+  FRecursiveAnchors.Free;
 end;
 
 class procedure TSchemaRegistry.Clear;
@@ -77,6 +86,19 @@ begin
 
   FRoots.Clear;
   FRegistry.Clear;
+  FRecursiveAnchors.Clear;
+  FCurrentRootSchema := nil;
+end;
+
+class procedure TSchemaRegistry.RegisterRecursiveAnchor(const pSchemaObj: TJSONObject);
+begin
+  if not FRecursiveAnchors.Contains(pSchemaObj) then
+    FRecursiveAnchors.Add(pSchemaObj);
+end;
+
+class function TSchemaRegistry.IsRecursiveAnchor(const pSchemaObj: TJSONObject): Boolean;
+begin
+  Result := FRecursiveAnchors.Contains(pSchemaObj);
 end;
 
 class function TSchemaRegistry.CombineURI(const pBase, pRelative: string): string;
@@ -185,6 +207,11 @@ class procedure TSchemaRegistry.PreScanSchema(const pURI: string; const pSchema:
           FRegistry.Add(CombineURI(lNewBase, lAnchorStr), lObj);
       end;
 
+      // Check for '$recursiveAnchor'
+      lPair := lObj.Get('$recursiveAnchor');
+      if Assigned(lPair) and (lPair.JsonValue is TJSONBool) and TJSONBool(lPair.JsonValue).AsBoolean then
+        RegisterRecursiveAnchor(lObj);
+
       // Recurse into subschemas using specific keywords
 
       // 1. Single subschemas
@@ -229,6 +256,14 @@ class procedure TSchemaRegistry.PreScanSchema(const pURI: string; const pSchema:
         RecurseSchema(lPair.JsonValue, lNewBase);
 
       lPair := lObj.Get('else');
+      if Assigned(lPair) then
+        RecurseSchema(lPair.JsonValue, lNewBase);
+
+      lPair := lObj.Get('unevaluatedProperties');
+      if Assigned(lPair) then
+        RecurseSchema(lPair.JsonValue, lNewBase);
+
+      lPair := lObj.Get('unevaluatedItems');
       if Assigned(lPair) then
         RecurseSchema(lPair.JsonValue, lNewBase);
 
@@ -280,7 +315,21 @@ class procedure TSchemaRegistry.PreScanSchema(const pURI: string; const pSchema:
         end;
       end;
 
+      lPair := lObj.Get('dependentSchemas');
+      if Assigned(lPair) and (lPair.JsonValue is TJSONObject) then
+      begin
+        for lMapPair in TJSONObject(lPair.JsonValue) do
+          RecurseSchema(lMapPair.JsonValue, lNewBase);
+      end;
+
       lPair := lObj.Get('definitions');
+      if Assigned(lPair) and (lPair.JsonValue is TJSONObject) then
+      begin
+        for lMapPair in TJSONObject(lPair.JsonValue) do
+          RecurseSchema(lMapPair.JsonValue, lNewBase);
+      end;
+
+      lPair := lObj.Get('$defs');
       if Assigned(lPair) and (lPair.JsonValue is TJSONObject) then
       begin
         for lMapPair in TJSONObject(lPair.JsonValue) do
@@ -426,34 +475,54 @@ var
   lFragment: string;
   lFetched: TJSONValue;
 begin
+  if FRegistry.TryGetValue(pURI, pSchema) then
+  begin
+    Result := True;
+    Exit;
+  end;
+
   lCleanURI := pURI;
   lHashIdx := lCleanURI.IndexOf('#');
   if lHashIdx >= 0 then
   begin
     lFragment := lCleanURI.Substring(lHashIdx);
-    if (lFragment = '#') or (lFragment = '#/') or lFragment.StartsWith('#/') then
-      lCleanURI := lCleanURI.Substring(0, lHashIdx);
+    lCleanURI := lCleanURI.Substring(0, lHashIdx);
+  end else
+    lFragment := '';
+
+  if (lFragment = '') or (lFragment = '#') or (lFragment = '#/') or lFragment.StartsWith('#/') then
+  begin
+    if FRegistry.TryGetValue(lCleanURI, pSchema) then
+    begin
+      Result := True;
+      Exit;
+    end;
   end;
 
-  if FRegistry.TryGetValue(lCleanURI, pSchema) then
+  if not FRegistry.ContainsKey(lCleanURI) then
   begin
-    Result := True;
-  end else
-  begin
-    // Try to load dynamically
     lFetched := FetchSchemaFromLocalOrHttp(lCleanURI);
     if Assigned(lFetched) then
     begin
       FRegistry.Add(lCleanURI, lFetched);
       FRoots.Add(lFetched);
       PreScanSchema(lCleanURI, lFetched);
-      pSchema := lFetched;
-      Result := True;
-    end else
-    begin
-      pSchema := nil;
-      Result := False;
     end;
+  end;
+
+  if FRegistry.TryGetValue(pURI, pSchema) then
+  begin
+    Result := True;
+  end
+  else if ((lFragment = '') or (lFragment = '#') or (lFragment = '#/') or lFragment.StartsWith('#/')) and
+          FRegistry.TryGetValue(lCleanURI, pSchema) then
+  begin
+    Result := True;
+  end
+  else
+  begin
+    pSchema := nil;
+    Result := False;
   end;
 end;
 

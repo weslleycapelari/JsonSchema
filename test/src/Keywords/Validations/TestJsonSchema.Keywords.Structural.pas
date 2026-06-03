@@ -16,6 +16,8 @@ uses
   JsonSchema.Core.Interfaces,
   JsonSchema.Keywords.Properties,
   JsonSchema.Keywords.PatternProperties,
+  JsonSchema.Keywords.AdditionalProperties,
+  JsonSchema.Keywords.Dependencies,
   JsonSchema.Keywords.Items,
   JsonSchema.Draft6.Parser,
   JsonSchema.Results;
@@ -29,6 +31,13 @@ type
     procedure TestPatternPropertiesPasses;
     procedure TestPatternPropertiesFails;
     procedure TestPatternPropertiesIgnoredOnNonObjects;
+    procedure TestPatternPropertiesSupportsUnicodeClassAliases;
+    procedure TestAdditionalPropertiesUsesNormalizedPatternProperties;
+    procedure TestPatternPropertiesPreservesAsciiWordClass;
+    procedure TestPatternPropertiesPreservesAsciiDigitClass;
+    procedure TestDependenciesRequireSiblingProperties;
+    procedure TestDependenciesValidateSchemaDependencies;
+    procedure TestDependenciesSupportEscapedPropertyNames;
     procedure TestItemsSinglePasses;
     procedure TestItemsSingleFails;
     procedure TestItemsTuplePasses;
@@ -167,6 +176,181 @@ begin
     try
       lResult := lKeyword.Validate(lInstance);
       CheckTrue(lResult.IsValid, 'Pattern properties validation should be ignored on strings');
+    finally
+      lInstance.Free;
+    end;
+  finally
+    lKeywordValue.Free;
+  end;
+end;
+
+procedure TTestStructuralKeywords.TestPatternPropertiesSupportsUnicodeClassAliases;
+var
+  lInstance: TJSONObject;
+  lKeywordValue: TJSONObject;
+  lKeyword: IJsonSchemaKeyword;
+  lResult: IValidationResult;
+  lUnicodeKey: string;
+begin
+  lKeywordValue := TJSONObject.ParseJSONValue('{"\\p{Letter}cole": {"type": "string"}}') as TJSONObject;
+  try
+    lKeyword := TPatternPropertiesKeyword.Create(lKeywordValue, TDraft6Parser.ParseSchema);
+
+    lUnicodeKey := 'l''' + #$00E9 + 'cole';
+    lInstance := TJSONObject.Create;
+    try
+      lInstance.AddPair(lUnicodeKey, TJSONString.Create('pas de vraie vie'));
+
+      lResult := lKeyword.Validate(lInstance);
+      CheckTrue(lResult.IsValid, 'patternProperties should support \\p{Letter} aliases and match unicode keys');
+    finally
+      lInstance.Free;
+    end;
+  finally
+    lKeywordValue.Free;
+  end;
+end;
+
+procedure TTestStructuralKeywords.TestAdditionalPropertiesUsesNormalizedPatternProperties;
+var
+  lInstance: TJSONObject;
+  lParentSchema: TJSONObject;
+  lAdditionalValue: TJSONValue;
+  lKeyword: IJsonSchemaKeyword;
+  lResult: IValidationResult;
+  lUnicodeDigitKey: string;
+begin
+  lParentSchema := TJSONObject.ParseJSONValue(
+    '{"patternProperties": {"^\\p{digit}+$": true}, "additionalProperties": false}') as TJSONObject;
+  try
+    lAdditionalValue := lParentSchema.GetValue('additionalProperties');
+    lKeyword := TAdditionalPropertiesKeyword.Create(lAdditionalValue, lParentSchema, TDraft6Parser.ParseSchema);
+
+    lUnicodeDigitKey := #$09EA + #$09E8;
+    lInstance := TJSONObject.Create;
+    try
+      lInstance.AddPair(lUnicodeDigitKey, TJSONString.Create('khajit has wares if you have coin'));
+
+      lResult := lKeyword.Validate(lInstance);
+      CheckTrue(lResult.IsValid, 'additionalProperties should respect unicode aliases from sibling patternProperties');
+    finally
+      lInstance.Free;
+    end;
+  finally
+    lParentSchema.Free;
+  end;
+end;
+
+procedure TTestStructuralKeywords.TestPatternPropertiesPreservesAsciiWordClass;
+var
+  lSchema: TJSONObject;
+  lInstance: TJSONObject;
+  lCompiled: ICompiledSchema;
+  lResult: IValidationResult;
+  lUnicodeKey: string;
+begin
+  lSchema := TJSONObject.ParseJSONValue(
+    '{"type":"object","patternProperties":{"\\wcole":true},"additionalProperties":false}') as TJSONObject;
+  try
+    lCompiled := TDraft6Parser.Parse(lSchema);
+    lUnicodeKey := 'l''' + #$00E9 + 'cole';
+    lInstance := TJSONObject.Create;
+    try
+      lInstance.AddPair(lUnicodeKey, TJSONString.Create('pas de vraie vie'));
+      lResult := lCompiled.Validate(lInstance);
+      CheckFalse(lResult.IsValid, '\\w in patternProperties must stay ASCII-only for unicode letters');
+    finally
+      lInstance.Free;
+    end;
+  finally
+    lSchema.Free;
+  end;
+end;
+
+procedure TTestStructuralKeywords.TestPatternPropertiesPreservesAsciiDigitClass;
+var
+  lSchema: TJSONObject;
+  lInstance: TJSONObject;
+  lCompiled: ICompiledSchema;
+  lResult: IValidationResult;
+begin
+  lSchema := TJSONObject.ParseJSONValue(
+    '{"type":"object","patternProperties":{"^\\d+$":true},"additionalProperties":false}') as TJSONObject;
+  try
+    lCompiled := TDraft6Parser.Parse(lSchema);
+    lInstance := TJSONObject.Create;
+    try
+      lInstance.AddPair(#$09EA + #$09E8, TJSONString.Create('khajit has wares if you have coin'));
+      lResult := lCompiled.Validate(lInstance);
+      CheckFalse(lResult.IsValid, '\\d in patternProperties must stay ASCII-only for unicode digits');
+    finally
+      lInstance.Free;
+    end;
+  finally
+    lSchema.Free;
+  end;
+end;
+
+procedure TTestStructuralKeywords.TestDependenciesRequireSiblingProperties;
+var
+  lInstance: TJSONObject;
+  lKeywordValue: TJSONObject;
+  lKeyword: IJsonSchemaKeyword;
+  lResult: IValidationResult;
+begin
+  lKeywordValue := TJSONObject.ParseJSONValue('{"quux":["foo","bar"]}') as TJSONObject;
+  try
+    lKeyword := TDependenciesKeyword.Create(lKeywordValue, TDraft6Parser.ParseSchema);
+    lInstance := TJSONObject.ParseJSONValue('{"foo":1,"quux":2}') as TJSONObject;
+    try
+      lResult := lKeyword.Validate(lInstance);
+      CheckFalse(lResult.IsValid, 'dependencies should fail when a sibling dependency property is missing');
+    finally
+      lInstance.Free;
+    end;
+  finally
+    lKeywordValue.Free;
+  end;
+end;
+
+procedure TTestStructuralKeywords.TestDependenciesValidateSchemaDependencies;
+var
+  lInstance: TJSONObject;
+  lKeywordValue: TJSONObject;
+  lKeyword: IJsonSchemaKeyword;
+  lResult: IValidationResult;
+begin
+  lKeywordValue := TJSONObject.ParseJSONValue(
+    '{"bar":{"properties":{"foo":{"type":"integer"},"bar":{"type":"integer"}}}}') as TJSONObject;
+  try
+    lKeyword := TDependenciesKeyword.Create(lKeywordValue, TDraft6Parser.ParseSchema);
+    lInstance := TJSONObject.ParseJSONValue('{"foo":"quux","bar":2}') as TJSONObject;
+    try
+      lResult := lKeyword.Validate(lInstance);
+      CheckFalse(lResult.IsValid, 'schema dependencies should validate the full instance when the trigger property exists');
+    finally
+      lInstance.Free;
+    end;
+  finally
+    lKeywordValue.Free;
+  end;
+end;
+
+procedure TTestStructuralKeywords.TestDependenciesSupportEscapedPropertyNames;
+var
+  lInstance: TJSONObject;
+  lKeywordValue: TJSONObject;
+  lKeyword: IJsonSchemaKeyword;
+  lResult: IValidationResult;
+begin
+  lKeywordValue := TJSONObject.ParseJSONValue(
+    '{"foo\nbar":["foo\rbar"],"foo\tbar":{"minProperties":4},"foo''bar":{"required":["foo\"bar"]},"foo\"bar":["foo''bar"]}') as TJSONObject;
+  try
+    lKeyword := TDependenciesKeyword.Create(lKeywordValue, TDraft6Parser.ParseSchema);
+    lInstance := TJSONObject.ParseJSONValue('{"foo\nbar":1,"foo":2}') as TJSONObject;
+    try
+      lResult := lKeyword.Validate(lInstance);
+      CheckFalse(lResult.IsValid, 'dependencies should honor escaped property names when checking triggers and missing properties');
     finally
       lInstance.Free;
     end;

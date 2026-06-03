@@ -42,7 +42,8 @@ type
 implementation
 
 uses
-  JsonSchema.JSONHelper;
+  JsonSchema.JSONHelper,
+  JsonSchema.Core.ValidationContext;
 
 { TAdditionalItemsKeyword }
 
@@ -112,14 +113,15 @@ begin
   // Validate additional elements starting from FTupleCount
   if lArray.Count > FTupleCount then
   begin
-    if Assigned(FAdditionalSchema) then
+    lIndex := FTupleCount;
+    while lIndex < lArray.Count do
     begin
-      lIndex := FTupleCount;
-      while lIndex < lArray.Count do
+      TValidationContext.MarkItemEvaluated(pInstance, lIndex);
+      if Assigned(FAdditionalSchema) then
       begin
         lResults := lResults + [FAdditionalSchema.Validate(lArray.Items[lIndex])];
-        Inc(lIndex);
       end;
+      Inc(lIndex);
     end;
   end;
 

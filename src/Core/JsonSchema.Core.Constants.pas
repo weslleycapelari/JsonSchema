@@ -135,6 +135,48 @@ const
   /// <summary>Metadata keyword for schema comments.</summary>
   KEYWORD_COMMENT = '$comment';
 
+  /// <summary>Metadata keyword for subschemas definitions.</summary>
+  KEYWORD_DEFS = '$defs';
+
+  /// <summary>Validation keyword for dependent property requirements.</summary>
+  KEYWORD_DEPENDENTREQUIRED = 'dependentRequired';
+
+  /// <summary>Applicator keyword for dependent schema validation.</summary>
+  KEYWORD_DEPENDENTSCHEMAS = 'dependentSchemas';
+
+  /// <summary>Validation keyword for properties not yet evaluated.</summary>
+  KEYWORD_UNEVALUATEDPROPERTIES = 'unevaluatedProperties';
+
+  /// <summary>Validation keyword for array items not yet evaluated.</summary>
+  KEYWORD_UNEVALUATEDITEMS = 'unevaluatedItems';
+
+  /// <summary>Validation keyword for minimum contains match count.</summary>
+  KEYWORD_MINCONTAINS = 'minContains';
+
+  /// <summary>Validation keyword for maximum contains match count.</summary>
+  KEYWORD_MAXCONTAINS = 'maxContains';
+
+  /// <summary>Applicator keyword for recursive schema reference.</summary>
+  KEYWORD_RECURSIVEREF = '$recursiveRef';
+
+  /// <summary>Metadata keyword declaring a recursive anchor point.</summary>
+  KEYWORD_RECURSIVEANCHOR = '$recursiveAnchor';
+
+  /// <summary>Metadata keyword declaring supported vocabularies.</summary>
+  KEYWORD_VOCABULARY = '$vocabulary';
+
+  /// <summary>Metadata keyword declaring a schema anchor.</summary>
+  KEYWORD_ANCHOR = '$anchor';
+
+  /// <summary>Metadata keyword flagging deprecated schema elements.</summary>
+  KEYWORD_DEPRECATED = 'deprecated';
+
+  /// <summary>Metadata keyword flagging read-only properties.</summary>
+  KEYWORD_READONLY = 'readOnly';
+
+  /// <summary>Metadata keyword flagging write-only properties.</summary>
+  KEYWORD_WRITEONLY = 'writeOnly';
+
 implementation
 
 end.

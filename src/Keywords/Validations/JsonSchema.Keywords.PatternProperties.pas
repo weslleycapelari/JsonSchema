@@ -53,7 +53,9 @@ type
 implementation
 
 uses
-  JsonSchema.JSONHelper;
+  JsonSchema.Keywords.Pattern,
+  JsonSchema.JSONHelper,
+  JsonSchema.Core.ValidationContext;
 
 { TPatternPropertiesKeyword }
 
@@ -78,9 +80,9 @@ begin
     begin
       lRule.Pattern := lPair.JsonString.Value;
       // Compile TRegEx once during construction for efficiency
-      lRule.Regex := TRegEx.Create('(*UCP)' + lRule.Pattern, [roCompiled]);
+      lRule.Regex := TRegEx.Create(TPatternKeyword.NormalizeEcma262Pattern(lRule.Pattern), [roCompiled]);
       lRule.Schema := pCompileFunc(lPair.JsonValue);
-      
+
       SetLength(FRules, Length(FRules) + 1);
       FRules[High(FRules)] := lRule;
     end;
@@ -123,6 +125,7 @@ begin
     begin
       if FRules[lIndex].Regex.IsMatch(lKeyName) then
       begin
+        TValidationContext.MarkPropertyEvaluated(pInstance, lKeyName);
         lResults := lResults + [FRules[lIndex].Schema.Validate(lPair.JsonValue)];
       end;
       Inc(lIndex);
