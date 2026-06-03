@@ -1,5 +1,12 @@
 unit TestJsonSchema.Console.Renderer;
 
+(*
+--------------------------------------------------------------------------------
+Contains console renderer and output formatting tests for JSON validation report visual presentation.
+--------------------------------------------------------------------------------
+*)
+
+
 interface
 
 uses
@@ -14,7 +21,7 @@ type
     FConsoleHandle: THandle;
     FDefaultAttributes: Word;
 
-    { Métodos Privados de Desenho e Cor }
+    { Mtodos Privados de Desenho e Cor }
     procedure SetColor(const pColor: Word);
     procedure ResetColor;
     function BuildBar(const pPercent: Double; const pWidth: Integer; const pChar: Char): string;
@@ -66,7 +73,7 @@ begin
   lPercent := EnsureRange(pPercent, 0, 100);
   lFilled := Round((lPercent / 100) * pWidth);
 
-  // Usando preenchimento visual clássico ou blocos conforme pChar
+  // Usando preenchimento visual clssico ou blocos conforme pChar
   Result := StringOfChar(pChar, lFilled) + StringOfChar('.', pWidth - lFilled);
 end;
 
@@ -82,7 +89,7 @@ begin
   lCoord.X := pX;
   lCoord.Y := pY;
 
-  // Limpa a linha antes de escrever para não deixar rastros
+  // Limpa a linha antes de escrever para no deixar rastros
   FillConsoleOutputCharacter(FConsoleHandle, ' ', lInfo.dwSize.X, lCoord, lWritten);
 
   if pColor <> 0 then
@@ -107,7 +114,7 @@ begin
 
   lRestore := lInfo.dwCursorPosition;
 
-  { Cálculos de Percentual }
+  { Clculos de Percentual }
   if pTotal > 0 then
     lGeneralPercent := (pProcessed / pTotal) * 100
   else
@@ -118,8 +125,8 @@ begin
   else
     lPassPercent := 100;
 
-  { Posicionamento no Rodapé (Sticky Footer) }
-  // O rodapé fica sempre nas duas últimas linhas da JANELA visível
+  { Posicionamento no Rodap (Sticky Footer) }
+  // O rodap fica sempre nas duas ltimas linhas da JANELA visvel
   lFooterLine1 := lInfo.srWindow.Bottom - 1;
   lFooterLine2 := lInfo.srWindow.Bottom;
 
@@ -134,7 +141,7 @@ begin
     [BuildBar(lPassPercent, 40, '#'), lPassPercent, pPassed, pFailed]),
     IfThen(pFailed > 0, C_YELLOW, C_GREEN));
 
-  { Restaura o cursor para a área de LOG (acima do rodapé) }
+  { Restaura o cursor para a rea de LOG (acima do rodap) }
   if lRestore.Y >= lFooterLine1 then
     lRestore.Y := lFooterLine1 - 1;
 
@@ -156,11 +163,11 @@ begin
   if not GetConsoleScreenBufferInfo(FConsoleHandle, lInfo) then
     Exit;
 
-  { Garante que o Log não atropele o rodapé }
+  { Garante que o Log no atropele o rodap }
   if lInfo.dwCursorPosition.Y >= (lInfo.srWindow.Bottom - 2) then
   begin
     Writeln; // Provoca o scroll do console
-    // Recalcula posição após o scroll
+    // Recalcula posio aps o scroll
     GetConsoleScreenBufferInfo(FConsoleHandle, lInfo);
   end;
 

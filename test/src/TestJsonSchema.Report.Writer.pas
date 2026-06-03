@@ -1,5 +1,12 @@
 unit TestJsonSchema.Report.Writer;
 
+(*
+--------------------------------------------------------------------------------
+Provides tests for the JSON Schema validation report file generation, path formatting, and export functionalities.
+--------------------------------------------------------------------------------
+*)
+
+
 interface
 
 uses
@@ -41,11 +48,11 @@ var
 begin
   lTrimmedPath := Trim(pReportPath);
 
-  // Cláusula de guarda
+  // Clusula de guarda
   if lTrimmedPath = '' then
     Exit('');
 
-  // Cláusula de guarda
+  // Clusula de guarda
   if TPath.IsPathRooted(lTrimmedPath) then
     Exit(TPath.GetFullPath(lTrimmedPath));
 
@@ -64,7 +71,7 @@ var
 begin
   Result := '';
 
-  // Cláusula de guarda validando a entrada
+  // Clusula de guarda validando a entrada
   if Trim(pFilePath) = '' then
     Exit;
 
@@ -93,7 +100,7 @@ begin
         lLines.Add(Format('    "expectedValid": %s,', [LowerCase(BoolToStr(lFailure.ExpectedValid, True))]));
         lLines.Add(Format('    "actualValid": %s', [LowerCase(BoolToStr(lFailure.ActualValid, True))]));
 
-        // Uso de begin..end explícito para suportar o 'end else begin' nas normas
+        // Uso de begin..end explcito para suportar o 'end else begin' nas normas
         if lIndex < pFailures.Count - 1 then
         begin
           lLines.Add('  },');

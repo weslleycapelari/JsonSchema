@@ -1,5 +1,12 @@
 unit TestJsonSchema.Mock.HttpServer;
 
+(*
+--------------------------------------------------------------------------------
+Implements a mock HTTP server utilized to simulate remote network schema fetching tests.
+--------------------------------------------------------------------------------
+*)
+
+
 interface
 
 uses
@@ -49,11 +56,11 @@ var
 begin
   lFilePath := IncludeTrailingPathDelimiter(GetSchemasRemotesRootPath) + pRequestInfo.Document;
 
-  // Apenas uma linha após o comando if, omitindo o begin..end conforme a norma
+  // Apenas uma linha aps o comando if, omitindo o begin..end conforme a norma
   if DirectoryExists(lFilePath) then
     lFilePath := IncludeTrailingPathDelimiter(lFilePath) + 'index.html';
 
-  // Par begin..end obrigatório por ter múltiplas linhas
+  // Par begin..end obrigatrio por ter mltiplas linhas
   // Uso do 'end else begin' na mesma linha, de acordo com as normas
   if FileExists(lFilePath) then
   begin
@@ -64,7 +71,7 @@ begin
   end else
   begin
     pResponseInfo.ResponseNo := 404;
-    pResponseInfo.ContentText := 'Arquivo não encontrado';
+    pResponseInfo.ContentText := 'Arquivo no encontrado';
   end;
 end;
 

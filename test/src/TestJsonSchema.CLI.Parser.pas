@@ -1,5 +1,12 @@
 unit TestJsonSchema.CLI.Parser;
 
+(*
+--------------------------------------------------------------------------------
+Provides test suites verifying Command Line Interface (CLI) configuration and argument parser.
+--------------------------------------------------------------------------------
+*)
+
+
 interface
 
 uses
@@ -31,7 +38,7 @@ begin
   lPrefix := '-' + pSwitchName + '=';
   lLongPrefix := '--' + pSwitchName + '=';
 
-  // Substituição do comando Exit/Break por condição de parada explícita na norma
+  // Substituio do comando Exit/Break por condio de parada explcita na norma
   while (lIndex <= ParamCount) and not lFound do
   begin
     lParam := ParamStr(lIndex);
@@ -71,7 +78,7 @@ begin
     lPrefixShort := '-' + pShortSwitch + '=';
     lPrefixLong := '--' + pLongSwitch + '=';
 
-    // Substituição do comando Continue pela estrutura if..else if correta
+    // Substituio do comando Continue pela estrutura if..else if correta
     while lIndex <= ParamCount do
     begin
       lParam := ParamStr(lIndex);
@@ -105,7 +112,7 @@ begin
   Result := False;
   lIndex := 1;
 
-  // Substituição do comando Exit/Break por condição de parada explícita na norma
+  // Substituio do comando Exit/Break por condio de parada explcita na norma
   while (lIndex <= ParamCount) and not Result do
   begin
     lParam := ParamStr(lIndex);
