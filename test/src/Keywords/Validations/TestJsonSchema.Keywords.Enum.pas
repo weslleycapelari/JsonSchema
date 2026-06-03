@@ -45,7 +45,7 @@ begin
   try
     lKeyword := TEnumKeyword.Create(lEnumArray);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Item presente no enum deve ser v√°lido');
+    CheckTrue(lResult.IsValid, 'Item presente no enum deve ser v·lido');
   finally
     lEnumArray.Free;
     lInstance.Free;
@@ -64,7 +64,7 @@ begin
   try
     lKeyword := TEnumKeyword.Create(lEnumArray);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, 'Item ausente no enum deve ser inv√°lido');
+    CheckFalse(lResult.IsValid, 'Item ausente no enum deve ser inv·lido');
     CheckEquals(KEYWORD_ENUM, lResult.Errors[0].Keyword);
     CheckEquals('["apple","banana"]', lResult.Errors[0].Context.GetValue<string>('allowed'));
   finally
@@ -85,7 +85,7 @@ begin
   try
     lKeyword := TEnumKeyword.Create(lEnumArray);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Objeto id√™ntico presente no enum misto deve ser v√°lido');
+    CheckTrue(lResult.IsValid, 'Objeto idÍntico presente no enum misto deve ser v·lido');
   finally
     lEnumArray.Free;
     lInstance.Free;
@@ -104,7 +104,7 @@ begin
   try
     lKeyword := TEnumKeyword.Create(lEnumArray);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, 'Null ausente no enum misto deve ser inv√°lido');
+    CheckFalse(lResult.IsValid, 'Null ausente no enum misto deve ser inv·lido');
   finally
     lEnumArray.Free;
     lInstance.Free;

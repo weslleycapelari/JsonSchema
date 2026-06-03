@@ -1,4 +1,4 @@
-Ôªøunit JsonSchema.Localization.PtBR;
+unit JsonSchema.Localization.PtBR;
 
 (*
 --------------------------------------------------------------------------------
@@ -76,7 +76,7 @@ begin
   
   Result := TTranslation.Create(
     Format('Tipo esperado "%s" mas recebeu "%s"', [lExpected, lActual]),
-    Format('Certifique-se de que o valor seja um JSON %s v√°lido', [lExpected])
+    Format('Certifique-se de que o valor seja um JSON %s v·lido', [lExpected])
   );
 end;
 
@@ -90,8 +90,8 @@ begin
     lActualLen := 0;
   
   Result := TTranslation.Create(
-    Format('O tamanho da string %d √© menor do que o m√≠nimo permitido %d', [lActualLen, lLimit]),
-    Format('Forne√ßa uma string com pelo menos %d caracteres', [lLimit])
+    Format('O tamanho da string %d È menor do que o mÌnimo permitido %d', [lActualLen, lLimit]),
+    Format('ForneÁa uma string com pelo menos %d caracteres', [lLimit])
   );
 end;
 
@@ -103,8 +103,8 @@ begin
     lAllowed := '[]';
 
   Result := TTranslation.Create(
-    Format('O valor n√£o √© um dos valores permitidos: %s', [lAllowed]),
-    'Certifique-se de que o valor corresponda a uma das op√ß√µes permitidas'
+    Format('O valor n„o È um dos valores permitidos: %s', [lAllowed]),
+    'Certifique-se de que o valor corresponda a uma das opÁıes permitidas'
   );
 end;
 
@@ -116,7 +116,7 @@ begin
     lExpected := 'unknown';
 
   Result := TTranslation.Create(
-    Format('O valor n√£o corresponde √† constante: %s', [lExpected]),
+    Format('O valor n„o corresponde ‡ constante: %s', [lExpected]),
     Format('Certifique-se de que o valor seja exatamente %s', [lExpected])
   );
 end;
@@ -129,8 +129,8 @@ begin
     lMissing := 'unknown';
 
   Result := TTranslation.Create(
-    Format('Propriedade obrigat√≥ria ausente: "%s"', [lMissing]),
-    Format('Forne√ßa a propriedade ausente "%s" no objeto', [lMissing])
+    Format('Propriedade obrigatÛria ausente: "%s"', [lMissing]),
+    Format('ForneÁa a propriedade ausente "%s" no objeto', [lMissing])
   );
 end;
 
@@ -144,8 +144,8 @@ begin
     lActual := 0;
 
   Result := TTranslation.Create(
-    Format('O valor %g √© menor do que o m√≠nimo %g', [lActual, lLimit]),
-    Format('Forne√ßa um n√∫mero maior ou igual a %g', [lLimit])
+    Format('O valor %g È menor do que o mÌnimo %g', [lActual, lLimit]),
+    Format('ForneÁa um n˙mero maior ou igual a %g', [lLimit])
   );
 end;
 
@@ -159,8 +159,8 @@ begin
     lActual := 0;
 
   Result := TTranslation.Create(
-    Format('O valor %g √© maior do que o m√°ximo %g', [lActual, lLimit]),
-    Format('Forne√ßa um n√∫mero menor ou igual a %g', [lLimit])
+    Format('O valor %g È maior do que o m·ximo %g', [lActual, lLimit]),
+    Format('ForneÁa um n˙mero menor ou igual a %g', [lLimit])
   );
 end;
 
@@ -174,8 +174,8 @@ begin
     lActual := 0;
 
   Result := TTranslation.Create(
-    Format('O tamanho da string %d √© maior do que o m√°ximo permitido %d', [lActual, lLimit]),
-    Format('Forne√ßa uma string com no m√°ximo %d caracteres', [lLimit])
+    Format('O tamanho da string %d È maior do que o m·ximo permitido %d', [lActual, lLimit]),
+    Format('ForneÁa uma string com no m·ximo %d caracteres', [lLimit])
   );
 end;
 
@@ -189,8 +189,8 @@ begin
     lActual := 0;
 
   Result := TTranslation.Create(
-    Format('A quantidade de itens no array %d √© menor do que o m√≠nimo permitido %d', [lActual, lLimit]),
-    Format('Forne√ßa um array com pelo menos %d itens', [lLimit])
+    Format('A quantidade de itens no array %d È menor do que o mÌnimo permitido %d', [lActual, lLimit]),
+    Format('ForneÁa um array com pelo menos %d itens', [lLimit])
   );
 end;
 
@@ -204,8 +204,8 @@ begin
     lActual := 0;
 
   Result := TTranslation.Create(
-    Format('A quantidade de itens no array %d √© maior do que o m√°ximo permitido %d', [lActual, lLimit]),
-    Format('Forne√ßa um array com no m√°ximo %d itens', [lLimit])
+    Format('A quantidade de itens no array %d È maior do que o m·ximo permitido %d', [lActual, lLimit]),
+    Format('ForneÁa um array com no m·ximo %d itens', [lLimit])
   );
 end;
 
@@ -219,8 +219,8 @@ begin
     lActual := 0;
 
   Result := TTranslation.Create(
-    Format('O valor %g n√£o √© um m√∫ltiplo de %g', [lActual, lLimit]),
-    Format('Forne√ßa um n√∫mero que seja m√∫ltiplo de %g', [lLimit])
+    Format('O valor %g n„o È um m˙ltiplo de %g', [lActual, lLimit]),
+    Format('ForneÁa um n˙mero que seja m˙ltiplo de %g', [lLimit])
   );
 end;
 
@@ -234,8 +234,8 @@ begin
     lActual := 0;
 
   Result := TTranslation.Create(
-    Format('O valor %g √© maior ou igual ao limite m√°ximo exclusivo %g', [lActual, lLimit]),
-    Format('Forne√ßa um n√∫mero estritamente menor que %g', [lLimit])
+    Format('O valor %g È maior ou igual ao limite m·ximo exclusivo %g', [lActual, lLimit]),
+    Format('ForneÁa um n˙mero estritamente menor que %g', [lLimit])
   );
 end;
 
@@ -249,8 +249,8 @@ begin
     lActual := 0;
 
   Result := TTranslation.Create(
-    Format('O valor %g √© menor ou igual ao limite m√≠nimo exclusivo %g', [lActual, lLimit]),
-    Format('Forne√ßa um n√∫mero estritamente maior que %g', [lLimit])
+    Format('O valor %g È menor ou igual ao limite mÌnimo exclusivo %g', [lActual, lLimit]),
+    Format('ForneÁa um n˙mero estritamente maior que %g', [lLimit])
   );
 end;
 
@@ -264,15 +264,15 @@ begin
     lActual := '';
 
   Result := TTranslation.Create(
-    Format('O valor "%s" n√£o corresponde ao padr√£o regex "%s"', [lActual, lPattern]),
-    Format('Forne√ßa um valor que corresponda ao padr√£o "%s"', [lPattern])
+    Format('O valor "%s" n„o corresponde ao padr„o regex "%s"', [lActual, lPattern]),
+    Format('ForneÁa um valor que corresponda ao padr„o "%s"', [lPattern])
   );
 end;
 
 function TLocalizationPtBR.TranslateItems(const pError: IValidationError): TTranslation;
 begin
   Result := TTranslation.Create(
-    'Falha na valida√ß√£o dos itens do array',
+    'Falha na validaÁ„o dos itens do array',
     'Certifique-se de que todos os elementos do array correspondam aos seus schemas'
   );
 end;
@@ -287,15 +287,15 @@ begin
     lActual := 0;
 
   Result := TTranslation.Create(
-    Format('Itens adicionais encontrados (%d itens) mas o schema restringe itens adicionais al√©m de %d', [lActual, lLimit]),
-    'Certifique-se de que o array n√£o contenha mais itens do que o definido pelo schema'
+    Format('Itens adicionais encontrados (%d itens) mas o schema restringe itens adicionais alÈm de %d', [lActual, lLimit]),
+    'Certifique-se de que o array n„o contenha mais itens do que o definido pelo schema'
   );
 end;
 
 function TLocalizationPtBR.TranslateUniqueItems(const pError: IValidationError): TTranslation;
 begin
   Result := TTranslation.Create(
-    'Os itens do array n√£o s√£o √∫nicos',
+    'Os itens do array n„o s„o ˙nicos',
     'Remova os elementos duplicados do array'
   );
 end;
@@ -304,8 +304,8 @@ end;
 function TLocalizationPtBR.TranslateContains(const pError: IValidationError): TTranslation;
 begin
   Result := TTranslation.Create(
-    'O array n√£o cont√©m nenhum item que valide contra o schema esperado',
-    'Forne√ßa pelo menos um item que corresponda √† restri√ß√£o'
+    'O array n„o contÈm nenhum item que valide contra o schema esperado',
+    'ForneÁa pelo menos um item que corresponda ‡ restriÁ„o'
   );
 end;
 
@@ -319,8 +319,8 @@ begin
     lActual := 0;
 
   Result := TTranslation.Create(
-    Format('O objeto possui %d propriedades, o m√°ximo permitido √© %d', [lActual, lLimit]),
-    Format('Forne√ßa um objeto com no m√°ximo %d propriedades', [lLimit])
+    Format('O objeto possui %d propriedades, o m·ximo permitido È %d', [lActual, lLimit]),
+    Format('ForneÁa um objeto com no m·ximo %d propriedades', [lLimit])
   );
 end;
 
@@ -334,15 +334,15 @@ begin
     lActual := 0;
 
   Result := TTranslation.Create(
-    Format('O objeto possui %d propriedades, o m√≠nimo obrigat√≥rio √© %d', [lActual, lLimit]),
-    Format('Forne√ßa um objeto com no m√≠nimo %d propriedades', [lLimit])
+    Format('O objeto possui %d propriedades, o mÌnimo obrigatÛrio È %d', [lActual, lLimit]),
+    Format('ForneÁa um objeto com no mÌnimo %d propriedades', [lLimit])
   );
 end;
 
 function TLocalizationPtBR.TranslateProperties(const pError: IValidationError): TTranslation;
 begin
   Result := TTranslation.Create(
-    'Falha na valida√ß√£o das propriedades',
+    'Falha na validaÁ„o das propriedades',
     'Certifique-se de que todas as propriedades do objeto conformem com seus schemas'
   );
 end;
@@ -350,8 +350,8 @@ end;
 function TLocalizationPtBR.TranslatePatternProperties(const pError: IValidationError): TTranslation;
 begin
   Result := TTranslation.Create(
-    'Falha na valida√ß√£o das propriedades por padr√£o (patternProperties)',
-    'Certifique-se de que todas as propriedades que casam com o padr√£o conformem com seus schemas'
+    'Falha na validaÁ„o das propriedades por padr„o (patternProperties)',
+    'Certifique-se de que todas as propriedades que casam com o padr„o conformem com seus schemas'
   );
 end;
 
@@ -363,8 +363,8 @@ begin
     lPropName := 'unknown';
 
   Result := TTranslation.Create(
-    Format('A propriedade "%s" n√£o √© permitida neste objeto', [lPropName]),
-    'Remova propriedades n√£o documentadas do objeto JSON'
+    Format('A propriedade "%s" n„o È permitida neste objeto', [lPropName]),
+    'Remova propriedades n„o documentadas do objeto JSON'
   );
 end;
 
@@ -375,14 +375,14 @@ begin
   if pError.Context.TryGetValue<string>('trigger', lTrigger) and pError.Context.TryGetValue<string>('missing', lMissing) then
   begin
     Result := TTranslation.Create(
-      Format('A propriedade "%s" depende da propriedade "%s" que est√° ausente', [lTrigger, lMissing]),
-      Format('Adicione a propriedade ausente obrigat√≥ria "%s"', [lMissing])
+      Format('A propriedade "%s" depende da propriedade "%s" que est· ausente', [lTrigger, lMissing]),
+      Format('Adicione a propriedade ausente obrigatÛria "%s"', [lMissing])
     );
   end else
   begin
     Result := TTranslation.Create(
-      'Falha na valida√ß√£o de depend√™ncias',
-      'Certifique-se de que todas as restri√ß√µes de depend√™ncia de propriedades sejam atendidas'
+      'Falha na validaÁ„o de dependÍncias',
+      'Certifique-se de que todas as restriÁıes de dependÍncia de propriedades sejam atendidas'
     );
   end;
 end;
@@ -390,7 +390,7 @@ end;
 function TLocalizationPtBR.TranslatePropertyNames(const pError: IValidationError): TTranslation;
 begin
   Result := TTranslation.Create(
-    'Um ou mais nomes de propriedades falharam na valida√ß√£o',
+    'Um ou mais nomes de propriedades falharam na validaÁ„o',
     'Certifique-se de que todas as chaves do objeto correspondam ao schema de propertyNames'
   );
 end;
@@ -398,16 +398,16 @@ end;
 function TLocalizationPtBR.TranslateAllOf(const pError: IValidationError): TTranslation;
 begin
   Result := TTranslation.Create(
-    'A valida√ß√£o falhou em rela√ß√£o aos sub-esquemas do allOf',
-    'Certifique-se de que a inst√¢ncia esteja em conformidade com todos os sub-esquemas especificados'
+    'A validaÁ„o falhou em relaÁ„o aos sub-esquemas do allOf',
+    'Certifique-se de que a inst‚ncia esteja em conformidade com todos os sub-esquemas especificados'
   );
 end;
 
 function TLocalizationPtBR.TranslateAnyOf(const pError: IValidationError): TTranslation;
 begin
   Result := TTranslation.Create(
-    'A valida√ß√£o falhou em rela√ß√£o aos sub-esquemas do anyOf',
-    'Certifique-se de que a inst√¢ncia esteja em conformidade com pelo menos um dos sub-esquemas'
+    'A validaÁ„o falhou em relaÁ„o aos sub-esquemas do anyOf',
+    'Certifique-se de que a inst‚ncia esteja em conformidade com pelo menos um dos sub-esquemas'
   );
 end;
 
@@ -422,13 +422,13 @@ begin
   begin
     Result := TTranslation.Create(
       'Conforme com 0 sub-esquemas quando exatamente 1 era esperado',
-      'Certifique-se de que a inst√¢ncia esteja em conformidade com exatamente um dos sub-esquemas'
+      'Certifique-se de que a inst‚ncia esteja em conformidade com exatamente um dos sub-esquemas'
     );
   end else
   begin
     Result := TTranslation.Create(
       Format('Conforme com %d sub-esquemas quando exatamente 1 era esperado', [lActual]),
-      'Certifique-se de que a inst√¢ncia esteja em conformidade com exatamente um dos sub-esquemas'
+      'Certifique-se de que a inst‚ncia esteja em conformidade com exatamente um dos sub-esquemas'
     );
   end;
 end;
@@ -436,23 +436,23 @@ end;
 function TLocalizationPtBR.TranslateNot(const pError: IValidationError): TTranslation;
 begin
   Result := TTranslation.Create(
-    'A valida√ß√£o falhou em rela√ß√£o ao sub-esquema do not',
-    'Certifique-se de que a inst√¢ncia n√£o esteja em conformidade com o sub-esquema'
+    'A validaÁ„o falhou em relaÁ„o ao sub-esquema do not',
+    'Certifique-se de que a inst‚ncia n„o esteja em conformidade com o sub-esquema'
   );
 end;
 
 function TLocalizationPtBR.TranslateRef(const pError: IValidationError): TTranslation;
 begin
   Result := TTranslation.Create(
-    'Falha na valida√ß√£o de refer√™ncia ou refer√™ncia n√£o resolvida',
-    'Certifique-se de que a refer√™ncia aponte para um documento de schema v√°lido e acess√≠vel'
+    'Falha na validaÁ„o de referÍncia ou referÍncia n„o resolvida',
+    'Certifique-se de que a referÍncia aponte para um documento de schema v·lido e acessÌvel'
   );
 end;
 
 function TLocalizationPtBR.TranslateSchema(const pError: IValidationError): TTranslation;
 begin
   Result := TTranslation.Create(
-    'Incompatibilidade de declara√ß√£o de schema',
+    'Incompatibilidade de declaraÁ„o de schema',
     'Certifique-se de que o schema esteja em conformidade com o draft do JSON Schema especificado'
   );
 end;
@@ -461,7 +461,7 @@ function TLocalizationPtBR.TranslateId(const pError: IValidationError): TTransla
 begin
   Result := TTranslation.Create(
     'Incompatibilidade do identificador do schema',
-    'Certifique-se de que o identificador do schema seja uma URI absoluta v√°lida'
+    'Certifique-se de que o identificador do schema seja uma URI absoluta v·lida'
   );
 end;
 

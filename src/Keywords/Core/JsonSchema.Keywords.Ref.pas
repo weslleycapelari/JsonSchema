@@ -30,10 +30,9 @@ type
     FRootSchema: TJSONObject;
     FBaseURI: string;
     function GetKeywordName: string;
-    class function ResolveJsonPointer(const pRoot: TJSONValue; const pPointer: string): TJSONValue; static;
+  public
     class function ResolveJsonPointerWithBase(const pRoot: TJSONValue; const pPointer, pBaseURI: string;
       out pResolvedBaseURI: string): TJSONValue; static;
-  public
     /// <summary>Initializes ref keyword pointing to target resolved JSON value.</summary>
     constructor Create(const pRefPath: string; const pTargetValue: TJSONValue; const pRootSchema: TJSONObject; const pBaseURI: string;
       const pCompileFunc: TCompileSchemaFunc);
@@ -66,13 +65,6 @@ begin
   FBaseURI := pBaseURI;
   FCompileFunc := pCompileFunc;
   FResolvedSchema := nil;
-end;
-
-class function TRefKeyword.ResolveJsonPointer(const pRoot: TJSONValue; const pPointer: string): TJSONValue;
-var
-  lResolvedBaseURI: string;
-begin
-  Result := ResolveJsonPointerWithBase(pRoot, pPointer, '', lResolvedBaseURI);
 end;
 
 class function TRefKeyword.ResolveJsonPointerWithBase(const pRoot: TJSONValue; const pPointer, pBaseURI: string;
@@ -161,8 +153,6 @@ var
   lRemoteSchema: TJSONValue;
   lResolvedBaseURI: string;
 begin
-  lTargetValue := nil;
-  lTargetRoot := nil;
   lTargetBaseURI := '';
 
   if Assigned(pKeywordValue) and (pKeywordValue is TJSONString) then
@@ -189,8 +179,7 @@ begin
       begin
         lTargetValue := ResolveJsonPointerWithBase(lRemoteSchema, lFragment, lBaseURI, lResolvedBaseURI);
         lTargetBaseURI := lResolvedBaseURI;
-      end
-      else
+      end else
       begin
         lTargetValue := lRemoteSchema;
         lTargetBaseURI := lAbsoluteRefURI;
@@ -200,9 +189,16 @@ begin
         lTargetRoot := TJSONObject(lRemoteSchema)
       else
         lTargetRoot := pParentSchema;
-    end else if (lBaseURI = '') or (Assigned(TSchemaRegistry.CurrentRootSchema) and (lBaseURI = TSchemaRegistry.CurrentBaseURI)) then
+    end else if (lBaseURI <> '') and TSchemaRegistry.FindSchema(lBaseURI, lRemoteSchema) then
     begin
-      // 2. Local reference inside current root schema
+      lTargetValue := ResolveJsonPointerWithBase(lRemoteSchema, lFragment, lBaseURI, lResolvedBaseURI);
+      if lRemoteSchema is TJSONObject then
+        lTargetRoot := TJSONObject(lRemoteSchema)
+      else
+        lTargetRoot := pParentSchema;
+      lTargetBaseURI := lResolvedBaseURI;
+    end else
+    begin
       lTargetValue := ResolveJsonPointerWithBase(
         TSchemaRegistry.CurrentRootSchema,
         lFragment,
@@ -211,20 +207,6 @@ begin
       );
       lTargetRoot := TSchemaRegistry.CurrentRootSchema;
       lTargetBaseURI := lResolvedBaseURI;
-    end else
-    begin
-      // 3. External schema reference
-      if TSchemaRegistry.FindSchema(lBaseURI, lRemoteSchema) then
-      begin
-        lTargetValue := ResolveJsonPointerWithBase(lRemoteSchema, lFragment, lBaseURI, lResolvedBaseURI);
-
-        if lRemoteSchema is TJSONObject then
-          lTargetRoot := TJSONObject(lRemoteSchema)
-        else
-          lTargetRoot := nil;
-
-        lTargetBaseURI := lResolvedBaseURI;
-      end;
     end;
 
     Result := TRefKeyword.Create(lRefStr, lTargetValue, lTargetRoot, lTargetBaseURI, pCompileFunc);

@@ -48,6 +48,9 @@ type
     /// <summary>Checks if a JSON object has a recursive anchor registered.</summary>
     class function IsRecursiveAnchor(const pSchemaObj: TJSONObject): Boolean; static;
 
+    /// <summary>Finds a registered URI for a schema object.</summary>
+    class function GetSchemaURI(const pSchema: TJSONValue; out pURI: string): Boolean; static;
+
     /// <summary>Thread-local current base URI during schema compiling.</summary>
     class property CurrentBaseURI: string read FCurrentBaseURI write FCurrentBaseURI;
 
@@ -207,6 +210,18 @@ class procedure TSchemaRegistry.PreScanSchema(const pURI: string; const pSchema:
           FRegistry.Add(CombineURI(lNewBase, lAnchorStr), lObj);
       end;
 
+      // Check for '$dynamicAnchor'
+      lPair := lObj.Get('$dynamicAnchor');
+      if Assigned(lPair) and (lPair.JsonValue is TJSONString) then
+      begin
+        lAnchorStr := lPair.JsonValue.Value;
+        if not lAnchorStr.StartsWith('#') then
+          lAnchorStr := '#' + lAnchorStr;
+
+        if not FRegistry.ContainsKey(CombineURI(lNewBase, lAnchorStr)) then
+          FRegistry.Add(CombineURI(lNewBase, lAnchorStr), lObj);
+      end;
+
       // Check for '$recursiveAnchor'
       lPair := lObj.Get('$recursiveAnchor');
       if Assigned(lPair) and (lPair.JsonValue is TJSONBool) and TJSONBool(lPair.JsonValue).AsBoolean then
@@ -229,6 +244,13 @@ class procedure TSchemaRegistry.PreScanSchema(const pURI: string; const pSchema:
             RecurseSchema(lItem, lNewBase);
         end else
           RecurseSchema(lSubVal, lNewBase);
+      end;
+
+      lPair := lObj.Get('prefixItems');
+      if Assigned(lPair) and (lPair.JsonValue is TJSONArray) then
+      begin
+        for lItem in TJSONArray(lPair.JsonValue) do
+          RecurseSchema(lItem, lNewBase);
       end;
 
       lPair := lObj.Get('contains');
@@ -523,6 +545,26 @@ begin
   begin
     pSchema := nil;
     Result := False;
+  end;
+end;
+
+class function TSchemaRegistry.GetSchemaURI(const pSchema: TJSONValue; out pURI: string): Boolean;
+var
+  lPair: TPair<string, TJSONValue>;
+begin
+  Result := False;
+  pURI := '';
+  if not Assigned(FRegistry) then
+    Exit;
+
+  for lPair in FRegistry do
+  begin
+    if lPair.Value = pSchema then
+    begin
+      pURI := lPair.Key;
+      Result := True;
+      Exit;
+    end;
   end;
 end;
 

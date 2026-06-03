@@ -32,6 +32,7 @@ Status legend:
 - ADR-0021 - Dynamic stack-based validation loop detection (Accepted)
 - ADR-0022 - Metaschema vocabulary activation (Accepted)
 - ADR-0023 - Unevaluated properties and items tracking (Accepted)
+- ADR-0024 - Draft 2020-12 support with dynamic references and positional arrays (Accepted)
 
 ## Scope notes
 

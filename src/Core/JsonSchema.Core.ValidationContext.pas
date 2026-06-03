@@ -38,9 +38,9 @@ type
   TValidationContext = class
   strict private
     class threadvar FCurrent: TValidationContext;
+    class threadvar FEnforceFormats: Boolean;
     FScopeStack: TList<TScope>;
     FSchemaStack: TList<TActiveSchema>;
-    FEnforceFormats: Boolean;
     function GetCurrentScope: TScope;
     class function GetEnforceFormats: Boolean; static;
     class procedure SetEnforceFormats(const pValue: Boolean); static;
@@ -64,6 +64,7 @@ type
       const pInstance: TJSONValue); static;
     class procedure PopSchema; static;
     class function ResolveRecursiveRef: ICompiledSchema; static;
+    class function ResolveDynamicAnchor(const pAnchorName: string): TJSONObject; static;
     class function IsCurrentlyValidating(const pSchemaObj: TJSONObject; const pInstance: TJSONValue): Boolean; static;
 
     class property EnforceFormats: Boolean read GetEnforceFormats write SetEnforceFormats;
@@ -178,21 +179,16 @@ begin
   inherited Create;
   FScopeStack := TList<TScope>.Create;
   FSchemaStack := TList<TActiveSchema>.Create;
-  FEnforceFormats := True;
 end;
 
 class function TValidationContext.GetEnforceFormats: Boolean;
 begin
-  if Assigned(FCurrent) then
-    Result := FCurrent.FEnforceFormats
-  else
-    Result := True;
+  Result := FEnforceFormats;
 end;
 
 class procedure TValidationContext.SetEnforceFormats(const pValue: Boolean);
 begin
-  if Assigned(FCurrent) then
-    FCurrent.FEnforceFormats := pValue;
+  FEnforceFormats := pValue;
 end;
 
 destructor TValidationContext.Destroy;
@@ -222,10 +218,7 @@ end;
 class procedure TValidationContext.PushScope;
 begin
   if Assigned(FCurrent) then
-  begin
     FCurrent.FScopeStack.Add(TScope.Create);
-    //WriteLn('PushScope. Count: ', FCurrent.FScopeStack.Count);
-  end;
 end;
 
 class procedure TValidationContext.PopScope(const pKeep: Boolean);
@@ -238,13 +231,11 @@ begin
 
   lPopped := FCurrent.FScopeStack[FCurrent.FScopeStack.Count - 1];
   FCurrent.FScopeStack.Delete(FCurrent.FScopeStack.Count - 1);
-  //WriteLn('PopScope(Keep=', pKeep, '). Count now: ', FCurrent.FScopeStack.Count);
   try
     if pKeep and (FCurrent.FScopeStack.Count > 0) then
     begin
       lParent := FCurrent.FScopeStack[FCurrent.FScopeStack.Count - 1];
       lParent.Merge(lPopped);
-      //WriteLn('Merged scope.');
     end;
   finally
     lPopped.Free;
@@ -279,10 +270,7 @@ begin
   begin
     lScope := FCurrent.GetCurrentScope;
     if Assigned(lScope) then
-    begin
       lScope.MarkItem(pInstance, pIndex);
-      //WriteLn('MarkItemEvaluated: ', pIndex);
-    end;
   end;
 end;
 
@@ -349,6 +337,56 @@ begin
     begin
       Result := FCurrent.FSchemaStack[lIdx].Compiled;
       Break;
+    end;
+  end;
+end;
+
+class function TValidationContext.ResolveDynamicAnchor(const pAnchorName: string): TJSONObject;
+var
+  lIdx: Integer;
+  lAncestorIdx: Integer;
+  lActiveObj: TJSONObject;
+  lURI: string;
+  lBaseURI: string;
+  lAnchorURI: string;
+  lTargetVal: TJSONValue;
+  lPair: TJSONPair;
+begin
+  Result := nil;
+  if not Assigned(FCurrent) then
+    Exit;
+
+  for lIdx := 0 to FCurrent.FSchemaStack.Count - 1 do
+  begin
+    lURI := '';
+    for lAncestorIdx := lIdx downto 0 do
+    begin
+      lActiveObj := FCurrent.FSchemaStack[lAncestorIdx].SchemaObj;
+      if Assigned(lActiveObj) and TSchemaRegistry.GetSchemaURI(lActiveObj, lURI) then
+        Break;
+    end;
+
+    if lURI <> '' then
+    begin
+      if lURI.Contains('#') then
+        lBaseURI := lURI.Substring(0, lURI.IndexOf('#'))
+      else
+        lBaseURI := lURI;
+
+      lAnchorURI := lBaseURI + '#' + pAnchorName;
+      if TSchemaRegistry.FindSchema(lAnchorURI, lTargetVal) then
+      begin
+        if lTargetVal is TJSONObject then
+        begin
+          lPair := TJSONObject(lTargetVal).Get('$dynamicAnchor');
+          if Assigned(lPair) and (lPair.JsonValue is TJSONString) and
+             (lPair.JsonValue.Value = pAnchorName) then
+          begin
+            Result := TJSONObject(lTargetVal);
+            Break;
+          end;
+        end;
+      end;
     end;
   end;
 end;

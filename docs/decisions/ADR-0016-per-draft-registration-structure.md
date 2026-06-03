@@ -9,17 +9,19 @@ Each draft parser must remain readable while handling many keyword registrations
 
 ## Decision
 
-Split registration into parser-level methods:
+Split registration into parser-level methods by semantic keyword category:
 
 - RegisterCoreKeywords
-- RegisterValidationKeywords
+- RegisterFormatKeywords
 - RegisterLogicalKeywords
+- RegisterMetadataKeywords
+- RegisterValidationKeywords
 
 ## Consequences
 
-- Positive: parser constructors stay concise.
-- Positive: category-level maintenance is simpler.
-- Trade-off: most registrations are currently duplicated across draft files.
+- Positive: parser constructors stay concise and fully structured.
+- Positive: category-level maintenance is simple and explicit.
+- Trade-off: registrations are duplicated across draft files, but explicitly custom to each draft's version requirements.
 
 ## Evidence
 

@@ -113,10 +113,6 @@ begin
 
     Result := TValidationResult.Combined(lResults);
   finally
-    //if Assigned(Result) and (not Result.IsValid) then
-      //WriteLn('Validation failed. Keyword: ', Result.Errors[0].Keyword)
-    //else if not Assigned(Result) then
-      //WriteLn('Result is nil!');
     TValidationContext.PopScope(Assigned(Result) and Result.IsValid);
     TValidationContext.PopSchema;
   end;

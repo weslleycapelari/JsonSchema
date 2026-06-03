@@ -23,8 +23,10 @@ type
     class constructor Create;
     class destructor Destroy;
     class procedure RegisterCoreKeywords; static;
-    class procedure RegisterValidationKeywords; static;
+    class procedure RegisterFormatKeywords; static;
     class procedure RegisterLogicalKeywords; static;
+    class procedure RegisterMetadataKeywords; static;
+    class procedure RegisterValidationKeywords; static;
   public
     /// <summary>Parses and compiles a JSON schema object into a set of validation rules.</summary>
     /// <param name="pSchema">The raw JSON schema object containing keyword definitions.</param>
@@ -84,8 +86,20 @@ class constructor TDraft7Parser.Create;
 begin
   FRegistry := TKeywordRegistry.Create(TDraft7Parser.ParseSchema);
   RegisterCoreKeywords;
-  RegisterValidationKeywords;
+  RegisterFormatKeywords;
   RegisterLogicalKeywords;
+  RegisterMetadataKeywords;
+  RegisterValidationKeywords;
+end;
+
+class procedure TDraft7Parser.RegisterFormatKeywords;
+begin
+  FRegistry.RegisterKeyword(KEYWORD_FORMAT, TFormatKeyword.CreateKeywordDraft7);
+end;
+
+class procedure TDraft7Parser.RegisterMetadataKeywords;
+begin
+  FRegistry.RegisterKeyword(KEYWORD_COMMENT, TCommentKeyword.CreateKeyword);
 end;
 
 class procedure TDraft7Parser.RegisterValidationKeywords;
@@ -115,8 +129,6 @@ begin
   FRegistry.RegisterKeyword(KEYWORD_ADDITIONALITEMS, TAdditionalItemsKeyword.CreateKeyword);
   FRegistry.RegisterKeyword(KEYWORD_ADDITIONALPROPERTIES, TAdditionalPropertiesKeyword.CreateKeyword);
   FRegistry.RegisterKeyword(KEYWORD_DEPENDENCIES, TDependenciesKeyword.CreateKeyword);
-  FRegistry.RegisterKeyword(KEYWORD_FORMAT, TFormatKeyword.CreateKeywordDraft7);
-  FRegistry.RegisterKeyword(KEYWORD_COMMENT, TCommentKeyword.CreateKeyword);
 end;
 
 class procedure TDraft7Parser.RegisterCoreKeywords;

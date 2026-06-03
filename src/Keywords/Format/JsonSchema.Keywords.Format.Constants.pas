@@ -31,10 +31,8 @@ const
   REGEX_TIME = '^(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:(Z)|([+-])(\d{2}):(\d{2}))$';
 
   /// <summary>Matches RFC 5322 email addresses.</summary>
-  REGEX_EMAIL = '(*UCP)^[a-zA-Z0-9!#$%&''*+/=?^_`{|}~-]+' +
-    '(?:\.[a-zA-Z0-9!#$%&''*+/=?^_`{|}~-]+)*' +
-    '@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?' +
-    '(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$';
+  REGEX_EMAIL = '(*UCP)^(?:[a-zA-Z0-9!#$%&''*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&''*+/=?^_`{|}~-]+)*|"(?:[^"\\]|\\.)*")' +
+    '@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*|\[(?:[^\]\\]|\\.)*\])$';
 
   /// <summary>Matches RFC 6531 internationalized email addresses.</summary>
   REGEX_IDN_EMAIL = '^[^\s@]+@(?=.{1,253}$)(?:(?!-)[\p{L}\p{N}-]{1,63}' +

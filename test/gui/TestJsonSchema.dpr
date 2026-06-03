@@ -6,41 +6,39 @@ program TestJsonSchema;
 
 uses
   DUnitTestRunner,
-  TestJsonSchema.Mock.HttpServer in '..\src\TestJsonSchema.Mock.HttpServer.pas',
-  TestJsonSchema.Types in '..\src\TestJsonSchema.Types.pas',
-  TestJsonSchema.Utils.Paths in '..\src\TestJsonSchema.Utils.Paths.pas',
-  JsonSchema.Validator in '..\..\src\JsonSchema.Validator.pas',
-  TestJsonSchema.Validator in '..\src\TestJsonSchema.Validator.pas',
-  TestJsonSchema.Translations in '..\src\TestJsonSchema.Translations.pas',
-  JsonSchema.CompiledSchema in '..\..\src\Core\JsonSchema.CompiledSchema.pas',
+  // Source Core
   JsonSchema.Core.Constants in '..\..\src\Core\JsonSchema.Core.Constants.pas',
   JsonSchema.Core.Interfaces in '..\..\src\Core\JsonSchema.Core.Interfaces.pas',
+  JsonSchema.Results in '..\..\src\Core\JsonSchema.Results.pas',
+  JsonSchema.CompiledSchema in '..\..\src\Core\JsonSchema.CompiledSchema.pas',
+  JsonSchema.Registry in '..\..\src\Core\JsonSchema.Registry.pas',
   JsonSchema.JSONHelper in '..\..\src\Core\JsonSchema.JSONHelper.pas',
   JsonSchema.Core.SchemaRegistry in '..\..\src\Core\JsonSchema.Core.SchemaRegistry.pas',
+  // Source Core URI
   JsonSchema.Core.URI.Types in '..\..\src\Core\URI\JsonSchema.Core.URI.Types.pas',
   JsonSchema.Core.URI.Reference in '..\..\src\Core\URI\JsonSchema.Core.URI.Reference.pas',
   JsonSchema.Core.URI.Utils in '..\..\src\Core\URI\JsonSchema.Core.URI.Utils.pas',
   JsonSchema.Core.URI.ParseResult in '..\..\src\Core\URI\JsonSchema.Core.URI.ParseResult.pas',
   JsonSchema.Core.URI.Builder in '..\..\src\Core\URI\JsonSchema.Core.URI.Builder.pas',
   JsonSchema.Core.URI.Validator in '..\..\src\Core\URI\JsonSchema.Core.URI.Validator.pas',
-  JsonSchema.Registry in '..\..\src\Core\JsonSchema.Registry.pas',
-  JsonSchema.Results in '..\..\src\Core\JsonSchema.Results.pas',
-  JsonSchema.Localization.Base in '..\..\src\Localization\JsonSchema.Localization.Base.pas',
+  // Source Localization
   JsonSchema.Localization.Enums in '..\..\src\Localization\JsonSchema.Localization.Enums.pas',
-  JsonSchema.Localization.EnUS in '..\..\src\Localization\JsonSchema.Localization.EnUS.pas',
   JsonSchema.Localization.Interfaces in '..\..\src\Localization\JsonSchema.Localization.Interfaces.pas',
-  JsonSchema.Localization in '..\..\src\Localization\JsonSchema.Localization.pas',
+  JsonSchema.Localization.Base in '..\..\src\Localization\JsonSchema.Localization.Base.pas',
+  JsonSchema.Localization.EnUS in '..\..\src\Localization\JsonSchema.Localization.EnUS.pas',
   JsonSchema.Localization.PtBR in '..\..\src\Localization\JsonSchema.Localization.PtBR.pas',
-  JsonSchema.Keywords.ConstKeyword in '..\..\src\Keywords\Validations\JsonSchema.Keywords.ConstKeyword.pas',
-  JsonSchema.Keywords.Enum in '..\..\src\Keywords\Validations\JsonSchema.Keywords.Enum.pas',
-  JsonSchema.Keywords.Maximum in '..\..\src\Keywords\Validations\JsonSchema.Keywords.Maximum.pas',
-  JsonSchema.Keywords.MaxItems in '..\..\src\Keywords\Validations\JsonSchema.Keywords.MaxItems.pas',
-  JsonSchema.Keywords.MaxLength in '..\..\src\Keywords\Validations\JsonSchema.Keywords.MaxLength.pas',
-  JsonSchema.Keywords.Minimum in '..\..\src\Keywords\Validations\JsonSchema.Keywords.Minimum.pas',
-  JsonSchema.Keywords.MinItems in '..\..\src\Keywords\Validations\JsonSchema.Keywords.MinItems.pas',
-  JsonSchema.Keywords.MinLength in '..\..\src\Keywords\Validations\JsonSchema.Keywords.MinLength.pas',
-  JsonSchema.Keywords.Required in '..\..\src\Keywords\Validations\JsonSchema.Keywords.Required.pas',
+  JsonSchema.Localization in '..\..\src\Localization\JsonSchema.Localization.pas',
+  // Source Keywords
   JsonSchema.Keywords.TypeKeyword in '..\..\src\Keywords\Validations\JsonSchema.Keywords.TypeKeyword.pas',
+  JsonSchema.Keywords.MinLength in '..\..\src\Keywords\Validations\JsonSchema.Keywords.MinLength.pas',
+  JsonSchema.Keywords.Enum in '..\..\src\Keywords\Validations\JsonSchema.Keywords.Enum.pas',
+  JsonSchema.Keywords.ConstKeyword in '..\..\src\Keywords\Validations\JsonSchema.Keywords.ConstKeyword.pas',
+  JsonSchema.Keywords.Required in '..\..\src\Keywords\Validations\JsonSchema.Keywords.Required.pas',
+  JsonSchema.Keywords.Minimum in '..\..\src\Keywords\Validations\JsonSchema.Keywords.Minimum.pas',
+  JsonSchema.Keywords.Maximum in '..\..\src\Keywords\Validations\JsonSchema.Keywords.Maximum.pas',
+  JsonSchema.Keywords.MaxLength in '..\..\src\Keywords\Validations\JsonSchema.Keywords.MaxLength.pas',
+  JsonSchema.Keywords.MinItems in '..\..\src\Keywords\Validations\JsonSchema.Keywords.MinItems.pas',
+  JsonSchema.Keywords.MaxItems in '..\..\src\Keywords\Validations\JsonSchema.Keywords.MaxItems.pas',
   JsonSchema.Keywords.MultipleOf in '..\..\src\Keywords\Validations\JsonSchema.Keywords.MultipleOf.pas',
   JsonSchema.Keywords.ExclusiveMaximum in '..\..\src\Keywords\Validations\JsonSchema.Keywords.ExclusiveMaximum.pas',
   JsonSchema.Keywords.ExclusiveMinimum in '..\..\src\Keywords\Validations\JsonSchema.Keywords.ExclusiveMinimum.pas',
@@ -61,7 +59,9 @@ uses
   JsonSchema.Keywords.DependentSchemas in '..\..\src\Keywords\Validations\JsonSchema.Keywords.DependentSchemas.pas',
   JsonSchema.Keywords.UnevaluatedProperties in '..\..\src\Keywords\Validations\JsonSchema.Keywords.UnevaluatedProperties.pas',
   JsonSchema.Keywords.UnevaluatedItems in '..\..\src\Keywords\Validations\JsonSchema.Keywords.UnevaluatedItems.pas',
+  JsonSchema.Keywords.PrefixItems in '..\..\src\Keywords\Validations\JsonSchema.Keywords.PrefixItems.pas',
   JsonSchema.Keywords.RecursiveRef in '..\..\src\Keywords\Core\JsonSchema.Keywords.RecursiveRef.pas',
+  JsonSchema.Keywords.DynamicRef in '..\..\src\Keywords\Core\JsonSchema.Keywords.DynamicRef.pas',
   JsonSchema.Keywords.Vocabulary in '..\..\src\Keywords\Core\JsonSchema.Keywords.Vocabulary.pas',
   JsonSchema.Keywords.Deprecated in '..\..\src\Keywords\Metadata\JsonSchema.Keywords.Deprecated.pas',
   JsonSchema.Keywords.ReadOnlyWriteOnly in '..\..\src\Keywords\Metadata\JsonSchema.Keywords.ReadOnlyWriteOnly.pas',
@@ -76,50 +76,45 @@ uses
   JsonSchema.Keywords.Description in '..\..\src\Keywords\Metadata\JsonSchema.Keywords.Description.pas',
   JsonSchema.Keywords.Default in '..\..\src\Keywords\Metadata\JsonSchema.Keywords.Default.pas',
   JsonSchema.Keywords.Examples in '..\..\src\Keywords\Metadata\JsonSchema.Keywords.Examples.pas',
-  TestJsonSchema.Keywords.Logical in '..\src\Keywords\Validations\TestJsonSchema.Keywords.Logical.pas',
-  TestJsonSchema.Keywords.Core in '..\src\Keywords\Validations\TestJsonSchema.Keywords.Core.pas',
-  TestJsonSchema.Keywords.ConstKeyword in '..\src\Keywords\Validations\TestJsonSchema.Keywords.ConstKeyword.pas',
-  TestJsonSchema.Keywords.Enum in '..\src\Keywords\Validations\TestJsonSchema.Keywords.Enum.pas',
-  TestJsonSchema.Keywords.ItemsCount in '..\src\Keywords\Validations\TestJsonSchema.Keywords.ItemsCount.pas',
-  TestJsonSchema.Keywords.SizesAndSubschemas in '..\src\Keywords\Validations\TestJsonSchema.Keywords.SizesAndSubschemas.pas',
-  TestJsonSchema.Keywords.Structural in '..\src\Keywords\Validations\TestJsonSchema.Keywords.Structural.pas',
-  TestJsonSchema.Keywords.MaxLength in '..\src\Keywords\Validations\TestJsonSchema.Keywords.MaxLength.pas',
-  TestJsonSchema.Keywords.MinLength in '..\src\Keywords\Validations\TestJsonSchema.Keywords.MinLength.pas',
-  TestJsonSchema.Keywords.Numeric in '..\src\Keywords\Validations\TestJsonSchema.Keywords.Numeric.pas',
-  TestJsonSchema.Keywords.PatternAndUnique in '..\src\Keywords\Validations\TestJsonSchema.Keywords.PatternAndUnique.pas',
-  TestJsonSchema.Keywords.Required in '..\src\Keywords\Validations\TestJsonSchema.Keywords.Required.pas',
-  TestJsonSchema.Keywords.TypeKeyword in '..\src\Keywords\Validations\TestJsonSchema.Keywords.TypeKeyword.pas',
+  JsonSchema.Keywords.IfThenElse in '..\..\src\Keywords\Logicals\JsonSchema.Keywords.IfThenElse.pas',
+  JsonSchema.Keywords.Comment in '..\..\src\Keywords\Metadata\JsonSchema.Keywords.Comment.pas',
+  JsonSchema.Keywords.Format in '..\..\src\Keywords\Format\JsonSchema.Keywords.Format.pas',
+  JsonSchema.Keywords.Format.Constants in '..\..\src\Keywords\Format\JsonSchema.Keywords.Format.Constants.pas',
+  JsonSchema.Keywords.Format.IPv6 in '..\..\src\Keywords\Format\JsonSchema.Keywords.Format.IPv6.pas',
+  JsonSchema.Keywords.Format.DateTime in '..\..\src\Keywords\Format\JsonSchema.Keywords.Format.DateTime.pas',
+  JsonSchema.Keywords.Format.Iri in '..\..\src\Keywords\Format\JsonSchema.Keywords.Format.Iri.pas',
+  JsonSchema.Keywords.Format.UriTemplate in '..\..\src\Keywords\Format\JsonSchema.Keywords.Format.UriTemplate.pas',
+  // Source Draft Parsers
   JsonSchema.Draft6.Parser in '..\..\src\Drafts\JsonSchema.Draft6.Parser.pas',
   JsonSchema.Draft7.Parser in '..\..\src\Drafts\JsonSchema.Draft7.Parser.pas',
   JsonSchema.Draft2019_09.Parser in '..\..\src\Drafts\JsonSchema.Draft2019_09.Parser.pas',
   JsonSchema.Draft2020_12.Parser in '..\..\src\Drafts\JsonSchema.Draft2020_12.Parser.pas',
+  // Source Public Facade
+  JsonSchema.Validator in '..\..\src\JsonSchema.Validator.pas',
+  // Test units
+  TestJsonSchema.Keywords.Logical in '..\src\Keywords\Validations\TestJsonSchema.Keywords.Logical.pas',
+  TestJsonSchema.Keywords.Core in '..\src\Keywords\Validations\TestJsonSchema.Keywords.Core.pas',
+  TestJsonSchema.Keywords.TypeKeyword in '..\src\Keywords\Validations\TestJsonSchema.Keywords.TypeKeyword.pas',
+  TestJsonSchema.Keywords.MinLength in '..\src\Keywords\Validations\TestJsonSchema.Keywords.MinLength.pas',
+  TestJsonSchema.Keywords.ConstKeyword in '..\src\Keywords\Validations\TestJsonSchema.Keywords.ConstKeyword.pas',
+  TestJsonSchema.Keywords.Enum in '..\src\Keywords\Validations\TestJsonSchema.Keywords.Enum.pas',
+  TestJsonSchema.Keywords.Required in '..\src\Keywords\Validations\TestJsonSchema.Keywords.Required.pas',
+  TestJsonSchema.Keywords.Numeric in '..\src\Keywords\Validations\TestJsonSchema.Keywords.Numeric.pas',
+  TestJsonSchema.Keywords.MaxLength in '..\src\Keywords\Validations\TestJsonSchema.Keywords.MaxLength.pas',
+  TestJsonSchema.Keywords.ItemsCount in '..\src\Keywords\Validations\TestJsonSchema.Keywords.ItemsCount.pas',
+  TestJsonSchema.Keywords.SizesAndSubschemas in '..\src\Keywords\Validations\TestJsonSchema.Keywords.SizesAndSubschemas.pas',
+  TestJsonSchema.Keywords.Structural in '..\src\Keywords\Validations\TestJsonSchema.Keywords.Structural.pas',
+  TestJsonSchema.Keywords.PatternAndUnique in '..\src\Keywords\Validations\TestJsonSchema.Keywords.PatternAndUnique.pas',
+  TestJsonSchema.Validator in '..\src\TestJsonSchema.Validator.pas',
+  TestJsonSchema.Translations in '..\src\TestJsonSchema.Translations.pas',
   TestJsonSchema.JSONHelper in '..\src\TestJsonSchema.JSONHelper.pas',
   TestJsonSchema.Utils.DraftResolver in '..\src\TestJsonSchema.Utils.DraftResolver.pas',
-  TestJsonSchema.Runner.DUnit in '..\src\TestJsonSchema.Runner.DUnit.pas',
-  JsonSchema.Keywords.Format.Constants in '..\..\src\Keywords\Format\JsonSchema.Keywords.Format.Constants.pas',
-  JsonSchema.Keywords.Format.DateTime in '..\..\src\Keywords\Format\JsonSchema.Keywords.Format.DateTime.pas',
-  JsonSchema.Keywords.Format.IPv6 in '..\..\src\Keywords\Format\JsonSchema.Keywords.Format.IPv6.pas',
-  JsonSchema.Keywords.Format.Iri in '..\..\src\Keywords\Format\JsonSchema.Keywords.Format.Iri.pas',
-  JsonSchema.Keywords.Format in '..\..\src\Keywords\Format\JsonSchema.Keywords.Format.pas',
-  JsonSchema.Keywords.Format.UriTemplate in '..\..\src\Keywords\Format\JsonSchema.Keywords.Format.UriTemplate.pas',
-  JsonSchema.Keywords.IfThenElse in '..\..\src\Keywords\Logicals\JsonSchema.Keywords.IfThenElse.pas',
-  JsonSchema.Keywords.Comment in '..\..\src\Keywords\Metadata\JsonSchema.Keywords.Comment.pas';
+  TestJsonSchema.Utils.Paths in '..\src\TestJsonSchema.Utils.Paths.pas',
+  TestJsonSchema.Runner.DUnit in '..\src\TestJsonSchema.Runner.DUnit.pas';
 
 {$R *.RES}
 
 begin
-  { [COMMENTED OUT] Infraestrutura antiga que dependia da biblioteca anterior
-  var lServer := TMockHttpServer.Create;
-  try
-    lServer.Start(1234);
-    TJsonSchemaValidationTest.RegisterDefaultDrafts;
-    DUnitTestRunner.RunRegisteredTests;
-  finally
-    lServer.Stop;
-    lServer.Free;
-  end;
-  }
-
-  { Execucao dos testes da nova biblioteca }
+  { Execucao dos testes }
   DUnitTestRunner.RunRegisteredTests;
 end.

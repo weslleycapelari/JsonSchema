@@ -177,6 +177,15 @@ const
   /// <summary>Metadata keyword flagging write-only properties.</summary>
   KEYWORD_WRITEONLY = 'writeOnly';
 
+  /// <summary>Applicator keyword for positional array items.</summary>
+  KEYWORD_PREFIXITEMS = 'prefixItems';
+
+  /// <summary>Metadata keyword declaring a dynamic schema anchor.</summary>
+  KEYWORD_DYNAMICANCHOR = '$dynamicAnchor';
+
+  /// <summary>Applicator keyword for dynamic schema reference.</summary>
+  KEYWORD_DYNAMICREF = '$dynamicRef';
+
 implementation
 
 end.

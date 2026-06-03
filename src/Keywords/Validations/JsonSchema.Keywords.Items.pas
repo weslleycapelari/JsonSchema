@@ -23,16 +23,25 @@ type
     FSingleSchema: ICompiledSchema;
     FTupleSchemas: TArray<ICompiledSchema>;
     FIsTuple: Boolean;
+    FPrefixCount: Integer;
     function GetKeywordName: string;
   public
     /// <summary>Initializes items keyword by compiling either a single schema or a tuple of schemas.</summary>
-    constructor Create(const pKeywordValue: TJSONValue; const pCompileFunc: TCompileSchemaFunc);
+    constructor Create(const pKeywordValue: TJSONValue; const pCompileFunc: TCompileSchemaFunc); overload;
+
+    /// <summary>Initializes items keyword with prefix count offset for Draft 2020-12.</summary>
+    constructor CreateDraft2020_12(const pKeywordValue: TJSONValue; const pPrefixCount: Integer;
+      const pCompileFunc: TCompileSchemaFunc); overload;
 
     /// <summary>Validates elements of the JSON array instance.</summary>
     function Validate(const pInstance: TJSONValue): IValidationResult;
 
     /// <summary>Creates a keyword validator instance from a JSON value.</summary>
     class function CreateKeyword(const pKeywordValue: TJSONValue; const pParentSchema: TJSONObject;
+      const pCompileFunc: TCompileSchemaFunc): IJsonSchemaKeyword; static;
+
+    /// <summary>Creates Draft 2020-12 items keyword with prefix items offset.</summary>
+    class function CreateKeywordDraft2020_12(const pKeywordValue: TJSONValue; const pParentSchema: TJSONObject;
       const pCompileFunc: TCompileSchemaFunc): IJsonSchemaKeyword; static;
 
     /// <summary>Technical name of the keyword validator ('items').</summary>
@@ -59,6 +68,22 @@ begin
   Result := TItemsKeyword.Create(pKeywordValue, pCompileFunc);
 end;
 
+class function TItemsKeyword.CreateKeywordDraft2020_12(const pKeywordValue: TJSONValue; const pParentSchema: TJSONObject;
+  const pCompileFunc: TCompileSchemaFunc): IJsonSchemaKeyword;
+var
+  lPrefixCount: Integer;
+  lPrefixVal: TJSONValue;
+begin
+  lPrefixCount := 0;
+  if Assigned(pParentSchema) then
+  begin
+    lPrefixVal := pParentSchema.Values['prefixItems'];
+    if Assigned(lPrefixVal) and (lPrefixVal is TJSONArray) then
+      lPrefixCount := TJSONArray(lPrefixVal).Count;
+  end;
+  Result := TItemsKeyword.CreateDraft2020_12(pKeywordValue, lPrefixCount, pCompileFunc);
+end;
+
 constructor TItemsKeyword.Create(const pKeywordValue: TJSONValue; const pCompileFunc: TCompileSchemaFunc);
 var
   lArr: TJSONArray;
@@ -66,6 +91,7 @@ var
 begin
   inherited Create;
   FIsTuple := False;
+  FPrefixCount := 0;
   FSingleSchema := nil;
   FTupleSchemas := [];
 
@@ -89,6 +115,19 @@ begin
   begin
     FSingleSchema := pCompileFunc(pKeywordValue);
   end;
+end;
+
+constructor TItemsKeyword.CreateDraft2020_12(const pKeywordValue: TJSONValue; const pPrefixCount: Integer;
+  const pCompileFunc: TCompileSchemaFunc);
+begin
+  inherited Create;
+  FIsTuple := False;
+  FPrefixCount := pPrefixCount;
+  FTupleSchemas := [];
+  if Assigned(pKeywordValue) then
+    FSingleSchema := pCompileFunc(pKeywordValue)
+  else
+    FSingleSchema := nil;
 end;
 
 function TItemsKeyword.GetKeywordName: string;
@@ -134,7 +173,7 @@ begin
   begin
     if Assigned(FSingleSchema) then
     begin
-      lIndex := 0;
+      lIndex := FPrefixCount;
       while lIndex < lArray.Count do
       begin
         TValidationContext.MarkItemEvaluated(pInstance, lIndex);

@@ -1,4 +1,4 @@
-ï»¿unit TestJsonSchema.Translations;
+unit TestJsonSchema.Translations;
 
 (*
 --------------------------------------------------------------------------------
@@ -92,7 +92,7 @@ begin
   
   Result := TTranslation.Create(
     Format('Mock Tipo esperado "%s" mas recebeu "%s"', [lExpected, lActual]),
-    Format('Mock Certifique-se de enviar um %s vÃ¡lido no JSON', [lExpected])
+    Format('Mock Certifique-se de enviar um %s válido no JSON', [lExpected])
   );
 end;
 
@@ -166,7 +166,7 @@ begin
     FValidator.Locale := TLocale.EnUS;
     lResult := FValidator.Validate(lSchema, lInstance);
     
-    CheckFalse(lResult.IsValid, 'Deve ser invÃ¡lido');
+    CheckFalse(lResult.IsValid, 'Deve ser inválido');
     CheckEquals(1, Length(lResult.Errors), 'Deve ter 1 erro');
     CheckEquals('type', lResult.Errors[0].Keyword);
     CheckEquals('Expected type "string" but got "number"', lResult.Errors[0].Message);
@@ -188,7 +188,7 @@ begin
     FValidator.Locale := TLocale.EnUS;
     lResult := FValidator.Validate(lSchema, lInstance);
     
-    CheckFalse(lResult.IsValid, 'Deve ser invÃ¡lido');
+    CheckFalse(lResult.IsValid, 'Deve ser inválido');
     CheckEquals(1, Length(lResult.Errors), 'Deve ter 1 erro');
     CheckEquals('minLength', lResult.Errors[0].Keyword);
     CheckEquals('String length 3 is less than minLength 5', lResult.Errors[0].Message);
@@ -213,12 +213,12 @@ begin
   try
     lResult := FValidator.Validate(lSchema, lInstance);
     
-    CheckFalse(lResult.IsValid, 'Deve ser invÃ¡lido');
+    CheckFalse(lResult.IsValid, 'Deve ser inválido');
     CheckEquals('type', lResult.Errors[0].Keyword);
     
     // Verify that the custom Portuguese translation was injected and formatted correctly
     CheckEquals('Mock Tipo esperado "number" mas recebeu "string"', lResult.Errors[0].Message);
-    CheckEquals('Mock Certifique-se de enviar um number vÃ¡lido no JSON', lResult.Errors[0].Resolution);
+    CheckEquals('Mock Certifique-se de enviar um number válido no JSON', lResult.Errors[0].Resolution);
   finally
     lSchema.Free;
     lInstance.Free;
@@ -291,10 +291,10 @@ begin
       on E: Exception do
       begin
         lPassed := True;
-        CheckTrue(Pos('not registered', E.Message) > 0, 'Mensagem de exceÃ§Ã£o deve indicar que nÃ£o estÃ¡ registrado');
+        CheckTrue(Pos('not registered', E.Message) > 0, 'Mensagem de exceção deve indicar que não está registrado');
       end;
     end;
-    CheckTrue(lPassed, 'Deve levantar uma exceÃ§Ã£o ao tentar resolver locale nÃ£o registrado');
+    CheckTrue(lPassed, 'Deve levantar uma exceção ao tentar resolver locale não registrado');
   finally
     lEngine.Free;
   end;
@@ -369,7 +369,7 @@ begin
     
     lTranslation := lTranslator.TranslateType(lError);
     CheckEquals('Tipo esperado "integer" mas recebeu "boolean"', lTranslation.Message);
-    CheckEquals('Certifique-se de que o valor seja um JSON integer vÃ¡lido', lTranslation.Resolution);
+    CheckEquals('Certifique-se de que o valor seja um JSON integer válido', lTranslation.Resolution);
   finally
     lContext.Free;
   end;
@@ -382,8 +382,8 @@ begin
     lError := TValidationError.Create('minLength', lContext);
     
     lTranslation := lTranslator.TranslateMinLength(lError);
-    CheckEquals('O tamanho da string 2 Ã© menor do que o mÃ­nimo permitido 10', lTranslation.Message);
-    CheckEquals('ForneÃ§a uma string com pelo menos 10 caracteres', lTranslation.Resolution);
+    CheckEquals('O tamanho da string 2 é menor do que o mínimo permitido 10', lTranslation.Message);
+    CheckEquals('Forneça uma string com pelo menos 10 caracteres', lTranslation.Resolution);
   finally
     lContext.Free;
   end;
@@ -405,7 +405,7 @@ begin
   lTranslatorBR := TLocalizationPtBR.Create;
   lTranslation := lTranslatorBR.TranslateType(lError);
   CheckEquals('Tipo esperado "unknown" mas recebeu "unknown"', lTranslation.Message);
-  CheckEquals('Certifique-se de que o valor seja um JSON unknown vÃ¡lido', lTranslation.Resolution);
+  CheckEquals('Certifique-se de que o valor seja um JSON unknown válido', lTranslation.Resolution);
 end;
 
 procedure TTestTranslations.TestTranslateMinLengthWithEmptyContext;
@@ -423,8 +423,8 @@ begin
   
   lTranslatorBR := TLocalizationPtBR.Create;
   lTranslation := lTranslatorBR.TranslateMinLength(lError);
-  CheckEquals('O tamanho da string 0 Ã© menor do que o mÃ­nimo permitido 0', lTranslation.Message);
-  CheckEquals('ForneÃ§a uma string com pelo menos 0 caracteres', lTranslation.Resolution);
+  CheckEquals('O tamanho da string 0 é menor do que o mínimo permitido 0', lTranslation.Message);
+  CheckEquals('Forneça uma string com pelo menos 0 caracteres', lTranslation.Resolution);
 end;
 
 procedure TTestTranslations.TestResolveWithInvalidLocaleEnum;
@@ -442,10 +442,10 @@ begin
       on E: Exception do
       begin
         lPassed := True;
-        CheckTrue(Pos('not registered', E.Message) > 0, 'Mensagem de exceÃ§Ã£o deve indicar que nÃ£o estÃ¡ registrado');
+        CheckTrue(Pos('not registered', E.Message) > 0, 'Mensagem de exceção deve indicar que não está registrado');
       end;
     end;
-    CheckTrue(lPassed, 'Deve levantar uma exceÃ§Ã£o ao tentar resolver locale ordinal invÃ¡lido');
+    CheckTrue(lPassed, 'Deve levantar uma exceção ao tentar resolver locale ordinal inválido');
   finally
     lEngine.Free;
   end;
@@ -465,10 +465,10 @@ begin
     begin
       FValidator.Locale := lLocale;
       lResult := FValidator.Validate(lSchema, lInstance);
-      CheckFalse(lResult.IsValid, 'Deve ser invÃ¡lido sob o locale ' + IntToStr(Ord(lLocale)));
+      CheckFalse(lResult.IsValid, 'Deve ser inválido sob o locale ' + IntToStr(Ord(lLocale)));
       CheckTrue(Length(lResult.Errors) > 0, 'Deve retornar erros');
       CheckNotEquals('', lResult.Errors[0].Message, 'Erro deve conter mensagem');
-      CheckNotEquals('', lResult.Errors[0].Resolution, 'Erro deve conter resoluÃ§Ã£o');
+      CheckNotEquals('', lResult.Errors[0].Resolution, 'Erro deve conter resolução');
     end;
   finally
     lSchema.Free;
@@ -497,8 +497,8 @@ begin
     lResult := FValidator.Validate(lSchema, lInstance);
     CheckFalse(lResult.IsValid);
     CheckEquals(1, Length(lResult.Errors));
-    CheckEquals('O tamanho da string 3 Ã© menor do que o mÃ­nimo permitido 5', lResult.Errors[0].Message);
-    CheckEquals('ForneÃ§a uma string com pelo menos 5 caracteres', lResult.Errors[0].Resolution);
+    CheckEquals('O tamanho da string 3 é menor do que o mínimo permitido 5', lResult.Errors[0].Message);
+    CheckEquals('Forneça uma string com pelo menos 5 caracteres', lResult.Errors[0].Resolution);
   finally
     lSchema.Free;
     lInstance.Free;

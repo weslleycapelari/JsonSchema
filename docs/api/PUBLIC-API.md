@@ -73,8 +73,6 @@ function Validate(const pSchema, pInstance: TJSONValue; const pDraft: TDraftVers
 - **`Keyword: string`**: The technical name of the keyword that failed (e.g. `type`, `minimum`, `format`).
 - **`Message: string`**: Localized description explaining the validation failure.
 - **`Resolution: string`**: Localized instructions on how to resolve the validation failure.
-- **`SchemaPath: string`**: JSON Pointer indicating the location of the failed keyword inside the schema.
-- **`InstancePath: string`**: JSON Pointer indicating the location of the failed value inside the instance JSON.
 - **`Context: TJSONObject`**: Raw metadata values associated with the failure (e.g., limit, pattern, actual value).
 
 ---

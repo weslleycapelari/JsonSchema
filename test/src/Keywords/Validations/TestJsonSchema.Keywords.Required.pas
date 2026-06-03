@@ -44,7 +44,7 @@ begin
   try
     lKeyword := TRequiredKeyword.Create(lRequiredList);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Objeto que contÃ©m todos os campos obrigatÃ³rios deve ser vÃ¡lido');
+    CheckTrue(lResult.IsValid, 'Objeto que contém todos os campos obrigatórios deve ser válido');
   finally
     lRequiredList.Free;
     lInstance.Free;
@@ -63,10 +63,10 @@ begin
   try
     lKeyword := TRequiredKeyword.Create(lRequiredList);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, 'Objeto com campos obrigatÃ³rios ausentes deve ser invÃ¡lido');
+    CheckFalse(lResult.IsValid, 'Objeto com campos obrigatórios ausentes deve ser inválido');
     
     // Check that we returned exactly 2 errors (one for age and one for email)
-    CheckEquals(2, Length(lResult.Errors), 'Deve ter 2 erros para as 2 propriedades obrigatÃ³rias ausentes');
+    CheckEquals(2, Length(lResult.Errors), 'Deve ter 2 erros para as 2 propriedades obrigatórias ausentes');
     
     CheckEquals(KEYWORD_REQUIRED, lResult.Errors[0].Keyword);
     CheckEquals('age', lResult.Errors[0].Context.GetValue<string>('missing'));
@@ -91,7 +91,7 @@ begin
   try
     lKeyword := TRequiredKeyword.Create(lRequiredList);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'ValidaÃ§Ã£o de required deve ser ignorada em tipos que nÃ£o sÃ£o objetos');
+    CheckTrue(lResult.IsValid, 'Validação de required deve ser ignorada em tipos que não são objetos');
   finally
     lRequiredList.Free;
     lInstance.Free;

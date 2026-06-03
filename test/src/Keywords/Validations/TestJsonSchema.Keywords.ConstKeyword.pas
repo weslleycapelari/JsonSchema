@@ -47,7 +47,7 @@ begin
   try
     lKeyword := TConstKeyword.Create(lConstVal);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'String idÃªntica deve ser vÃ¡lida');
+    CheckTrue(lResult.IsValid, 'String idêntica deve ser válida');
   finally
     lConstVal.Free;
     lInstance.Free;
@@ -65,7 +65,7 @@ begin
   try
     lKeyword := TConstKeyword.Create(lConstVal);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, 'Strings diferentes devem ser invÃ¡lidas');
+    CheckFalse(lResult.IsValid, 'Strings diferentes devem ser inválidas');
     CheckEquals(KEYWORD_CONST, lResult.Errors[0].Keyword);
     CheckEquals('"hello"', lResult.Errors[0].Context.GetValue<string>('expected'));
   finally
@@ -85,7 +85,7 @@ begin
   try
     lKeyword := TConstKeyword.Create(lConstVal);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Objetos com pares idÃªnticos devem ser vÃ¡lidos independente da ordem');
+    CheckTrue(lResult.IsValid, 'Objetos com pares idênticos devem ser válidos independente da ordem');
   finally
     lConstVal.Free;
     lInstance.Free;
@@ -103,7 +103,7 @@ begin
   try
     lKeyword := TConstKeyword.Create(lConstVal);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, 'Objetos com valores diferentes devem ser invÃ¡lidos');
+    CheckFalse(lResult.IsValid, 'Objetos com valores diferentes devem ser inválidos');
   finally
     lConstVal.Free;
     lInstance.Free;
@@ -121,7 +121,7 @@ begin
   try
     lKeyword := TConstKeyword.Create(lConstVal);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Arrays idÃªnticos devem ser vÃ¡lidos');
+    CheckTrue(lResult.IsValid, 'Arrays idênticos devem ser válidos');
   finally
     lConstVal.Free;
     lInstance.Free;
@@ -139,7 +139,7 @@ begin
   try
     lKeyword := TConstKeyword.Create(lConstVal);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, 'Arrays com ordem diferente devem ser invÃ¡lidos');
+    CheckFalse(lResult.IsValid, 'Arrays com ordem diferente devem ser inválidos');
   finally
     lConstVal.Free;
     lInstance.Free;

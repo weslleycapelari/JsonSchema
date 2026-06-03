@@ -23,8 +23,10 @@ type
     class constructor Create;
     class destructor Destroy;
     class procedure RegisterCoreKeywords; static;
-    class procedure RegisterValidationKeywords; static;
+    class procedure RegisterFormatKeywords; static;
     class procedure RegisterLogicalKeywords; static;
+    class procedure RegisterMetadataKeywords; static;
+    class procedure RegisterValidationKeywords; static;
     class function GetKeywordVocabulary(const pKeyword: string): string; static;
     class function IsKeywordEnabled(const pKeyword: string; const pSchema: TJSONObject): Boolean; static;
   public
@@ -97,8 +99,23 @@ class constructor TDraft2019_09Parser.Create;
 begin
   FRegistry := TKeywordRegistry.Create(TDraft2019_09Parser.ParseSchema);
   RegisterCoreKeywords;
-  RegisterValidationKeywords;
+  RegisterFormatKeywords;
   RegisterLogicalKeywords;
+  RegisterMetadataKeywords;
+  RegisterValidationKeywords;
+end;
+
+class procedure TDraft2019_09Parser.RegisterFormatKeywords;
+begin
+  FRegistry.RegisterKeyword(KEYWORD_FORMAT, TFormatKeyword.CreateKeywordDraft2019_09);
+end;
+
+class procedure TDraft2019_09Parser.RegisterMetadataKeywords;
+begin
+  FRegistry.RegisterKeyword(KEYWORD_COMMENT, TCommentKeyword.CreateKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_DEPRECATED, TDeprecatedKeyword.CreateKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_READONLY, TReadOnlyWriteOnlyKeyword.CreateReadOnlyKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_WRITEONLY, TReadOnlyWriteOnlyKeyword.CreateWriteOnlyKeyword);
 end;
 
 class procedure TDraft2019_09Parser.RegisterValidationKeywords;
@@ -132,11 +149,6 @@ begin
   FRegistry.RegisterKeyword(KEYWORD_DEPENDENCIES, TDependenciesKeyword.CreateKeyword);
   FRegistry.RegisterKeyword(KEYWORD_UNEVALUATEDPROPERTIES, TUnevaluatedPropertiesKeyword.CreateKeyword);
   FRegistry.RegisterKeyword(KEYWORD_UNEVALUATEDITEMS, TUnevaluatedItemsKeyword.CreateKeyword);
-  FRegistry.RegisterKeyword(KEYWORD_FORMAT, TFormatKeyword.CreateKeywordDraft2019_09);
-  FRegistry.RegisterKeyword(KEYWORD_COMMENT, TCommentKeyword.CreateKeyword);
-  FRegistry.RegisterKeyword(KEYWORD_DEPRECATED, TDeprecatedKeyword.CreateKeyword);
-  FRegistry.RegisterKeyword(KEYWORD_READONLY, TReadOnlyWriteOnlyKeyword.CreateReadOnlyKeyword);
-  FRegistry.RegisterKeyword(KEYWORD_WRITEONLY, TReadOnlyWriteOnlyKeyword.CreateWriteOnlyKeyword);
 end;
 
 class procedure TDraft2019_09Parser.RegisterCoreKeywords;

@@ -52,10 +52,12 @@ type
   strict private
     FFormat: string;
     FDraft: TDraftVersion;
+    FAsserts: Boolean;
     function GetKeywordName: string;
+    class function IsVocabularyEnabled(const pVocabURI: string; const pSchema: TJSONObject): Boolean; static;
   public
     /// <summary>Initializes format keyword with target constraint format name.</summary>
-    constructor Create(const pFormat: string; const pDraft: TDraftVersion);
+    constructor Create(const pFormat: string; const pDraft: TDraftVersion; const pAsserts: Boolean = True);
 
     /// <summary>Validates the JSON string instance against the format rules.</summary>
     function Validate(const pInstance: TJSONValue): IValidationResult;
@@ -94,6 +96,8 @@ implementation
 
 uses
   JsonSchema.JSONHelper,
+  JsonSchema.Core.ValidationContext,
+  JsonSchema.Core.SchemaRegistry,
   JsonSchema.Core.URI.Utils,
   JsonSchema.Keywords.Format.Constants,
   JsonSchema.Keywords.Format.IPv6,
@@ -103,13 +107,68 @@ uses
 
 /// <summary>Exception-safe check to determine if a string is a valid regex pattern.</summary>
 function IsValidRegex(const pValue: string): Boolean;
+var
+  i: Integer;
+  lEscaped: Boolean;
 begin
+  Result := False;
   try
     TRegEx.IsMatch('', pValue);
-    Result := True;
   except
-    Result := False;
+    Exit;
   end;
+
+  // Check for ECMA-262 specific restrictions:
+  // In ECMA-262, \a and \e are not valid control escapes.
+  lEscaped := False;
+  for i := 1 to Length(pValue) do
+  begin
+    if lEscaped then
+    begin
+      if (pValue[i] = 'a') or (pValue[i] = 'e') then
+        Exit;
+      lEscaped := False;
+    end
+    else
+    begin
+      if pValue[i] = '\' then
+        lEscaped := True;
+    end;
+  end;
+  Result := True;
+end;
+
+/// <summary>Validates an email address against RFC 5322 including IPv4/IPv6 address literals.</summary>
+function IsValidEmail(const pValue: string): Boolean;
+var
+  lAtPos: Integer;
+  lDomain: string;
+  lInner: string;
+  lIpv6Prefix: string;
+begin
+  if not TRegEx.IsMatch(pValue, REGEX_EMAIL, [roCompiled]) then
+    Exit(False);
+
+  lAtPos := pValue.LastIndexOf('@');
+  if lAtPos < 0 then
+    Exit(False);
+
+  lDomain := pValue.Substring(lAtPos + 1);
+  if lDomain.StartsWith('[') and lDomain.EndsWith(']') then
+  begin
+    lInner := lDomain.Substring(1, lDomain.Length - 2);
+    if lInner.StartsWith('IPv6:', True) then
+    begin
+      lIpv6Prefix := lInner.Substring(5);
+      Result := IsValidIPv6(lIpv6Prefix);
+    end
+    else
+    begin
+      Result := TRegEx.IsMatch(lInner, REGEX_IPV4, [roCompiled]);
+    end;
+  end
+  else
+    Result := True;
 end;
 
 { TFormatRegistry }
@@ -145,7 +204,6 @@ begin
   // Register Regex Validators
   RegisterRegexFormat('ipv4', REGEX_IPV4);
   RegisterRegexFormat('duration', REGEX_DURATION);
-  RegisterRegexFormat('email', REGEX_EMAIL);
   RegisterRegexFormat('idn-email', REGEX_IDN_EMAIL);
   RegisterRegexFormat('idn-hostname', REGEX_IDN_HOSTNAME);
   RegisterRegexFormat('iri-reference', REGEX_IRI_REFERENCE);
@@ -154,6 +212,7 @@ begin
   RegisterRegexFormat('uuid', REGEX_UUID);
 
   // Register Function Validators
+  RegisterFormat('email', IsValidEmail);
   RegisterFormat('ipv6', IsValidIPv6);
   RegisterFormat('date-time', IsValidDateTime);
   RegisterFormat('date', IsValidDate);
@@ -226,11 +285,54 @@ end;
 
 { TFormatKeyword }
 
-constructor TFormatKeyword.Create(const pFormat: string; const pDraft: TDraftVersion);
+constructor TFormatKeyword.Create(const pFormat: string; const pDraft: TDraftVersion; const pAsserts: Boolean);
 begin
   inherited Create;
   FFormat := pFormat;
   FDraft := pDraft;
+  FAsserts := pAsserts;
+end;
+
+class function TFormatKeyword.IsVocabularyEnabled(const pVocabURI: string; const pSchema: TJSONObject): Boolean;
+var
+  lMetaschemaURI: string;
+  lMetaschemaVal: TJSONValue;
+  lMetaschemaObj: TJSONObject;
+  lVocabPair: TJSONPair;
+  lVocabObj: TJSONObject;
+  lVal: TJSONValue;
+begin
+  Result := False;
+  if not Assigned(pSchema) then
+    Exit;
+
+  lMetaschemaURI := '';
+  if not pSchema.TryGetValue('$schema', lMetaschemaURI) then
+  begin
+    if Assigned(TSchemaRegistry.CurrentRootSchema) then
+      TSchemaRegistry.CurrentRootSchema.TryGetValue('$schema', lMetaschemaURI);
+  end;
+
+  if lMetaschemaURI = '' then
+    Exit;
+
+  if TSchemaRegistry.FindSchema(lMetaschemaURI, lMetaschemaVal) and (lMetaschemaVal is TJSONObject) then
+  begin
+    lMetaschemaObj := TJSONObject(lMetaschemaVal);
+    lVocabPair := lMetaschemaObj.Get('$vocabulary');
+    if Assigned(lVocabPair) and (lVocabPair.JsonValue is TJSONObject) then
+    begin
+      lVocabObj := TJSONObject(lVocabPair.JsonValue);
+      lVocabPair := lVocabObj.Get(pVocabURI);
+      if Assigned(lVocabPair) then
+        lVal := lVocabPair.JsonValue
+      else
+        lVal := nil;
+
+      if Assigned(lVal) and (lVal is TJSONBool) and TJSONBool(lVal).AsBoolean then
+        Result := True;
+    end;
+  end;
 end;
 
 class function TFormatKeyword.CreateKeyword(const pKeywordValue: TJSONValue; const pParentSchema: TJSONObject;
@@ -268,11 +370,16 @@ end;
 
 class function TFormatKeyword.CreateKeywordDraft2020_12(const pKeywordValue: TJSONValue; const pParentSchema: TJSONObject;
   const pCompileFunc: TCompileSchemaFunc): IJsonSchemaKeyword;
+var
+  lAsserts: Boolean;
 begin
+  lAsserts := TValidationContext.EnforceFormats or
+    IsVocabularyEnabled('https://json-schema.org/draft/2020-12/vocab/format-assertion', pParentSchema);
+
   if Assigned(pKeywordValue) and (pKeywordValue is TJSONString) then
-    Result := TFormatKeyword.Create(pKeywordValue.Value, TDraftVersion.dvDraft2020_12)
+    Result := TFormatKeyword.Create(pKeywordValue.Value, TDraftVersion.dvDraft2020_12, lAsserts)
   else
-    Result := TFormatKeyword.Create('', TDraftVersion.dvDraft2020_12);
+    Result := TFormatKeyword.Create('', TDraftVersion.dvDraft2020_12, lAsserts);
 end;
 
 function TFormatKeyword.GetKeywordName: string;
@@ -287,6 +394,13 @@ var
   lFound: Boolean;
   lContext: TJSONObject;
 begin
+  // If format assertions are disabled, the format keyword acts only as annotation (always valid)
+  if not FAsserts then
+  begin
+    Result := TValidationResult.ValidResult;
+    Exit;
+  end;
+
   // format validation only applies to JSON strings. Other types are ignored (valid).
   if not pInstance.IsJSONString then
   begin

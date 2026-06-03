@@ -90,7 +90,7 @@ begin
   try
     lKeyword := TMinItemsKeyword.Create(3);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Valida√ß√£o de minItems deve ser ignorada em tipos n√£o array');
+    CheckTrue(lResult.IsValid, 'ValidaÁ„o de minItems deve ser ignorada em tipos n„o array');
   finally
     lInstance.Free;
   end;
@@ -150,7 +150,7 @@ begin
   try
     lKeyword := TMaxItemsKeyword.Create(3);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Valida√ß√£o de maxItems deve ser ignorada em tipos n√£o array');
+    CheckTrue(lResult.IsValid, 'ValidaÁ„o de maxItems deve ser ignorada em tipos n„o array');
   finally
     lInstance.Free;
   end;

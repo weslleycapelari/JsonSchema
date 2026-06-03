@@ -43,7 +43,7 @@ begin
   try
     lKeyword := TMaxLengthKeyword.Create(5);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Comprimento exato deve ser v√°lido');
+    CheckTrue(lResult.IsValid, 'Comprimento exato deve ser v·lido');
   finally
     lInstance.Free;
   end;
@@ -59,7 +59,7 @@ begin
   try
     lKeyword := TMaxLengthKeyword.Create(5);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Comprimento abaixo do limite deve ser v√°lido');
+    CheckTrue(lResult.IsValid, 'Comprimento abaixo do limite deve ser v·lido');
   finally
     lInstance.Free;
   end;
@@ -75,7 +75,7 @@ begin
   try
     lKeyword := TMaxLengthKeyword.Create(5);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, 'Comprimento acima do limite deve ser inv√°lido');
+    CheckFalse(lResult.IsValid, 'Comprimento acima do limite deve ser inv·lido');
     CheckEquals(KEYWORD_MAXLENGTH, lResult.Errors[0].Keyword);
     CheckEquals(5, lResult.Errors[0].Context.GetValue<Integer>('limit'));
     CheckEquals(11, lResult.Errors[0].Context.GetValue<Integer>('actual'));
@@ -94,7 +94,7 @@ begin
   try
     lKeyword := TMaxLengthKeyword.Create(5);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Valida√ß√£o de maxLength deve ser ignorada em tipos n√£o string');
+    CheckTrue(lResult.IsValid, 'ValidaÁ„o de maxLength deve ser ignorada em tipos n„o string');
   finally
     lInstance.Free;
   end;

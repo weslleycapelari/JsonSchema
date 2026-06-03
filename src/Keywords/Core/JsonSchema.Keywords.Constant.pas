@@ -45,7 +45,7 @@ end;
 function TConstantKeyword.IsApplicable(const pSchemaNode: TJSONValue): Boolean;
 begin
   // This keyword is used only for literal schemas, so we always return True here.
-  // The parser ensures it is only created for nonâ€‘object schemas.
+  // The parser ensures it is only created for non�'object schemas.
   Result := True;
 end;
 

@@ -144,6 +144,13 @@ var
 begin
   lValidator := TJsonSchemaValidator.Create;
   try
+    if FFormatErrors then
+      lValidator.EnforceFormats := True
+    else if (FDraftVersion = TDraftVersion.dvDraft2019_09) or (FDraftVersion = TDraftVersion.dvDraft2020_12) then
+      lValidator.EnforceFormats := False
+    else
+      lValidator.EnforceFormats := True;
+
     lResult := lValidator.Validate(FSchema, FData, FDraftVersion);
 
     if lResult.IsValid <> FExpectedValid then
@@ -222,7 +229,7 @@ begin
       .Data(lData.ToJSON)
       .ExpectedValid(lValid)
       .Name(lDescription)
-      .FormatErrors(pFilePath.ToLower.Contains('format'))
+      .FormatErrors(pFilePath.ToLower.Contains('optional') and pFilePath.ToLower.Contains('format'))
       .DraftVersion(pDraftVersion));
   end;
 end;
@@ -342,7 +349,7 @@ begin
   RegisterTestsFromDraft('draft6', TDraftVersion.dvDraft6);
   RegisterTestsFromDraft('draft7', TDraftVersion.dvDraft7);
   RegisterTestsFromDraft('draft2019-09', TDraftVersion.dvDraft2019_09);
-  // RegisterTestsFromDraft('draft2020-12', TDraftVersion.dvDraft2020_12);
+  RegisterTestsFromDraft('draft2020-12', TDraftVersion.dvDraft2020_12);
 end;
 
 initialization

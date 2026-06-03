@@ -23,12 +23,14 @@ type
     class constructor Create;
     class destructor Destroy;
     class procedure RegisterCoreKeywords; static;
-    class procedure RegisterValidationKeywords; static;
+    class procedure RegisterFormatKeywords; static;
     class procedure RegisterLogicalKeywords; static;
+    class procedure RegisterMetadataKeywords; static;
+    class procedure RegisterValidationKeywords; static;
+    class function GetKeywordVocabulary(const pKeyword: string): string; static;
+    class function IsKeywordEnabled(const pKeyword: string; const pSchema: TJSONObject): Boolean; static;
   public
     /// <summary>Parses and compiles a JSON schema object into a set of validation rules.</summary>
-    /// <param name="pSchema">The raw JSON schema object containing keyword definitions.</param>
-    /// <returns>ICompiledSchema instance containing compiled keyword validators.</returns>
     class function Parse(const pSchema: TJSONObject): ICompiledSchema;
 
     /// <summary>Parses a sub-schema which can be either a JSON object or a boolean value.</summary>
@@ -41,6 +43,8 @@ type
 implementation
 
 uses
+  System.SysUtils,
+  JsonSchema.Core.ValidationContext,
   JsonSchema.Keywords.TypeKeyword,
   JsonSchema.Keywords.MinLength,
   JsonSchema.Keywords.Enum,
@@ -63,9 +67,12 @@ uses
   JsonSchema.Keywords.Properties,
   JsonSchema.Keywords.PatternProperties,
   JsonSchema.Keywords.Items,
-  JsonSchema.Keywords.AdditionalItems,
+  JsonSchema.Keywords.PrefixItems,
   JsonSchema.Keywords.AdditionalProperties,
-  JsonSchema.Keywords.Dependencies,
+  JsonSchema.Keywords.DependentRequired,
+  JsonSchema.Keywords.DependentSchemas,
+  JsonSchema.Keywords.UnevaluatedProperties,
+  JsonSchema.Keywords.UnevaluatedItems,
   JsonSchema.Keywords.AllOf,
   JsonSchema.Keywords.AnyOf,
   JsonSchema.Keywords.OneOf,
@@ -73,10 +80,18 @@ uses
   JsonSchema.Keywords.Schema,
   JsonSchema.Keywords.Id,
   JsonSchema.Keywords.Ref,
+  JsonSchema.Keywords.DynamicRef,
+  JsonSchema.Keywords.Vocabulary,
   JsonSchema.Keywords.Format,
+  JsonSchema.Keywords.Dependencies,
   JsonSchema.Keywords.IfThenElse,
   JsonSchema.Keywords.Comment,
-  JsonSchema.Core.SchemaRegistry;
+  JsonSchema.Keywords.Deprecated,
+  JsonSchema.Keywords.ReadOnlyWriteOnly,
+  JsonSchema.Core.SchemaRegistry,
+  JsonSchema.Draft6.Parser,
+  JsonSchema.Draft7.Parser,
+  JsonSchema.Draft2019_09.Parser;
 
 { TDraft2020_12Parser }
 
@@ -84,8 +99,23 @@ class constructor TDraft2020_12Parser.Create;
 begin
   FRegistry := TKeywordRegistry.Create(TDraft2020_12Parser.ParseSchema);
   RegisterCoreKeywords;
-  RegisterValidationKeywords;
+  RegisterFormatKeywords;
   RegisterLogicalKeywords;
+  RegisterMetadataKeywords;
+  RegisterValidationKeywords;
+end;
+
+class procedure TDraft2020_12Parser.RegisterFormatKeywords;
+begin
+  FRegistry.RegisterKeyword(KEYWORD_FORMAT, TFormatKeyword.CreateKeywordDraft2020_12);
+end;
+
+class procedure TDraft2020_12Parser.RegisterMetadataKeywords;
+begin
+  FRegistry.RegisterKeyword(KEYWORD_COMMENT, TCommentKeyword.CreateKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_DEPRECATED, TDeprecatedKeyword.CreateKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_READONLY, TReadOnlyWriteOnlyKeyword.CreateReadOnlyKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_WRITEONLY, TReadOnlyWriteOnlyKeyword.CreateWriteOnlyKeyword);
 end;
 
 class procedure TDraft2020_12Parser.RegisterValidationKeywords;
@@ -111,12 +141,14 @@ begin
   FRegistry.RegisterKeyword(KEYWORD_PROPERTYNAMES, TPropertyNamesKeyword.CreateKeyword);
   FRegistry.RegisterKeyword(KEYWORD_PROPERTIES, TPropertiesKeyword.CreateKeyword);
   FRegistry.RegisterKeyword(KEYWORD_PATTERNPROPERTIES, TPatternPropertiesKeyword.CreateKeyword);
-  FRegistry.RegisterKeyword(KEYWORD_ITEMS, TItemsKeyword.CreateKeyword);
-  FRegistry.RegisterKeyword(KEYWORD_ADDITIONALITEMS, TAdditionalItemsKeyword.CreateKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_PREFIXITEMS, TPrefixItemsKeyword.CreateKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_ITEMS, TItemsKeyword.CreateKeywordDraft2020_12);
   FRegistry.RegisterKeyword(KEYWORD_ADDITIONALPROPERTIES, TAdditionalPropertiesKeyword.CreateKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_DEPENDENTREQUIRED, TDependentRequiredKeyword.CreateKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_DEPENDENTSCHEMAS, TDependentSchemasKeyword.CreateKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_UNEVALUATEDPROPERTIES, TUnevaluatedPropertiesKeyword.CreateKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_UNEVALUATEDITEMS, TUnevaluatedItemsKeyword.CreateKeyword);
   FRegistry.RegisterKeyword(KEYWORD_DEPENDENCIES, TDependenciesKeyword.CreateKeyword);
-  FRegistry.RegisterKeyword(KEYWORD_FORMAT, TFormatKeyword.CreateKeywordDraft2020_12);
-  FRegistry.RegisterKeyword(KEYWORD_COMMENT, TCommentKeyword.CreateKeyword);
 end;
 
 class procedure TDraft2020_12Parser.RegisterCoreKeywords;
@@ -124,6 +156,8 @@ begin
   FRegistry.RegisterKeyword(KEYWORD_SCHEMA, TSchemaKeyword.CreateKeyword);
   FRegistry.RegisterKeyword(KEYWORD_ID, TIdKeyword.CreateKeyword);
   FRegistry.RegisterKeyword(KEYWORD_REF, TRefKeyword.CreateKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_DYNAMICREF, TDynamicRefKeyword.CreateKeyword);
+  FRegistry.RegisterKeyword(KEYWORD_VOCABULARY, TVocabularyKeyword.CreateKeyword);
 end;
 
 class procedure TDraft2020_12Parser.RegisterLogicalKeywords;
@@ -173,20 +207,48 @@ begin
       end;
     end;
 
-    // 2. Process all other registered keywords
+    // 2. Process all other registered keywords (excluding unevaluated keywords)
     for lPair in pSchema do
     begin
-      if lPair.JsonString.Value <> '$id' then
+      if (lPair.JsonString.Value <> '$id') and
+         (lPair.JsonString.Value <> 'unevaluatedProperties') and
+         (lPair.JsonString.Value <> 'unevaluatedItems') then
       begin
         if FRegistry.IsRegistered(lPair.JsonString.Value) then
         begin
-          lKeyword := FRegistry.CreateKeyword(lPair.JsonString.Value, lPair.JsonValue, pSchema);
-          if Assigned(lKeyword) then
+          if IsKeywordEnabled(lPair.JsonString.Value, pSchema) then
           begin
-            SetLength(lKeywords, Length(lKeywords) + 1);
-            lKeywords[High(lKeywords)] := lKeyword;
+            lKeyword := FRegistry.CreateKeyword(lPair.JsonString.Value, lPair.JsonValue, pSchema);
+            if Assigned(lKeyword) then
+            begin
+              SetLength(lKeywords, Length(lKeywords) + 1);
+              lKeywords[High(lKeywords)] := lKeyword;
+            end;
           end;
         end;
+      end;
+    end;
+
+    // 3. Process unevaluatedProperties and unevaluatedItems last
+    lPair := pSchema.Get('unevaluatedProperties');
+    if Assigned(lPair) and IsKeywordEnabled('unevaluatedProperties', pSchema) then
+    begin
+      lKeyword := FRegistry.CreateKeyword('unevaluatedProperties', lPair.JsonValue, pSchema);
+      if Assigned(lKeyword) then
+      begin
+        SetLength(lKeywords, Length(lKeywords) + 1);
+        lKeywords[High(lKeywords)] := lKeyword;
+      end;
+    end;
+
+    lPair := pSchema.Get('unevaluatedItems');
+    if Assigned(lPair) and IsKeywordEnabled('unevaluatedItems', pSchema) then
+    begin
+      lKeyword := FRegistry.CreateKeyword('unevaluatedItems', lPair.JsonValue, pSchema);
+      if Assigned(lKeyword) then
+      begin
+        SetLength(lKeywords, Length(lKeywords) + 1);
+        lKeywords[High(lKeywords)] := lKeyword;
       end;
     end;
 
@@ -198,10 +260,29 @@ begin
 end;
 
 class function TDraft2020_12Parser.ParseSchema(const pSchemaVal: TJSONValue): ICompiledSchema;
+var
+  lObj: TJSONObject;
+  lSchemaPair: TJSONPair;
+  lSchemaURI: string;
 begin
   if pSchemaVal is TJSONObject then
-    Result := TDraft2020_12Parser.Parse(TJSONObject(pSchemaVal))
-  else if pSchemaVal is TJSONBool then
+  begin
+    lObj := TJSONObject(pSchemaVal);
+    lSchemaPair := lObj.Get('$schema');
+    if Assigned(lSchemaPair) and (lSchemaPair.JsonValue is TJSONString) then
+    begin
+      lSchemaURI := lSchemaPair.JsonValue.Value;
+      if lSchemaURI.Contains('/draft-06/') then
+        Exit(TDraft6Parser.Parse(lObj))
+      else if lSchemaURI.Contains('/draft-07/') then
+        Exit(TDraft7Parser.Parse(lObj))
+      else if lSchemaURI.Contains('/draft/2019-09/') then
+        Exit(TDraft2019_09Parser.Parse(lObj))
+      else if lSchemaURI.Contains('/draft/2020-12/') then
+        Exit(TDraft2020_12Parser.Parse(lObj));
+    end;
+    Result := TDraft2020_12Parser.Parse(lObj);
+  end else if pSchemaVal is TJSONBool then
   begin
     if TJSONBool(pSchemaVal).AsBoolean then
       Result := TCompiledSchema.CreateTrueSchema
@@ -209,6 +290,90 @@ begin
       Result := TCompiledSchema.CreateFalseSchema;
   end else
     Result := TCompiledSchema.CreateTrueSchema;
+end;
+
+class function TDraft2020_12Parser.GetKeywordVocabulary(const pKeyword: string): string;
+begin
+  if (pKeyword = 'type') or (pKeyword = 'enum') or (pKeyword = 'const') or
+     (pKeyword = 'multipleOf') or (pKeyword = 'maximum') or (pKeyword = 'exclusiveMaximum') or
+     (pKeyword = 'minimum') or (pKeyword = 'exclusiveMinimum') or (pKeyword = 'maxLength') or
+     (pKeyword = 'minLength') or (pKeyword = 'pattern') or (pKeyword = 'maxItems') or
+     (pKeyword = 'minItems') or (pKeyword = 'uniqueItems') or (pKeyword = 'maxContains') or
+     (pKeyword = 'minContains') or (pKeyword = 'maxProperties') or (pKeyword = 'minProperties') or
+     (pKeyword = 'required') or (pKeyword = 'dependentRequired') then
+    Result := 'https://json-schema.org/draft/2020-12/vocab/validation'
+  else if (pKeyword = 'format') then
+    Result := 'https://json-schema.org/draft/2020-12/vocab/format-annotation'
+  else if (pKeyword = 'title') or (pKeyword = 'description') or (pKeyword = 'default') or
+          (pKeyword = 'deprecated') or (pKeyword = 'readOnly') or (pKeyword = 'writeOnly') or
+          (pKeyword = 'examples') then
+    Result := 'https://json-schema.org/draft/2020-12/vocab/meta-data'
+  else if (pKeyword = 'unevaluatedProperties') or (pKeyword = 'unevaluatedItems') then
+    Result := 'https://json-schema.org/draft/2020-12/vocab/unevaluated'
+  else if (pKeyword = '$id') or (pKeyword = '$schema') or (pKeyword = '$anchor') or
+          (pKeyword = '$ref') or (pKeyword = '$dynamicRef') or (pKeyword = '$dynamicAnchor') or
+          (pKeyword = '$vocabulary') or (pKeyword = '$comment') or (pKeyword = '$defs') then
+    Result := 'https://json-schema.org/draft/2020-12/vocab/core'
+  else
+    Result := 'https://json-schema.org/draft/2020-12/vocab/applicator';
+end;
+
+class function TDraft2020_12Parser.IsKeywordEnabled(const pKeyword: string; const pSchema: TJSONObject): Boolean;
+var
+  lMetaschemaURI: string;
+  lMetaschemaVal: TJSONValue;
+  lMetaschemaObj: TJSONObject;
+  lVocabPair: TJSONPair;
+  lVocabURI: string;
+  lVocabObj: TJSONObject;
+  lVal: TJSONValue;
+begin
+  if (pKeyword = 'format') and TValidationContext.EnforceFormats then
+    Exit(True);
+
+  Result := True;
+
+  // Find metaschema URI
+  lMetaschemaURI := '';
+  if not pSchema.TryGetValue('$schema', lMetaschemaURI) then
+  begin
+    if Assigned(TSchemaRegistry.CurrentRootSchema) then
+      TSchemaRegistry.CurrentRootSchema.TryGetValue('$schema', lMetaschemaURI);
+  end;
+
+  if lMetaschemaURI = '' then
+    Exit;
+
+  if TSchemaRegistry.FindSchema(lMetaschemaURI, lMetaschemaVal) and (lMetaschemaVal is TJSONObject) then
+  begin
+    lMetaschemaObj := TJSONObject(lMetaschemaVal);
+    lVocabPair := lMetaschemaObj.Get('$vocabulary');
+    if Assigned(lVocabPair) and (lVocabPair.JsonValue is TJSONObject) then
+    begin
+      lVocabObj := TJSONObject(lVocabPair.JsonValue);
+      lVocabURI := GetKeywordVocabulary(pKeyword);
+
+      if pKeyword = 'format' then
+      begin
+        lVocabPair := lVocabObj.Get('https://json-schema.org/draft/2020-12/vocab/format-assertion');
+        if not Assigned(lVocabPair) then
+          lVocabPair := lVocabObj.Get('https://json-schema.org/draft/2020-12/vocab/format-annotation');
+      end else
+        lVocabPair := lVocabObj.Get(lVocabURI);
+
+      if Assigned(lVocabPair) then
+        lVal := lVocabPair.JsonValue
+      else
+        lVal := nil;
+
+      if (lVal = nil) or (not (lVal is TJSONBool)) or (not TJSONBool(lVal).AsBoolean) then
+      begin
+        // Core vocabulary is always implicitly enabled
+        if lVocabURI <> 'https://json-schema.org/draft/2020-12/vocab/core' then
+          Result := False;
+      end;
+    end;
+  end;
 end;
 
 end.
