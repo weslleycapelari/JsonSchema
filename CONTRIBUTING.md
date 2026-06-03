@@ -58,6 +58,17 @@ Thanks for contributing to JsonSchema.
 - Update or add tests when a change touches validation, translation, URI resolution, or draft compatibility.
 - Prefer the smallest test that fails before the fix and passes after it.
 
+## Pre-commit encoding check for .pas
+
+To enforce `Windows-1252` encoding in all `.pas` files before each commit:
+
+1. Enable repository hooks:
+	`pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/Install-GitHooks.ps1`
+2. Commit as usual.
+
+The pre-commit hook runs `scripts/Convert-PasToWindows1252.ps1`, converts all `.pas` files to `Windows-1252`, and re-stages modified files automatically.
+If a file contains characters outside `Windows-1252`, the commit is aborted to prevent character corruption.
+
 ## Communication
 
 - Keep PR comments objective.

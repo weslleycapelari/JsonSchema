@@ -14,13 +14,13 @@
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
         <Base>true</Base>
     </PropertyGroup>
-    <PropertyGroup Condition="('$(Platform)'=='Android' and '$(Base)'=='true') or '$(Base_Android)'!=''">
-        <Base_Android>true</Base_Android>
+    <PropertyGroup Condition="('$(Platform)'=='OSX64' and '$(Base)'=='true') or '$(Base_OSX64)'!=''">
+        <Base_OSX64>true</Base_OSX64>
         <CfgParent>Base</CfgParent>
         <Base>true</Base>
     </PropertyGroup>
-    <PropertyGroup Condition="('$(Platform)'=='Android64' and '$(Base)'=='true') or '$(Base_Android64)'!=''">
-        <Base_Android64>true</Base_Android64>
+    <PropertyGroup Condition="('$(Platform)'=='OSXARM64' and '$(Base)'=='true') or '$(Base_OSXARM64)'!=''">
+        <Base_OSXARM64>true</Base_OSXARM64>
         <CfgParent>Base</CfgParent>
         <Base>true</Base>
     </PropertyGroup>
@@ -56,6 +56,18 @@
         <CfgParent>Base</CfgParent>
         <Base>true</Base>
     </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='OSX64' and '$(Cfg_2)'=='true') or '$(Cfg_2_OSX64)'!=''">
+        <Cfg_2_OSX64>true</Cfg_2_OSX64>
+        <CfgParent>Cfg_2</CfgParent>
+        <Cfg_2>true</Cfg_2>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='OSXARM64' and '$(Cfg_2)'=='true') or '$(Cfg_2_OSXARM64)'!=''">
+        <Cfg_2_OSXARM64>true</Cfg_2_OSXARM64>
+        <CfgParent>Cfg_2</CfgParent>
+        <Cfg_2>true</Cfg_2>
+        <Base>true</Base>
+    </PropertyGroup>
     <PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Cfg_2)'=='true') or '$(Cfg_2_Win32)'!=''">
         <Cfg_2_Win32>true</Cfg_2_Win32>
         <CfgParent>Cfg_2</CfgParent>
@@ -85,38 +97,13 @@
         <DCC_DcuOutput>.\.trash\.dcu</DCC_DcuOutput>
         <DCC_ExeOutput>.\.bin</DCC_ExeOutput>
     </PropertyGroup>
-    <PropertyGroup Condition="'$(Base_Android)'!=''">
-        <Android_LauncherIcon36>$(BDS)\bin\Artwork\Android\FM_LauncherIcon_36x36.png</Android_LauncherIcon36>
-        <Android_LauncherIcon48>$(BDS)\bin\Artwork\Android\FM_LauncherIcon_48x48.png</Android_LauncherIcon48>
-        <Android_LauncherIcon72>$(BDS)\bin\Artwork\Android\FM_LauncherIcon_72x72.png</Android_LauncherIcon72>
-        <Android_LauncherIcon96>$(BDS)\bin\Artwork\Android\FM_LauncherIcon_96x96.png</Android_LauncherIcon96>
-        <Android_LauncherIcon144>$(BDS)\bin\Artwork\Android\FM_LauncherIcon_144x144.png</Android_LauncherIcon144>
-        <Android_SplashImage426>$(BDS)\bin\Artwork\Android\FM_SplashImage_426x320.png</Android_SplashImage426>
-        <Android_SplashImage470>$(BDS)\bin\Artwork\Android\FM_SplashImage_470x320.png</Android_SplashImage470>
-        <Android_SplashImage640>$(BDS)\bin\Artwork\Android\FM_SplashImage_640x480.png</Android_SplashImage640>
-        <Android_SplashImage960>$(BDS)\bin\Artwork\Android\FM_SplashImage_960x720.png</Android_SplashImage960>
-        <AUP_ACCESS_COARSE_LOCATION>true</AUP_ACCESS_COARSE_LOCATION>
-        <AUP_ACCESS_FINE_LOCATION>true</AUP_ACCESS_FINE_LOCATION>
-        <AUP_CALL_PHONE>true</AUP_CALL_PHONE>
-        <AUP_CAMERA>true</AUP_CAMERA>
-        <AUP_INTERNET>true</AUP_INTERNET>
-        <AUP_READ_CALENDAR>true</AUP_READ_CALENDAR>
-        <AUP_READ_EXTERNAL_STORAGE>true</AUP_READ_EXTERNAL_STORAGE>
-        <AUP_WRITE_CALENDAR>true</AUP_WRITE_CALENDAR>
-        <AUP_WRITE_EXTERNAL_STORAGE>true</AUP_WRITE_EXTERNAL_STORAGE>
-        <AUP_READ_PHONE_STATE>true</AUP_READ_PHONE_STATE>
-        <Android_NotificationIcon24>$(BDS)\bin\Artwork\Android\FM_NotificationIcon_24x24.png</Android_NotificationIcon24>
-        <Android_NotificationIcon36>$(BDS)\bin\Artwork\Android\FM_NotificationIcon_36x36.png</Android_NotificationIcon36>
-        <Android_NotificationIcon48>$(BDS)\bin\Artwork\Android\FM_NotificationIcon_48x48.png</Android_NotificationIcon48>
-        <Android_NotificationIcon72>$(BDS)\bin\Artwork\Android\FM_NotificationIcon_72x72.png</Android_NotificationIcon72>
-        <Android_NotificationIcon96>$(BDS)\bin\Artwork\Android\FM_NotificationIcon_96x96.png</Android_NotificationIcon96>
-        <Android_LauncherIcon192>$(BDS)\bin\Artwork\Android\FM_LauncherIcon_192x192.png</Android_LauncherIcon192>
-        <EnabledSysJars>activity-1.7.2.dex.jar;annotation-experimental-1.4.1.dex.jar;annotation-jvm-1.8.1.dex.jar;annotations-13.0.dex.jar;appcompat-1.2.0.dex.jar;appcompat-resources-1.2.0.dex.jar;billing-7.1.1.dex.jar;biometric-1.1.0.dex.jar;browser-1.4.0.dex.jar;cloud-messaging.dex.jar;collection-jvm-1.4.2.dex.jar;concurrent-futures-1.1.0.dex.jar;core-1.15.0.dex.jar;core-common-2.2.0.dex.jar;core-ktx-1.15.0.dex.jar;core-runtime-2.2.0.dex.jar;cursoradapter-1.0.0.dex.jar;customview-1.0.0.dex.jar;documentfile-1.0.0.dex.jar;drawerlayout-1.0.0.dex.jar;error_prone_annotations-2.9.0.dex.jar;exifinterface-1.3.6.dex.jar;firebase-annotations-16.2.0.dex.jar;firebase-common-20.3.1.dex.jar;firebase-components-17.1.0.dex.jar;firebase-datatransport-18.1.7.dex.jar;firebase-encoders-17.0.0.dex.jar;firebase-encoders-json-18.0.0.dex.jar;firebase-encoders-proto-16.0.0.dex.jar;firebase-iid-interop-17.1.0.dex.jar;firebase-installations-17.1.3.dex.jar;firebase-installations-interop-17.1.0.dex.jar;firebase-measurement-connector-19.0.0.dex.jar;firebase-messaging-23.1.2.dex.jar;fmx.dex.jar;fragment-1.2.5.dex.jar;google-play-licensing.dex.jar;interpolator-1.0.0.dex.jar;javax.inject-1.dex.jar;kotlin-stdlib-1.8.22.dex.jar;kotlin-stdlib-common-1.8.22.dex.jar;kotlin-stdlib-jdk7-1.8.22.dex.jar;kotlin-stdlib-jdk8-1.8.22.dex.jar;kotlinx-coroutines-android-1.6.4.dex.jar;kotlinx-coroutines-core-jvm-1.6.4.dex.jar;legacy-support-core-utils-1.0.0.dex.jar;lifecycle-common-2.6.2.dex.jar;lifecycle-livedata-2.6.2.dex.jar;lifecycle-livedata-core-2.6.2.dex.jar;lifecycle-runtime-2.6.2.dex.jar;lifecycle-service-2.6.2.dex.jar;lifecycle-viewmodel-2.6.2.dex.jar;lifecycle-viewmodel-savedstate-2.6.2.dex.jar;listenablefuture-1.0.dex.jar;loader-1.0.0.dex.jar;localbroadcastmanager-1.0.0.dex.jar;okio-jvm-3.4.0.dex.jar;play-services-ads-22.2.0.dex.jar;play-services-ads-base-22.2.0.dex.jar;play-services-ads-identifier-18.0.0.dex.jar;play-services-ads-lite-22.2.0.dex.jar;play-services-appset-16.0.1.dex.jar;play-services-base-18.5.0.dex.jar;play-services-basement-18.4.0.dex.jar;play-services-cloud-messaging-17.0.1.dex.jar;play-services-location-21.0.1.dex.jar;play-services-maps-18.1.0.dex.jar;play-services-measurement-base-20.1.2.dex.jar;play-services-measurement-sdk-api-20.1.2.dex.jar;play-services-stats-17.0.2.dex.jar;play-services-tasks-18.2.0.dex.jar;print-1.0.0.dex.jar;profileinstaller-1.3.0.dex.jar;room-common-2.2.5.dex.jar;room-runtime-2.2.5.dex.jar;savedstate-1.2.1.dex.jar;sqlite-2.1.0.dex.jar;sqlite-framework-2.1.0.dex.jar;startup-runtime-1.1.1.dex.jar;tracing-1.2.0.dex.jar;transport-api-3.0.0.dex.jar;transport-backend-cct-3.1.8.dex.jar;transport-runtime-3.1.8.dex.jar;user-messaging-platform-2.0.0.dex.jar;vectordrawable-1.1.0.dex.jar;vectordrawable-animated-1.1.0.dex.jar;versionedparcelable-1.1.1.dex.jar;viewpager-1.0.0.dex.jar;work-runtime-2.7.0.dex.jar</EnabledSysJars>
-    </PropertyGroup>
-    <PropertyGroup Condition="'$(Base_Android64)'!=''">
-        <VerInfo_Keys>package=com.embarcadero.$(MSBuildProjectName);label=$(MSBuildProjectName);versionCode=1;versionName=1.0.0;persistent=False;restoreAnyVersion=False;installLocation=auto;largeHeap=False;theme=TitleBar;hardwareAccelerated=true;apiKey=;minSdkVersion=23;targetSdkVersion=35</VerInfo_Keys>
+    <PropertyGroup Condition="'$(Base_OSX64)'!=''">
+        <VerInfo_Keys>CFBundleName=$(MSBuildProjectName);CFBundleDisplayName=$(MSBuildProjectName);CFBundleIdentifier=$(MSBuildProjectName);CFBundleVersion=1.0.0;CFBundleShortVersionString=1.0.0;CFBundlePackageType=APPL;CFBundleSignature=????;CFBundleAllowMixedLocalizations=YES;CFBundleExecutable=$(MSBuildProjectName);NSHighResolutionCapable=true;LSApplicationCategoryType=public.app-category.utilities;NSLocationUsageDescription=The reason for accessing the location information of the user;NSContactsUsageDescription=The reason for accessing the contacts;NSCalendarsUsageDescription=The reason for accessing the calendar data;NSRemindersUsageDescription=The reason for accessing the reminders;NSCameraUsageDescription=The reason for accessing the camera;NSMicrophoneUsageDescription=The reason for accessing the microphone;NSMotionUsageDescription=The reason for accessing the accelerometer;NSDesktopFolderUsageDescription=The reason for accessing the Desktop folder;NSDocumentsFolderUsageDescription=The reason for accessing the Documents folder;NSDownloadsFolderUsageDescription=The reason for accessing the Downloads folder;NSNetworkVolumesUsageDescription=The reason for accessing files on a network volume;NSRemovableVolumesUsageDescription=The reason for accessing files on a removable volume;NSSpeechRecognitionUsageDescription=The reason for requesting to send user data to Apple&apos;s speech recognition servers;ITSAppUsesNonExemptEncryption=false;NSBluetoothAlwaysUsageDescription=The reason for accessing the Bluetooth interface</VerInfo_Keys>
         <BT_BuildType>Debug</BT_BuildType>
-        <EnabledSysJars>activity-1.7.2.dex.jar;annotation-experimental-1.4.1.dex.jar;annotation-jvm-1.8.1.dex.jar;annotations-13.0.dex.jar;appcompat-1.2.0.dex.jar;appcompat-resources-1.2.0.dex.jar;billing-7.1.1.dex.jar;biometric-1.1.0.dex.jar;browser-1.4.0.dex.jar;cloud-messaging.dex.jar;collection-jvm-1.4.2.dex.jar;concurrent-futures-1.1.0.dex.jar;core-1.15.0.dex.jar;core-common-2.2.0.dex.jar;core-ktx-1.15.0.dex.jar;core-runtime-2.2.0.dex.jar;cursoradapter-1.0.0.dex.jar;customview-1.0.0.dex.jar;documentfile-1.0.0.dex.jar;drawerlayout-1.0.0.dex.jar;error_prone_annotations-2.9.0.dex.jar;exifinterface-1.3.6.dex.jar;firebase-annotations-16.2.0.dex.jar;firebase-common-20.3.1.dex.jar;firebase-components-17.1.0.dex.jar;firebase-datatransport-18.1.7.dex.jar;firebase-encoders-17.0.0.dex.jar;firebase-encoders-json-18.0.0.dex.jar;firebase-encoders-proto-16.0.0.dex.jar;firebase-iid-interop-17.1.0.dex.jar;firebase-installations-17.1.3.dex.jar;firebase-installations-interop-17.1.0.dex.jar;firebase-measurement-connector-19.0.0.dex.jar;firebase-messaging-23.1.2.dex.jar;fmx.dex.jar;fragment-1.2.5.dex.jar;google-play-licensing.dex.jar;interpolator-1.0.0.dex.jar;javax.inject-1.dex.jar;kotlin-stdlib-1.8.22.dex.jar;kotlin-stdlib-common-1.8.22.dex.jar;kotlin-stdlib-jdk7-1.8.22.dex.jar;kotlin-stdlib-jdk8-1.8.22.dex.jar;kotlinx-coroutines-android-1.6.4.dex.jar;kotlinx-coroutines-core-jvm-1.6.4.dex.jar;legacy-support-core-utils-1.0.0.dex.jar;lifecycle-common-2.6.2.dex.jar;lifecycle-livedata-2.6.2.dex.jar;lifecycle-livedata-core-2.6.2.dex.jar;lifecycle-runtime-2.6.2.dex.jar;lifecycle-service-2.6.2.dex.jar;lifecycle-viewmodel-2.6.2.dex.jar;lifecycle-viewmodel-savedstate-2.6.2.dex.jar;listenablefuture-1.0.dex.jar;loader-1.0.0.dex.jar;localbroadcastmanager-1.0.0.dex.jar;okio-jvm-3.4.0.dex.jar;play-services-ads-22.2.0.dex.jar;play-services-ads-base-22.2.0.dex.jar;play-services-ads-identifier-18.0.0.dex.jar;play-services-ads-lite-22.2.0.dex.jar;play-services-appset-16.0.1.dex.jar;play-services-base-18.5.0.dex.jar;play-services-basement-18.4.0.dex.jar;play-services-cloud-messaging-17.0.1.dex.jar;play-services-location-21.0.1.dex.jar;play-services-maps-18.1.0.dex.jar;play-services-measurement-base-20.1.2.dex.jar;play-services-measurement-sdk-api-20.1.2.dex.jar;play-services-stats-17.0.2.dex.jar;play-services-tasks-18.2.0.dex.jar;print-1.0.0.dex.jar;profileinstaller-1.3.0.dex.jar;room-common-2.2.5.dex.jar;room-runtime-2.2.5.dex.jar;savedstate-1.2.1.dex.jar;sqlite-2.1.0.dex.jar;sqlite-framework-2.1.0.dex.jar;startup-runtime-1.1.1.dex.jar;tracing-1.2.0.dex.jar;transport-api-3.0.0.dex.jar;transport-backend-cct-3.1.8.dex.jar;transport-runtime-3.1.8.dex.jar;user-messaging-platform-2.0.0.dex.jar;vectordrawable-1.1.0.dex.jar;vectordrawable-animated-1.1.0.dex.jar;versionedparcelable-1.1.1.dex.jar;viewpager-1.0.0.dex.jar;work-runtime-2.7.0.dex.jar</EnabledSysJars>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base_OSXARM64)'!=''">
+        <VerInfo_Keys>CFBundleName=$(MSBuildProjectName);CFBundleDisplayName=$(MSBuildProjectName);CFBundleIdentifier=$(MSBuildProjectName);CFBundleVersion=1.0.0;CFBundleShortVersionString=1.0.0;CFBundlePackageType=APPL;CFBundleSignature=????;CFBundleAllowMixedLocalizations=YES;CFBundleExecutable=$(MSBuildProjectName);NSHighResolutionCapable=true;LSApplicationCategoryType=public.app-category.utilities;NSLocationUsageDescription=The reason for accessing the location information of the user;NSContactsUsageDescription=The reason for accessing the contacts;NSCalendarsUsageDescription=The reason for accessing the calendar data;NSRemindersUsageDescription=The reason for accessing the reminders;NSCameraUsageDescription=The reason for accessing the camera;NSMicrophoneUsageDescription=The reason for accessing the microphone;NSMotionUsageDescription=The reason for accessing the accelerometer;NSDesktopFolderUsageDescription=The reason for accessing the Desktop folder;NSDocumentsFolderUsageDescription=The reason for accessing the Documents folder;NSDownloadsFolderUsageDescription=The reason for accessing the Downloads folder;NSNetworkVolumesUsageDescription=The reason for accessing files on a network volume;NSRemovableVolumesUsageDescription=The reason for accessing files on a removable volume;NSSpeechRecognitionUsageDescription=The reason for requesting to send user data to Apple&apos;s speech recognition servers;ITSAppUsesNonExemptEncryption=false;NSBluetoothAlwaysUsageDescription=The reason for accessing the Bluetooth interface</VerInfo_Keys>
+        <BT_BuildType>Debug</BT_BuildType>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
@@ -155,6 +142,12 @@
         <DCC_RangeChecking>true</DCC_RangeChecking>
         <DCC_IntegerOverflowCheck>true</DCC_IntegerOverflowCheck>
     </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_2_OSX64)'!=''">
+        <DCC_RemoteDebug>true</DCC_RemoteDebug>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Cfg_2_OSXARM64)'!=''">
+        <DCC_RemoteDebug>true</DCC_RemoteDebug>
+    </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2_Win32)'!=''">
         <VerInfo_Locale>1033</VerInfo_Locale>
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
@@ -171,38 +164,104 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="..\src\TestJsonSchema.Mock.HttpServer.pas"/>
-        <DCCReference Include="..\src\TestJsonSchema.Runner.DUnit.pas"/>
-        <DCCReference Include="..\src\TestJsonSchema.Types.pas"/>
+        <DCCReference Include="..\..\src\Core\JsonSchema.Core.Constants.pas"/>
+        <DCCReference Include="..\..\src\Core\JsonSchema.Core.Interfaces.pas"/>
+        <DCCReference Include="..\..\src\Core\JsonSchema.Results.pas"/>
+        <DCCReference Include="..\..\src\Core\JsonSchema.CompiledSchema.pas"/>
+        <DCCReference Include="..\..\src\Core\JsonSchema.Registry.pas"/>
+        <DCCReference Include="..\..\src\Core\JsonSchema.JSONHelper.pas"/>
+        <DCCReference Include="..\..\src\Core\JsonSchema.Core.SchemaRegistry.pas"/>
+        <DCCReference Include="..\..\src\Core\URI\JsonSchema.Core.URI.Types.pas"/>
+        <DCCReference Include="..\..\src\Core\URI\JsonSchema.Core.URI.Reference.pas"/>
+        <DCCReference Include="..\..\src\Core\URI\JsonSchema.Core.URI.Utils.pas"/>
+        <DCCReference Include="..\..\src\Core\URI\JsonSchema.Core.URI.ParseResult.pas"/>
+        <DCCReference Include="..\..\src\Core\URI\JsonSchema.Core.URI.Builder.pas"/>
+        <DCCReference Include="..\..\src\Core\URI\JsonSchema.Core.URI.Validator.pas"/>
+        <DCCReference Include="..\..\src\Localization\JsonSchema.Localization.Enums.pas"/>
+        <DCCReference Include="..\..\src\Localization\JsonSchema.Localization.Interfaces.pas"/>
+        <DCCReference Include="..\..\src\Localization\JsonSchema.Localization.Base.pas"/>
+        <DCCReference Include="..\..\src\Localization\JsonSchema.Localization.EnUS.pas"/>
+        <DCCReference Include="..\..\src\Localization\JsonSchema.Localization.PtBR.pas"/>
+        <DCCReference Include="..\..\src\Localization\JsonSchema.Localization.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.TypeKeyword.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.MinLength.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.Enum.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.ConstKeyword.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.Required.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.Minimum.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.Maximum.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.MaxLength.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.MinItems.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.MaxItems.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.MultipleOf.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.ExclusiveMaximum.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.ExclusiveMinimum.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.Pattern.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.UniqueItems.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.Contains.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.MaxProperties.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.MinProperties.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.PropertyNames.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.Properties.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.PatternProperties.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.Items.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.AdditionalItems.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.AdditionalProperties.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.Dependencies.pas"/>
+        <DCCReference Include="..\..\src\Core\JsonSchema.Core.ValidationContext.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.DependentRequired.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.DependentSchemas.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.UnevaluatedProperties.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.UnevaluatedItems.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Validations\JsonSchema.Keywords.PrefixItems.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Core\JsonSchema.Keywords.RecursiveRef.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Core\JsonSchema.Keywords.DynamicRef.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Core\JsonSchema.Keywords.Vocabulary.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Metadata\JsonSchema.Keywords.Deprecated.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Metadata\JsonSchema.Keywords.ReadOnlyWriteOnly.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Logicals\JsonSchema.Keywords.AllOf.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Logicals\JsonSchema.Keywords.AnyOf.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Logicals\JsonSchema.Keywords.OneOf.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Logicals\JsonSchema.Keywords.NotKeyword.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Core\JsonSchema.Keywords.Schema.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Core\JsonSchema.Keywords.Id.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Core\JsonSchema.Keywords.Ref.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Metadata\JsonSchema.Keywords.Title.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Metadata\JsonSchema.Keywords.Description.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Metadata\JsonSchema.Keywords.Default.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Metadata\JsonSchema.Keywords.Examples.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Logicals\JsonSchema.Keywords.IfThenElse.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Metadata\JsonSchema.Keywords.Comment.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Format\JsonSchema.Keywords.Format.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Format\JsonSchema.Keywords.Format.Constants.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Format\JsonSchema.Keywords.Format.IPv6.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Format\JsonSchema.Keywords.Format.DateTime.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Format\JsonSchema.Keywords.Format.Iri.pas"/>
+        <DCCReference Include="..\..\src\Keywords\Format\JsonSchema.Keywords.Format.UriTemplate.pas"/>
+        <DCCReference Include="..\..\src\Drafts\JsonSchema.Draft6.Parser.pas"/>
+        <DCCReference Include="..\..\src\Drafts\JsonSchema.Draft7.Parser.pas"/>
+        <DCCReference Include="..\..\src\Drafts\JsonSchema.Draft2019_09.Parser.pas"/>
+        <DCCReference Include="..\..\src\Drafts\JsonSchema.Draft2020_12.Parser.pas"/>
+        <DCCReference Include="..\..\src\JsonSchema.Validator.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.Logical.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.Core.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.TypeKeyword.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.MinLength.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.ConstKeyword.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.Enum.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.Required.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.Numeric.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.MaxLength.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.ItemsCount.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.SizesAndSubschemas.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.Structural.pas"/>
+        <DCCReference Include="..\src\Keywords\Validations\TestJsonSchema.Keywords.PatternAndUnique.pas"/>
+        <DCCReference Include="..\src\TestJsonSchema.Validator.pas"/>
+        <DCCReference Include="..\src\TestJsonSchema.Translations.pas"/>
+        <DCCReference Include="..\src\TestJsonSchema.JSONHelper.pas"/>
         <DCCReference Include="..\src\TestJsonSchema.Utils.DraftResolver.pas"/>
         <DCCReference Include="..\src\TestJsonSchema.Utils.Paths.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Common.Utils.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Translate.enUS.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Translate.Interfaces.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Translate.ptBR.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Translate.Types.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Translate.Utils.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Validation.Base.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Validation.Draft6.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Validation.Draft7.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Validation.Draft2019_09.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Validation.Draft2020_12.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Validation.Interfaces.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Validation.Types.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Visitors.Base.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Visitors.Interfaces.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Visitors.Types.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Walker.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Walker.Types.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Registry.Base.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Registry.Types.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Registry.Uri.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Registry.Utils.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Registry.Uri.Validator.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Registry.Uri.Builder.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Registry.Uri.ParseResult.pas"/>
-        <DCCReference Include="..\..\src\JsonSchema.Registry.Resource.pas"/>
+        <DCCReference Include="..\src\TestJsonSchema.Runner.DUnit.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
@@ -230,9 +289,9 @@
                 </Excluded_Packages>
             </Delphi.Personality>
             <Platforms>
-                <Platform value="Android">False</Platform>
-                <Platform value="Android64">False</Platform>
                 <Platform value="Linux64">True</Platform>
+                <Platform value="OSX64">False</Platform>
+                <Platform value="OSXARM64">False</Platform>
                 <Platform value="Win32">True</Platform>
                 <Platform value="Win64">True</Platform>
             </Platforms>

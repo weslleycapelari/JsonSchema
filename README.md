@@ -1,83 +1,59 @@
 # JsonSchema
 
-Delphi library for JSON Schema validation with confirmed runtime support for Draft 6, Draft 7, Draft 2019-09, and Draft 2020-12.
+JsonSchema Delphi is a JSON Schema validation library written in Delphi. It is built around a compiled-schema execution model, a draft-aware parser layer, a central schema registry, and localized validation output.
 
 ## What this project does
 
 - Validates JSON documents against JSON Schema documents.
-- Selects the draft from `$schema` or from an explicit draft passed by the caller.
-- Runs validation through walkers, visitors, and a resource registry.
-- Exposes validation messages in enUS and ptBR.
-- Includes URI helpers and the Schema2Delphi helper tool in `tools/`.
+- Supports Draft 6, Draft 7, Draft 2019-09, and Draft 2020-12 at runtime.
+- Compiles schemas before validation.
+- Keeps keyword behavior isolated in keyword units.
+- Produces localized validation messages in enUS and ptBR.
+- Resolves references and schema resources through a registry.
+- Includes the auxiliary Schema2Delphi tool under `tools/`.
 
 ## Confirmed scope
 
 - Runtime confirmed: Draft 6, Draft 7, Draft 2019-09, and Draft 2020-12.
-- Draft 6: 100% Compliant (1151/1151 tests passed).
-- Draft 7: 100% Compliant (1467/1467 tests passed).
-- Historical test fixtures: Draft 3, Draft 4, and draft-next appear in the test fixtures, but they are not confirmed runtime support.
+- Draft 6 and Draft 7 have strong compliance coverage in the repository history.
+- Historical test fixtures for Draft 3, Draft 4, and draft-next are present, but they are not confirmed runtime support.
 
-## Quick start and validation
+## Quick start
 
-The public entry point is `TJsonSchema.Validate`. Pass a schema and an input JSON value, then inspect the result.
+The main public entry point is `TJsonSchemaValidator`.
 
-1. Parse the schema and the data as `TJSONValue` values.
-2. Call `TJsonSchema.Validate`.
-3. Check `IsValid` and, if needed, inspect `Errors`.
+1. Parse the schema and instance as `TJSONValue` values.
+2. Create `TJsonSchemaValidator`.
+3. Call `Validate` with the schema, instance, and optional draft.
+4. Inspect `IsValid`, `Errors`, `Message`, and `Resolution`.
 
-```pascal
-uses
-  System.JSON,
-  JsonSchema;
+## Validation rules
 
-var
-  Schema: TJSONValue;
-  Data: TJSONValue;
-  Result: IValidationResult;
-begin
-  Schema := TJSONObject.ParseJSONValue('{"type":"object"}');
-  Data := TJSONObject.ParseJSONValue('{"name":"Ada"}');
-  try
-    Result := TJsonSchema.Validate(Schema, Data);
-
-    if Result.IsValid then
-      Exit;
-
-    for var Error in Result.Errors do
-      Writeln(Error.ErrorMessage);
-  finally
-    Schema.Free;
-    Data.Free;
-  end;
-end;
-```
-
-Validation draft selection follows these rules:
-
-- An explicit draft parameter takes precedence.
-- If no draft is passed and the schema does not declare `$schema`, validation falls back to Draft 2020-12.
-- If the schema declares `$schema`, that value drives draft selection.
-
-If you are validating a draft-specific change, update or add a draft-specific test before opening a PR. The DUnit GUI project lives in [test/gui/TestJsonSchema.dproj](test/gui/TestJsonSchema.dproj).
+- The validator overload without an explicit draft uses Draft 6.
+- The draft-specific overload routes to the selected draft parser.
+- Validation occurs against compiled keyword validators, not raw schema JSON.
 
 ## Repository layout
 
-- `src`: core library.
-- `test`: DUnit project and schema fixtures.
-- `tools`: auxiliary tools, including Schema2Delphi.
-- `docs`: architecture and draft support documentation.
+- `src`: library source.
+- `test`: DUnit projects and schema fixtures.
+- `tools`: auxiliary tools.
+- `docs`: architecture, product, development, API, decisions, and operations documentation.
 
-## Testing documentation
+## Documentation
 
-- [Testing Guide](docs/testing.md): test harness architecture, CLI options, progress/failure output, report formats, and examples.
+- [Documentation index](docs/README.md)
+- [Architecture](docs/architecture/ARCHITECTURE.md)
+- [Decisions](docs/decisions/README.md)
+- [Testing guide](docs/development/TESTING.md)
+- [Setup guide](docs/development/SETUP.md)
 
-## How to contribute
+## Contributing
 
-- Open an issue before larger changes.
-- Prefer small, focused pull requests.
-- Add or adjust tests when you change validation, URI handling, translation, or draft compatibility.
-- Update public documentation when the contract changes.
-- Do not promise support for drafts that exist only in fixtures.
+- Prefer small, focused changes.
+- Update or add tests when validation, URI handling, translation, or draft compatibility changes.
+- Keep docs in sync with observable runtime behavior.
+- Do not describe fixture-only support as runtime support.
 
 ## License
 

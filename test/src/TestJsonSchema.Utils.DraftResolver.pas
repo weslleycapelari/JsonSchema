@@ -5,9 +5,13 @@ interface
 uses
   System.SysUtils,
   System.StrUtils,
-  JsonSchema;
+  JsonSchema.Core.Constants,
+  JsonSchema.Core.Interfaces;
 
+/// <summary>Resolves the folder name for a draft (e.g. 'draft6' for '6' or 'draft6').</summary>
 function ResolveDraftFolderName(const pDraft: string): string;
+
+/// <summary>Resolves the TDraftVersion enum from a draft string.</summary>
 function ResolveDraftVersion(const pDraft: string): TDraftVersion;
 
 implementation

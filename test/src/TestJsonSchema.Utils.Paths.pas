@@ -1,5 +1,12 @@
 unit TestJsonSchema.Utils.Paths;
 
+(*
+--------------------------------------------------------------------------------
+Contains path utility tests, checking correct directory navigation, relative schema lookups, and system configurations.
+--------------------------------------------------------------------------------
+*)
+
+
 interface
 
 uses
@@ -14,10 +21,30 @@ function GetSchemasRemotesRootPath: string;
 implementation
 
 function GetTestRootPath: string;
+var
+  lExePath: string;
+  lPath: string;
 begin
-  { Retorna dois níveis acima do executável atual para
-    encontrar a raiz do projeto }
-  Result := TPath.GetFullPath(TPath.Combine(ExtractFilePath(ParamStr(0)), '..', '..'));
+  lExePath := ExtractFilePath(ParamStr(0));
+  
+  if TDirectory.Exists(TPath.Combine(lExePath, 'schemas')) then
+  begin
+    Exit(TPath.GetFullPath(lExePath));
+  end;
+    
+  lPath := TPath.Combine(lExePath, '..');
+  if TDirectory.Exists(TPath.Combine(lPath, 'schemas')) then
+  begin
+    Exit(TPath.GetFullPath(lPath));
+  end;
+
+  lPath := TPath.Combine(lExePath, '..', '..');
+  if TDirectory.Exists(TPath.Combine(lPath, 'schemas')) then
+  begin
+    Exit(TPath.GetFullPath(lPath));
+  end;
+
+  Result := TPath.GetFullPath(TPath.Combine(lExePath, '..', '..'));
 end;
 
 function GetSchemasRootPath: string;

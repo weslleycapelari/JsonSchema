@@ -1,27 +1,27 @@
-﻿unit Schema2Delphi.Visitor;
+unit Schema2Delphi.Visitor;
 
 {
   ********************************************************************************
 
-  Unidade do Gerador de C�digo da Biblioteca Delphi JSON Schema
+  Unidade do Gerador de C?digo da Biblioteca Delphi JSON Schema
 
   Copyright (c) 2025 [Seu Nome/Sua Empresa]
 
-  Esta unidade cont�m a classe TJsonSchemaCodeGenerator, que implementa
-  IJsonSchemaVisitor para gerar c�digo fonte de uma classe Delphi a partir
+  Esta unidade cont?m a classe TJsonSchemaCodeGenerator, que implementa
+  IJsonSchemaVisitor para gerar c?digo fonte de uma classe Delphi a partir
   de um JSON Schema.
 
-  O processo � o inverso do SchemaGenerator: o walker percorre o schema JSON
-  e o CodeGenerator constr�i uma string com a declara��o de uma classe,
+  O processo ? o inverso do SchemaGenerator: o walker percorre o schema JSON
+  e o CodeGenerator constr?i uma string com a declara??o de uma classe,
   incluindo propriedades e os atributos customizados da biblioteca.
 
-  Esta funcionalidade � ideal para consumir schemas de fontes externas,
+  Esta funcionalidade ? ideal para consumir schemas de fontes externas,
   gerando automaticamente os modelos de dados (DTOs - Data Transfer Objects)
-  fortemente tipados para serem usados na aplica��o.
+  fortemente tipados para serem usados na aplica??o.
 
   @version(1.0.0)
   @author(Seu Nome)
-  @link(URL do seu reposit�rio/documenta��o)
+  @link(URL do seu reposit?rio/documenta??o)
 
   ********************************************************************************
 }
@@ -46,15 +46,15 @@ type
   TType = (tpClass, tpArray, tpNumber, tpString, tpEnum, tpBoolean, tpNull, tpDateTime, tpUuid);
 
   /// <summary>
-  ///   Gera o c�digo fonte de uma ou mais classes Delphi a partir de um JSON Schema.
+  ///   Gera o c?digo fonte de uma ou mais classes Delphi a partir de um JSON Schema.
   /// </summary>
   TJsonSchemaCodeGenerator = class
   private
     FRegistry: TRegistryVisitor;
     FGenerationQueue: TQueue<TClassToGenerate>;
-    // Mapeia uma inst�ncia de TJSONObject para o nome da classe Delphi gerada
+    // Mapeia uma inst?ncia de TJSONObject para o nome da classe Delphi gerada
     FProcessedSchemas: TDictionary<TJSONObject, string>;
-    // Mant�m a lista de todas as classes geradas para criar forward declarations
+    // Mant?m a lista de todas as classes geradas para criar forward declarations
     FGeneratedClassNames: TStringList;
     FTypesBuilder: TStringBuilder;
     FProcessedEnums: TDictionary<TJSONObject, string>;
@@ -71,12 +71,12 @@ type
     destructor Destroy; override;
 
     /// <summary>
-    ///   M�todo principal que orquestra a gera��o do c�digo.
+    ///   M?todo principal que orquestra a gera??o do c?digo.
     /// </summary>
     /// <param name="ARootSchema">O schema JSON a partir do qual gerar.</param>
     /// <param name="ARootClassName">O nome desejado para a classe raiz.</param>
     /// <param name="ARootBaseURI">A URI base do documento de schema raiz.</param>
-    /// <returns>Uma string contendo o c�digo Delphi gerado.</returns>
+    /// <returns>Uma string contendo o c?digo Delphi gerado.</returns>
     function GenerateCode(ARootSchema: TJSONObject; const ARootClassName, ARootBaseURI: string): string;
   end;
 
@@ -125,8 +125,8 @@ begin
   FGeneratedClassNames.Clear;
   FTypesBuilder.Clear;
   FProcessedEnums.Clear;
-  // A pr�pria fachada (TJsonSchema) j� deve ter registrado o schema.
-  // FRegistry.RegisterSchema(ARootSchema, ARootBaseURI); // Garante que o registry est� pronto
+  // A pr?pria fachada (TJsonSchema) j? deve ter registrado o schema.
+  // FRegistry.RegisterSchema(ARootSchema, ARootBaseURI); // Garante que o registry est? pronto
 
   // --- PASSO 2: Enfileirar a Classe Raiz ---
   LRootInfo := TClassToGenerate.Create;
@@ -137,7 +137,7 @@ begin
   FProcessedSchemas.Add(ARootSchema, ARootClassName); // Marca o schema raiz como processado
   FGeneratedClassNames.Add(ARootClassName);
 
-  // --- PASSO 3: Processar a Fila de Gera��o ---
+  // --- PASSO 3: Processar a Fila de Gera??o ---
   LImplBuilder := TStringBuilder.Create;
   LClassesBuilder := TStringBuilder.Create;
   try
@@ -154,10 +154,10 @@ begin
       end;
     end;
 
-    // --- PASSO 4: Montar o C�digo Final com Forward Declarations ---
+    // --- PASSO 4: Montar o C?digo Final com Forward Declarations ---
     LForwardBuilder := TStringBuilder.Create;
     try
-      // Adiciona as declara��es "TMyClass = class;" para todas as classes geradas
+      // Adiciona as declara??es "TMyClass = class;" para todas as classes geradas
       for LClassName in FGeneratedClassNames do
       begin
         LForwardBuilder.AppendLine(Format('  %s = class;', [LClassName]));
@@ -189,11 +189,11 @@ begin
   // Tenta obter 'examples' para os nomes e 'enum' para os valores
   if not ASchema.TryGetValue<TJSONArray>('examples', LExamples) or
      not ASchema.TryGetValue<TJSONArray>('enum', LEnumValues) then
-    Exit; // N�o � poss�vel gerar o enum sem examples ou a lista de enum
+    Exit; // N?o ? poss?vel gerar o enum sem examples ou a lista de enum
 
   LValueMap := TDictionary<string, string>.Create;
   try
-    // PASSO 1: Mapear valor para descri��o a partir de 'examples'
+    // PASSO 1: Mapear valor para descri??o a partir de 'examples'
     for var LJsonExample in LExamples do
     begin
       LExample := LJsonExample.Value;
@@ -202,14 +202,14 @@ begin
         LValueMap.AddOrSetValue(LParts[0].Trim, LParts[1].Trim);
     end;
 
-    // PASSO 2: Construir a string de declara��o do enum
+    // PASSO 2: Construir a string de declara??o do enum
     FTypesBuilder.AppendLine(Format('  %s = (', [ATypeName]));
     var LEnumMembers := TStringList.Create;
     try
       for var LJsonValue in LEnumValues do
       begin
         LValue := LJsonValue.Value;
-        // Tenta encontrar a descri��o correspondente.
+        // Tenta encontrar a descri??o correspondente.
         if LValueMap.TryGetValue(LValue, LDescription) then
         begin
           LEnumIdent := SanitizeForEnumIdentifier(LDescription, Copy(ATypeName, 2, MaxInt));
@@ -218,7 +218,7 @@ begin
         end
         else
         begin
-          // Fallback: Se n�o houver exemplo para este valor, geramos um nome gen�rico
+          // Fallback: Se n?o houver exemplo para este valor, geramos um nome gen?rico
           LEnumIdent := Format('value%s', [LValue]);
           LEnumMember := Format('    %s = %s', [LEnumIdent, LValue]);
           LEnumMembers.Add(LEnumMember);
@@ -255,7 +255,7 @@ begin
   try
     ACodeBuilder.AppendLine(Format('  %s = class', [AClassInfo.ClassName]));
 
-    // Gera atributos no n�vel da classe
+    // Gera atributos no n?vel da classe
     ProcessPropertyAttributes(AClassInfo.Schema, LAttributes);
     //ACodeBuilder.Insert(ACodeBuilder.Length - AClassInfo.ClassName.Length - 10,
     //  LAttributes.Text.Trim.Replace(#13#10, #13#10'  ') + #13#10'  ');
@@ -263,7 +263,7 @@ begin
 
     if AClassInfo.Schema.TryGetValue<TJSONObject>('properties', LProperties) then
     begin
-      // Obt�m a lista de propriedades obrigat�rias
+      // Obt?m a lista de propriedades obrigat?rias
       AClassInfo.Schema.TryGetValue<TJSONArray>('required', LRequiredArray);
 
       for LPropPair in LProperties do
@@ -293,7 +293,7 @@ begin
         // Processa todos os outros atributos da propriedade
         //ProcessPropertyAttributes(LPropSchema, LAttributes);
 
-        // Obt�m o tipo Delphi. Esta chamada pode enfileirar novas classes.
+        // Obt?m o tipo Delphi. Esta chamada pode enfileirar novas classes.
         LTypeName := GetDelphiTypeForSchema(LPropSchema, LPropName, AClassInfo.BaseURI, LType);
 
         case LType of
@@ -388,7 +388,7 @@ begin
       if Assigned(LResolvedValue) and (LResolvedValue is TJSONObject) then
       begin
         APropSchema := LResolvedValue as TJSONObject;
-        // Deriva um nome para a classe a partir do final da refer�ncia
+        // Deriva um nome para a classe a partir do final da refer?ncia
         LRefName := LRefStr.Split(['/']);
         Result := ToPascalCase(LRefName[High(LRefName)]);
       end
@@ -400,7 +400,7 @@ begin
     end;
   end;
 
-  // --- PASSO 2: Verificar se � um ENUM que podemos gerar ---
+  // --- PASSO 2: Verificar se ? um ENUM que podemos gerar ---
   if APropSchema.TryGetValue('enum', LNullable) then
   begin
     AType := tpEnum;
@@ -414,11 +414,11 @@ begin
     if not APropSchema.TryGetValue('examples', LNullable) then
       Exit('Integer');
 
-    // Verifica se j� processamos este enum
+    // Verifica se j? processamos este enum
     if FProcessedEnums.TryGetValue(APropSchema, LTypeName) then
       Exit(LTypeName);
 
-    // � um novo enum para gerar!
+    // ? um novo enum para gerar!
     LTypeName := 'T' + ToPascalCase(APropName);
     LCount := 1;
     while (FProcessedEnums.ContainsValue(LTypeName)) do
@@ -427,12 +427,12 @@ begin
       Inc(LCount);
     end;
 
-    GenerateEnumFromSchema(APropSchema, LTypeName); // Gera o c�digo do tipo enum
+    GenerateEnumFromSchema(APropSchema, LTypeName); // Gera o c?digo do tipo enum
     FProcessedEnums.Add(APropSchema, LTypeName); // Marca como processado
     Exit(LTypeName); // Retorna o nome do nosso novo tipo enum
   end;
 
-  // --- PASSO 3: Verificar se j� processamos este schema ---
+  // --- PASSO 3: Verificar se j? processamos este schema ---
   if FProcessedSchemas.TryGetValue(APropSchema, LClassName) then
     Exit(LClassName);
 
@@ -491,7 +491,7 @@ begin
   end
   else if LJsonType = 'object' then
   begin
-    // --- � um novo objeto. Precisamos gerar uma classe para ele. ---
+    // --- ? um novo objeto. Precisamos gerar uma classe para ele. ---
     LClassName := 'T' + ToPascalCase(APropName);
     LCount := 1;
     while (FProcessedSchemas.ContainsValue(LClassName)) do
@@ -522,7 +522,7 @@ begin
       Result := Format('TArray<%s>', [LItemType]);
     end
     else
-      Result := 'TJSONArray'; // Fallback se 'items' n�o for um schema de objeto
+      Result := 'TJSONArray'; // Fallback se 'items' n?o for um schema de objeto
   end
   else
     Result := 'TObject'; // Fallback
@@ -532,11 +532,11 @@ function TJsonSchemaCodeGenerator.SanitizeForEnumIdentifier(const ADescription: 
 var
   LCleanDesc: string;
 begin
-  // 1. Remove caracteres especiais e substitui espa�os
+  // 1. Remove caracteres especiais e substitui espa?os
   LCleanDesc := TRegEx.Replace(ADescription, '[^a-zA-Z0-9_\-]', '').ToLower;
-  LCleanDesc := ToPascalCase(LCleanDesc); // Usa a fun��o existente para capitaliza��o
+  LCleanDesc := ToPascalCase(LCleanDesc); // Usa a fun??o existente para capitaliza??o
 
-  // 2. Garante que n�o comece com um n�mero e adiciona um prefixo
+  // 2. Garante que n?o comece com um n?mero e adiciona um prefixo
   if LCleanDesc.IsEmpty then
     Result := APrefix + 'Unknown'
   else
@@ -551,7 +551,7 @@ begin
   for LPair in APropSchema do
   begin
     LKeyword := LPair.JsonString.Value;
-    LValueStr := LPair.JsonValue.Value; // Simplifica��o, funciona para string/number/bool
+    LValueStr := LPair.JsonValue.Value; // Simplifica??o, funciona para string/number/bool
 
     if LKeyword = 'title' then
       AAttributes.Add(Format('[TJsonSchemaTitle(''%s'')]', [LValueStr]))
@@ -577,7 +577,7 @@ begin
       if SameText(LValueStr, 'true') then AAttributes.Add('[TJsonSchemaReadOnly]')
     else if LKeyword = 'writeOnly' then
       if SameText(LValueStr, 'true') then AAttributes.Add('[TJsonSchemaWriteOnly]');
-    // Adicionar outros atributos aqui conforme necess�rio...
+    // Adicionar outros atributos aqui conforme necess?rio...
   end;
 end;
 

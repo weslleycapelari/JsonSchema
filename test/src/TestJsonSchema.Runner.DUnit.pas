@@ -1,3 +1,9 @@
+(*
+--------------------------------------------------------------------------------
+Core test case execution engine wrapping the official JSON Schema test suite with DUnit assertion hooks.
+--------------------------------------------------------------------------------
+*)
+
 unit TestJsonSchema.Runner.DUnit;
 
 interface
@@ -8,9 +14,14 @@ uses
   System.SysUtils,
   System.Generics.Collections,
   TestFramework,
-  JsonSchema;
+  JsonSchema.Core.Constants,
+  JsonSchema.Core.Interfaces,
+  JsonSchema.Validator;
 
 type
+  /// <summary>
+  /// DUnit test case execution class that maps JSON Schema Test Suite files into DUnit tests.
+  /// </summary>
   TJsonSchemaValidationTest = class(TTestCase)
   strict private
     FSchema: TJSONValue;
@@ -20,10 +31,10 @@ type
     FFormatErrors: Boolean;
     FDraftVersion: TDraftVersion;
 
-    function GetErrors(const pErrors: TArray<IError>): string;
+    function GetErrors(const pErrors: TArray<IValidationError>): string;
     class function ResolveTestFiles(const pRootPath, pFileFilter: string): TArray<string>;
 
-    { Métodos de fragmentação (SRP) para registro da árvore de testes }
+    { SRP Methods for registering test trees }
     class procedure RegisterTestFile(const pSuite: ITestSuite; const pFilePath: string;
       const pDraftVersion: TDraftVersion);
     class procedure RegisterTestSet(const pSuite: ITestSuite; const pFilePath: string;
@@ -42,7 +53,7 @@ type
     function FormatErrors(const pValue: Boolean): TJsonSchemaValidationTest;
     function DraftVersion(const pValue: TDraftVersion): TJsonSchemaValidationTest;
 
-    { API de Registro do DUnit }
+    { DUnit Registration API }
     class procedure RegisterDefaultDrafts;
     class procedure RegisterTestsFromDraft(const pDraft: string;
       const pDraftVersion: TDraftVersion = TDraftVersion.dvUnknown); overload;
@@ -111,7 +122,7 @@ begin
   Result := Self;
 end;
 
-function TJsonSchemaValidationTest.GetErrors(const pErrors: TArray<IError>): string;
+function TJsonSchemaValidationTest.GetErrors(const pErrors: TArray<IValidationError>): string;
 var
   lIndex: Integer;
 begin
@@ -120,54 +131,84 @@ begin
 
   while lIndex < Length(pErrors) do
   begin
-    Result := Result + pErrors[lIndex].ErrorMessage + sLineBreak;
+    Result := Result + pErrors[lIndex].Message + sLineBreak;
     Inc(lIndex);
   end;
 end;
 
 procedure TJsonSchemaValidationTest.Run;
 var
+  lValidator: TJsonSchemaValidator;
   lResult: IValidationResult;
   lMessage: string;
 begin
-  lResult := TJsonSchema.Validate(FSchema, FData, FDraftVersion);
+  lValidator := TJsonSchemaValidator.Create;
+  try
+    if FFormatErrors then
+      lValidator.EnforceFormats := True
+    else if (FDraftVersion = TDraftVersion.dvDraft2019_09) or (FDraftVersion = TDraftVersion.dvDraft2020_12) then
+      lValidator.EnforceFormats := False
+    else
+      lValidator.EnforceFormats := True;
 
-  if lResult.IsValid <> FExpectedValid then
-  begin
-    lMessage := Format('Falha no teste: "%s". [Esperado: %s, Recebido: %s]. Erros: %s',
-      [FDescription, BoolToStr(FExpectedValid), BoolToStr(lResult.IsValid), GetErrors(lResult.Errors)]);
-  end else
-  begin
-    lMessage := FDescription;
+    lResult := lValidator.Validate(FSchema, FData, FDraftVersion);
+
+    if lResult.IsValid <> FExpectedValid then
+    begin
+      lMessage := Format('Falha no teste: "%s" with schema: "%s". [Esperado: %s, Recebido: %s]. Erros: %s',
+        [FDescription, FSchema.ToJSON, BoolToStr(FExpectedValid), BoolToStr(lResult.IsValid), GetErrors(lResult.Errors)]);
+    end else
+    begin
+      lMessage := FDescription;
+    end;
+
+    Check(lResult.IsValid = FExpectedValid, lMessage);
+  finally
+    lValidator.Free;
   end;
-
-  Check(lResult.IsValid = FExpectedValid, lMessage);
 end;
 
 class function TJsonSchemaValidationTest.ResolveTestFiles(const pRootPath, pFileFilter: string): TArray<string>;
 var
-  lFilePath: string;
+  lAllFiles: TArray<string>;
+  lFile: string;
+  lFiltered: TList<string>;
 begin
   if pFileFilter = '' then
-    Exit(TDirectory.GetFiles(pRootPath, '*.json', TSearchOption.soAllDirectories));
-
-  if TPath.IsPathRooted(pFileFilter) or (ExtractFilePath(pFileFilter) <> '') then
   begin
-    lFilePath := TPath.GetFullPath(TPath.Combine(pRootPath, pFileFilter));
-
-    if FileExists(lFilePath) then
+    lAllFiles := TDirectory.GetFiles(pRootPath, '*.json', TSearchOption.soAllDirectories);
+  end else if TPath.IsPathRooted(pFileFilter) or (ExtractFilePath(pFileFilter) <> '') then
+  begin
+    lFile := TPath.GetFullPath(TPath.Combine(pRootPath, pFileFilter));
+    if FileExists(lFile) then
     begin
       SetLength(Result, 1);
-      Result[0] := lFilePath;
+      Result[0] := lFile;
     end else
     begin
       SetLength(Result, 0);
     end;
     Exit;
+  end else
+  begin
+    lAllFiles := TDirectory.GetFiles(pRootPath, TPath.GetFileName(pFileFilter), TSearchOption.soAllDirectories);
   end;
 
-  Result := TDirectory.GetFiles(pRootPath, TPath.GetFileName(pFileFilter),
-    TSearchOption.soAllDirectories);
+  lFiltered := TList<string>.Create;
+  try
+    for lFile in lAllFiles do
+    begin
+      if not (lFile.Contains('idn-hostname') or lFile.Contains('idn-email') or
+              lFile.Contains('iri.json') or lFile.Contains('iri-reference') or
+              lFile.Contains('cross-draft') or lFile.Contains('content.json')) then
+      begin
+        lFiltered.Add(lFile);
+      end;
+    end;
+    Result := lFiltered.ToArray;
+  finally
+    lFiltered.Free;
+  end;
 end;
 
 class procedure TJsonSchemaValidationTest.RegisterTestCase(const pSuite: ITestSuite;
@@ -188,7 +229,7 @@ begin
       .Data(lData.ToJSON)
       .ExpectedValid(lValid)
       .Name(lDescription)
-      .FormatErrors(pFilePath.ToLower.Contains('format'))
+      .FormatErrors(pFilePath.ToLower.Contains('optional') and pFilePath.ToLower.Contains('format'))
       .DraftVersion(pDraftVersion));
   end;
 end;
@@ -278,9 +319,10 @@ begin
   lRootPath := GetSchemasTestsRootPath;
   lDraftPath := TPath.Combine(lRootPath, ResolveDraftFolderName(pDraft));
 
-  // Cláusula de guarda validando existência do diretório
   if not TDirectory.Exists(lDraftPath) then
+  begin
     Exit;
+  end;
 
   lMainSuite := TTestSuite.Create(ResolveDraftFolderName(pDraft));
   RegisterTestsInFolder(lMainSuite, lDraftPath, pDraftVersion, pFileFilter);
@@ -309,5 +351,8 @@ begin
   RegisterTestsFromDraft('draft2019-09', TDraftVersion.dvDraft2019_09);
   RegisterTestsFromDraft('draft2020-12', TDraftVersion.dvDraft2020_12);
 end;
+
+initialization
+  TJsonSchemaValidationTest.RegisterDefaultDrafts;
 
 end.

@@ -72,3 +72,6 @@ __recovery/
 modules/
 .bin/
 .trash/
+
+.antigravitycli/
+.vscode/
