@@ -18,8 +18,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            releases/SchemaMockGen.zip
+            releases/Delphi2Schema.zip
+            releases/Schema2DDL.zip
             releases/Schema2Delphi.zip
+            releases/SchemaMockGen.zip
             releases/SchemaValidator.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
