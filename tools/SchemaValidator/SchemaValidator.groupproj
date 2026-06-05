@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{928F818D-93D7-44A2-9A63-CEA8526878DF}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="SchemaValidatorCLI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="SchemaValidatorVCL.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="SchemaValidatorCLI">
+        <MSBuild Projects="SchemaValidatorCLI.dproj"/>
+    </Target>
+    <Target Name="SchemaValidatorCLI:Clean">
+        <MSBuild Projects="SchemaValidatorCLI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaValidatorCLI:Make">
+        <MSBuild Projects="SchemaValidatorCLI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SchemaValidatorVCL">
+        <MSBuild Projects="SchemaValidatorVCL.dproj"/>
+    </Target>
+    <Target Name="SchemaValidatorVCL:Clean">
+        <MSBuild Projects="SchemaValidatorVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaValidatorVCL:Make">
+        <MSBuild Projects="SchemaValidatorVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="SchemaValidatorCLI;SchemaValidatorVCL"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="SchemaValidatorCLI:Clean;SchemaValidatorVCL:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="SchemaValidatorCLI:Make;SchemaValidatorVCL:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

@@ -1,0 +1,48 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{086E7553-0A73-4150-BD2C-98926B518978}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="SchemaMockGenVCL.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="SchemaMockGenCLI.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="SchemaMockGenVCL">
+        <MSBuild Projects="SchemaMockGenVCL.dproj"/>
+    </Target>
+    <Target Name="SchemaMockGenVCL:Clean">
+        <MSBuild Projects="SchemaMockGenVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaMockGenVCL:Make">
+        <MSBuild Projects="SchemaMockGenVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SchemaMockGenCLI">
+        <MSBuild Projects="SchemaMockGenCLI.dproj"/>
+    </Target>
+    <Target Name="SchemaMockGenCLI:Clean">
+        <MSBuild Projects="SchemaMockGenCLI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaMockGenCLI:Make">
+        <MSBuild Projects="SchemaMockGenCLI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="SchemaMockGenVCL;SchemaMockGenCLI"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="SchemaMockGenVCL:Clean;SchemaMockGenCLI:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="SchemaMockGenVCL:Make;SchemaMockGenCLI:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

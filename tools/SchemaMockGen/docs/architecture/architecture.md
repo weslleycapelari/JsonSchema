@@ -1,24 +1,44 @@
 # SchemaMockGen - Architectural Planning
 
-## Overview
+This document describes the component architecture and data flow of `SchemaMockGen`.
 
-`SchemaMockGen` interprets the AST of a compiled JSON Schema and walks its structure, generating conforming random values for each matched keyword validation constraint.
+## Architectural Overview
 
-## Component Architecture
+`SchemaMockGen` utilizes a shared modular backend architecture. The core random LCG generator and JSON Schema walking engine reside in the shared `src/` directory. Both the console program (`SchemaMockGen.dpr`) and the VCL application (`SchemaMockGenGUI.dpr`) reference the same backend generator.
+
+## Component Flow Diagram
 
 ```mermaid
 flowchart TD
-    A[JSON Schema] --> B[Schema Schema Walker]
-    B --> C[Constraint Solver]
-    C --> D[Mock Generators]
-    D --> E[Conforming JSON Instance]
+    A[JSON Schema File] --> B[AST Parser]
+    B --> C[TSchemaMockGenerator shared]
+    D[TSeededRandom LCG] --> C
+    C --> E[SchemaMockGen CLI runner]
+    C --> F[SchemaMockGenGUI Main VCL form]
+    E --> G[stdout / output.json]
+    F --> H[Memo Preview / save dialog]
 ```
 
-### 1. Schema Walker & Solver
-- Traverses the compiled schema tree structure.
-- Solves overlapping constraints (e.g., when a number must be `> 10` and `< 50`, or strings must match a regex and have length `< 10`).
+## Module Breakdown
 
-### 2. Generator Registry
-- **String Generators**: Generates regex-conforming strings using reverse-regular-expression generators.
-- **Array Generators**: Produces arrays with length within `minItems`/`maxItems` constraints.
-- **Object Generators**: Populates required and optional properties, respecting `additionalProperties` and dependency constraints.
+### 1. Seeded Random Generator (`SchemaMockGen.Utils.pas`)
+
+- Implements `TSeededRandom`, a Linear Congruential Generator (LCG) using Knuth's parameters.
+- Guarantees that the same seed value yields identical pseudo-random sequences regardless of operating system or compiler.
+- Implements file reading and writing utilities.
+
+### 2. Code Generation Engine (`SchemaMockGen.Generator.pas`)
+
+- Implements `TSchemaMockGenerator`.
+- Recursively traverses the JSON schema AST using `GenerateFromSchema`.
+- Evaluates constraints (ranges, string bounds, regex, enum/const, objects/arrays) and creates corresponding `TJSONValue` structures.
+
+### 3. CLI Orchestrator (`SchemaMockGen.Runner.pas`) & Program
+
+- Coordinates CLI arguments from `SchemaMockGen.Config.pas`.
+- Manages output writing and exits with code `0` on success or `2` on errors.
+
+### 4. VCL GUI App (`SchemaMockGenGUI.Main.pas` & `Main.dfm`)
+
+- Visual form linking browse dialogs, parameter edits, and Memo output components.
+- Invokes `TSchemaMockGenerator` dynamically on button clicks and writes generated JSON payloads directly to the preview memo.

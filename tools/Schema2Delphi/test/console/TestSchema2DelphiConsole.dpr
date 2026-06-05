@@ -13,6 +13,8 @@ uses
   TestFramework,
   TextTestRunner,
   TestSchema2Delphi in '..\src\TestSchema2Delphi.pas',
+  Schema2Delphi.Config in '..\..\src\Schema2Delphi.Config.pas',
+  Schema2Delphi.Runner in '..\..\src\Schema2Delphi.Runner.pas',
   Schema2Delphi.AST in '..\..\src\Schema2Delphi.AST.pas',
   Schema2Delphi.AttributeProcessor in '..\..\src\Schema2Delphi.AttributeProcessor.pas',
   Schema2Delphi.Common in '..\..\src\Schema2Delphi.Common.pas',
