@@ -48,6 +48,12 @@ $tools = @(
     Desc    = "Relational SQL DDL script generator from JSON Schema."
     CliHelp = "Schema2DDLCLI.exe -s <schema_path> [-d <dialect>] [-o <output_path>] [-t <table_name>] [--drop] [--no-auto-inc] [-q]"
     VclHelp = "Schema2DDLVCL.exe"
+  },
+  @{
+    Name    = "Schema2REST"
+    Desc    = "Horse/DMVC REST router and controller generator from JSON Schema."
+    CliHelp = "Schema2RESTCLI.exe -s <schema_path> [-f <framework>] [-o <output_path>] [-e <entity_name>]"
+    VclHelp = "Schema2RESTVCL.exe"
   }
 )
 

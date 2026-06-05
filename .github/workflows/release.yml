@@ -21,6 +21,7 @@ jobs:
             releases/Delphi2Schema.zip
             releases/Schema2DDL.zip
             releases/Schema2Delphi.zip
+            releases/Schema2REST.zip
             releases/SchemaMockGen.zip
             releases/SchemaValidator.zip
         env:

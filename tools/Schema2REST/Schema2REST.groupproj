@@ -1,0 +1,48 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{9B56F52D-121F-433E-BDC7-E7A4A28DF76B}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Schema2RESTCLI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Schema2RESTVCL.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Schema2RESTCLI">
+        <MSBuild Projects="Schema2RESTCLI.dproj"/>
+    </Target>
+    <Target Name="Schema2RESTCLI:Clean">
+        <MSBuild Projects="Schema2RESTCLI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Schema2RESTCLI:Make">
+        <MSBuild Projects="Schema2RESTCLI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Schema2RESTVCL">
+        <MSBuild Projects="Schema2RESTVCL.dproj"/>
+    </Target>
+    <Target Name="Schema2RESTVCL:Clean">
+        <MSBuild Projects="Schema2RESTVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Schema2RESTVCL:Make">
+        <MSBuild Projects="Schema2RESTVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Schema2RESTCLI;Schema2RESTVCL"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Schema2RESTCLI:Clean;Schema2RESTVCL:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Schema2RESTCLI:Make;Schema2RESTVCL:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
