@@ -6,10 +6,11 @@ This document outlines the security procedures, supported versions, and design-l
 
 Only the latest major version receives security updates and vulnerability patches.
 
-| Version | Supported | Notes                                        |
-| ------- | --------- | -------------------------------------------- |
-| v1.x.x  | ✅ Yes    | Active development and security maintenance. |
-| v0.x.x  | ❌ No     | End of Life (EOL). Please upgrade.           |
+| Version | Supported | Notes                                                                |
+| ------- | --------- | -------------------------------------------------------------------- |
+| v2.x.x  | ✅ Yes    | Active development and security maintenance (with refactored tools). |
+| v1.x.x  | ❌ No     | End of Life (EOL). Please upgrade.                                   |
+| v0.x.x  | ❌ No     | End of Life (EOL). Please upgrade.                                   |
 
 ## Reporting a Vulnerability
 
