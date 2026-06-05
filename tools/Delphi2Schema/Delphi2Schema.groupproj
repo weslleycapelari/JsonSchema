@@ -1,0 +1,48 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{2B8F818D-93D7-44A2-9A63-CEA8526878DF}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Delphi2SchemaCLI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Delphi2SchemaVCL.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Delphi2SchemaCLI">
+        <MSBuild Projects="Delphi2SchemaCLI.dproj"/>
+    </Target>
+    <Target Name="Delphi2SchemaCLI:Clean">
+        <MSBuild Projects="Delphi2SchemaCLI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Delphi2SchemaCLI:Make">
+        <MSBuild Projects="Delphi2SchemaCLI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Delphi2SchemaVCL">
+        <MSBuild Projects="Delphi2SchemaVCL.dproj"/>
+    </Target>
+    <Target Name="Delphi2SchemaVCL:Clean">
+        <MSBuild Projects="Delphi2SchemaVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Delphi2SchemaVCL:Make">
+        <MSBuild Projects="Delphi2SchemaVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Delphi2SchemaCLI;Delphi2SchemaVCL"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Delphi2SchemaCLI:Clean;Delphi2SchemaVCL:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Delphi2SchemaCLI:Make;Delphi2SchemaVCL:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

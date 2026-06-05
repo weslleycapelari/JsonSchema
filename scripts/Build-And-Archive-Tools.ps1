@@ -36,6 +36,12 @@ $tools = @(
     Desc    = "JSON Schema validator utility."
     CliHelp = "SchemaValidatorCLI.exe -s <schema_path> [-i <instance_path>] [-d <draft>] [-l <locale>] [-f <format>]"
     VclHelp = "SchemaValidatorVCL.exe"
+  },
+  @{
+    Name    = "Delphi2Schema"
+    Desc    = "JSON Schema generator from Delphi classes/records using RTTI."
+    CliHelp = "Delphi2SchemaCLI.exe -t <type_name> [-b <bpl_path>] [-o <output_path>] [--no-enum-names]"
+    VclHelp = "Delphi2SchemaVCL.exe"
   }
 )
 
