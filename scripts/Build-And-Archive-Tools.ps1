@@ -60,6 +60,12 @@ $tools = @(
     Desc = "JSON Schema generator from JSON instance documents."
     CliHelp = "JSON2SchemaCLI.exe -i <input_path> [-o <output_path>] [-d <draft>] [--required] [--no-format]"
     VclHelp = "JSON2SchemaVCL.exe"
+  },
+  @{
+    Name = "Schema2Doc"
+    Desc = "Markdown/HTML documentation generator from JSON Schema."
+    CliHelp = "Schema2DocCLI.exe -s <schema_path> [-o <output_path>] [-f <format>] [-t <title>]"
+    VclHelp = "Schema2DocVCL.exe"
   }
 )
 

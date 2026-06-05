@@ -1,0 +1,48 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{AD594B4E-5CC9-4E6D-A537-827D8CBE7710}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Schema2DocCLI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Schema2DocVCL.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Schema2DocCLI">
+        <MSBuild Projects="Schema2DocCLI.dproj"/>
+    </Target>
+    <Target Name="Schema2DocCLI:Clean">
+        <MSBuild Projects="Schema2DocCLI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Schema2DocCLI:Make">
+        <MSBuild Projects="Schema2DocCLI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Schema2DocVCL">
+        <MSBuild Projects="Schema2DocVCL.dproj"/>
+    </Target>
+    <Target Name="Schema2DocVCL:Clean">
+        <MSBuild Projects="Schema2DocVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Schema2DocVCL:Make">
+        <MSBuild Projects="Schema2DocVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Schema2DocCLI;Schema2DocVCL"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Schema2DocCLI:Clean;Schema2DocVCL:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Schema2DocCLI:Make;Schema2DocVCL:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
