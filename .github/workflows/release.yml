@@ -19,6 +19,7 @@ jobs:
         with:
           files: |
             releases/Delphi2Schema.zip
+            releases/JSON2Schema.zip
             releases/Schema2DDL.zip
             releases/Schema2Delphi.zip
             releases/Schema2REST.zip

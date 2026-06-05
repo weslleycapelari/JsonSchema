@@ -1,0 +1,48 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{BD594B4E-5CC9-4E6D-A537-827D8CBE7710}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="JSON2SchemaCLI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="JSON2SchemaVCL.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="JSON2SchemaCLI">
+        <MSBuild Projects="JSON2SchemaCLI.dproj"/>
+    </Target>
+    <Target Name="JSON2SchemaCLI:Clean">
+        <MSBuild Projects="JSON2SchemaCLI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="JSON2SchemaCLI:Make">
+        <MSBuild Projects="JSON2SchemaCLI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="JSON2SchemaVCL">
+        <MSBuild Projects="JSON2SchemaVCL.dproj"/>
+    </Target>
+    <Target Name="JSON2SchemaVCL:Clean">
+        <MSBuild Projects="JSON2SchemaVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="JSON2SchemaVCL:Make">
+        <MSBuild Projects="JSON2SchemaVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="JSON2SchemaCLI;JSON2SchemaVCL"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="JSON2SchemaCLI:Clean;JSON2SchemaVCL:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="JSON2SchemaCLI:Make;JSON2SchemaVCL:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

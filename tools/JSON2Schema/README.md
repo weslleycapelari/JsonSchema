@@ -1,10 +1,28 @@
 # JSON2Schema
 
-`JSON2Schema` is a **Data-to-Schema** generator that infers a valid, structured JSON Schema document by analyzing one or multiple JSON instance files. It simplifies schema creation by doing the heavy lifting of structure analysis.
+`JSON2Schema` is a developer utility designed to generate a valid JSON Schema (Draft 7 or Draft 2020-12) from arbitrary JSON instance document samples. It supports type detection, format matches, and customizable array/object properties rules.
 
 ## Features
 
-- **Multi-Instance Inference**: Analyzes multiple JSON documents to determine which fields are optional, which are required, and the unions of different types.
-- **Smart Format Detection**: Inspects string values and automatically applies format validations (e.g. `email`, `uuid`, `ipv4`, `date-time`).
-- **Array Normalization**: Analyzes array elements to check if they are homogeneous (mapping to single `items`) or tuple-based (mapping to `prefixItems`).
-- **Numeric Bounds Inference**: Optionally infers range constraints (`minimum` and `maximum`) based on the min/max values found in the data.
+- **Automatic Format Detection**: Matches date-time, date, email, and UUIDv4 pattern rules.
+- **Complex Type Handling**: Handles homogeneous arrays, mixed arrays (with `anyOf`), and recursive nested structures.
+- **Graphical & Command-line**: Run inside Windows desktop VCL app or automate in CLI console scripts.
+
+## Compilation
+
+Build using Delphi IDE or MSBuild:
+
+```bash
+msbuild JSON2Schema.groupproj /p:Config=Release /p:Platform=Win32
+```
+
+Executables will be compiled to `.bin/`:
+
+- `JSON2SchemaCLI.exe`
+- `JSON2SchemaVCL.exe`
+
+## Usage
+
+```bash
+JSON2SchemaCLI.exe -i <sample.json> [-o <schema.json>] [--required]
+```

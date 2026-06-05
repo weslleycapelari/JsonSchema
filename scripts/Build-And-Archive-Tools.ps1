@@ -50,10 +50,16 @@ $tools = @(
     VclHelp = "Schema2DDLVCL.exe"
   },
   @{
-    Name    = "Schema2REST"
-    Desc    = "Horse/DMVC REST router and controller generator from JSON Schema."
+    Name = "Schema2REST"
+    Desc = "Horse/DMVC REST router and controller generator from JSON Schema."
     CliHelp = "Schema2RESTCLI.exe -s <schema_path> [-f <framework>] [-o <output_path>] [-e <entity_name>]"
     VclHelp = "Schema2RESTVCL.exe"
+  },
+  @{
+    Name = "JSON2Schema"
+    Desc = "JSON Schema generator from JSON instance documents."
+    CliHelp = "JSON2SchemaCLI.exe -i <input_path> [-o <output_path>] [-d <draft>] [--required] [--no-format]"
+    VclHelp = "JSON2SchemaVCL.exe"
   }
 )
 
