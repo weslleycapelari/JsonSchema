@@ -37,9 +37,11 @@ The following tools have been completed, standardized under the architecture abo
 ## 3. Remaining Tool Roadmap (Phased Execution)
 
 ### Phase 1: Code Generation & Database Mapping (High Priority)
+
 Focuses on resolving core developer data-mapping tasks between Delphi and relational structures.
 
 #### 1. Delphi2Schema (Code To Schema)
+
 - **Concept**: Scan Delphi classes or records using Extended RTTI and automatically export matching JSON Schema files. Mappings translate basic types, arrays, lists, nested objects, and custom validation attributes (e.g. `[JSONSchemaRequired]`, `[JSONSchemaRange(1, 100)]`) into schema constraints.
 - **Structure**:
   - `tools/Delphi2Schema/Delphi2SchemaCLI.dpr`
@@ -47,6 +49,7 @@ Focuses on resolving core developer data-mapping tasks between Delphi and relati
   - `tools/Delphi2Schema/Delphi2Schema.groupproj`
 
 #### 2. Schema2DDL (Schema To Database)
+
 - **Concept**: Translate a JSON Schema into relational SQL DDL scripts (Firebird, PostgreSQL, MS SQL, Oracle) to automatically create matching database schemas.
   - Objects map to database tables, properties to SQL columns with matching types.
   - String arrays and sub-objects map to sub-tables linked via FOREIGN KEYs.
@@ -56,6 +59,7 @@ Focuses on resolving core developer data-mapping tasks between Delphi and relati
   - `tools/Schema2DDL/Schema2DDL.groupproj`
 
 #### 3. Schema2REST (Schema To REST Client)
+
 - **Concept**: Scan JSON schemas representing API endpoints and automatically generate a complete Delphi REST client consumer unit using the native `REST.Client` library.
 - **Structure**:
   - `tools/Schema2REST/Schema2RESTCLI.dpr`
@@ -65,9 +69,11 @@ Focuses on resolving core developer data-mapping tasks between Delphi and relati
 ---
 
 ### Phase 2: Schema Manipulation & Migration
+
 Focuses on utilities for compiling, packaging, and optimizing raw schemas.
 
 #### 4. SchemaBundler (Schema Packager)
+
 - **Concept**: Bundle large, multi-file JSON schemas containing external references (`$ref` pointing to local files or remote URLs) into a single, self-contained schema file. It does this by collecting resources under a centralized `$defs` block and correcting pointers locally.
 - **Structure**:
   - `tools/SchemaBundler/SchemaBundlerCLI.dpr`
@@ -75,6 +81,7 @@ Focuses on utilities for compiling, packaging, and optimizing raw schemas.
   - `tools/SchemaBundler/SchemaBundler.groupproj`
 
 #### 5. JSON2Schema (Schema Inference)
+
 - **Concept**: Infer an intelligent JSON Schema by scanning one or more example JSON files. It auto-detects formats (dates, emails, URIs), constraints (maxLength, minimum), and optional vs. required fields.
 - **Structure**:
   - `tools/JSON2Schema/JSON2SchemaCLI.dpr`
@@ -82,6 +89,7 @@ Focuses on utilities for compiling, packaging, and optimizing raw schemas.
   - `tools/JSON2Schema/JSON2Schema.groupproj`
 
 #### 6. SchemaMigrator (Draft Version Migration)
+
 - **Concept**: Upgrade legacy JSON schemas to modern draft dialects (e.g. converting Draft 4/7 schemas to Draft 2020-12 by updating `dependencies` to `dependentRequired`/`dependentSchemas`, renaming `definitions` to `$defs`, etc.).
 - **Structure**:
   - `tools/SchemaMigrator/SchemaMigratorCLI.dpr`
@@ -89,6 +97,7 @@ Focuses on utilities for compiling, packaging, and optimizing raw schemas.
   - `tools/SchemaMigrator/SchemaMigrator.groupproj`
 
 #### 7. SchemaOptimizer (Schema Simplification)
+
 - **Concept**: Analyze and optimize JSON schemas by removing unused `$defs` definitions, merging redundant type constraints (e.g., simplifying unnecessary nested `allOf` blocks), and flattening equivalent subschemas.
 - **Structure**:
   - `tools/SchemaOptimizer/SchemaOptimizerCLI.dpr`
@@ -100,6 +109,7 @@ Focuses on utilities for compiling, packaging, and optimizing raw schemas.
 ### Phase 3: Static Analysis & Documentation
 
 #### 8. SchemaLinter (Schema Static Analyzer)
+
 - **Concept**: Run static analysis checks on JSON Schemas to detect bad design practices, including:
   - Missing annotations (`title`, `description`) in properties.
   - Complex regex patterns (`pattern`) susceptible to Catastrophic Backtracking.
@@ -110,6 +120,7 @@ Focuses on utilities for compiling, packaging, and optimizing raw schemas.
   - `tools/SchemaLinter/SchemaLinter.groupproj`
 
 #### 9. Schema2Doc (Documentation Generator)
+
 - **Concept**: Generate detailed, interactive, and human-readable documentation (Markdown, HTML, or PDF) describing schemas, including property trees, rules, and example payloads.
 - **Structure**:
   - `tools/Schema2Doc/Schema2DocCLI.dpr`
@@ -121,6 +132,7 @@ Focuses on utilities for compiling, packaging, and optimizing raw schemas.
 ### Phase 4: IDE Integration & Testing Support
 
 #### 10. VisualTestSuiteRunner (Visual Test Suite Client)
+
 - **Concept**: A graphical DUnit/FMX test visualizer that loads the official JSON Schema Test Suite and displays a visual tree structure of keywords and their compliance status.
 - **Structure**:
   - `tools/VisualTestSuiteRunner/VisualTestSuiteRunnerCLI.dpr`
@@ -128,6 +140,7 @@ Focuses on utilities for compiling, packaging, and optimizing raw schemas.
   - `tools/VisualTestSuiteRunner/VisualTestSuiteRunner.groupproj`
 
 #### 11. RADStudioJsonSchemaWizard (Delphi IDE Extension)
+
 - **Concept**: A Delphi IDE package plugin (`.bpl`) adding visual context-menus in RAD Studio. It allows developers to validate active JSON editor buffers or generate Delphi classes on the fly without leaving the IDE.
 - **Structure**:
   - `tools/RADStudioJsonSchemaWizard/RADStudioJsonSchemaWizard.dpk` (IDE Package)
@@ -137,6 +150,7 @@ Focuses on utilities for compiling, packaging, and optimizing raw schemas.
 ## 4. Implementation Guidelines
 
 When picking a new tool to implement:
+
 1. **Rear-to-Front Development**: Build the core functional engine in a shared unit under `src/` first, before writing CLI argument parsers or VCL forms.
 2. **Double compilation**: Ensure both the CLI and VCL compile successfully from the group project.
 3. **Themes by Default**: Always import `Vcl.XPMan` inside the uses block of your VCL `.dpr` to ensure correct native visual themes.

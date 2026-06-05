@@ -42,6 +42,12 @@ $tools = @(
     Desc    = "JSON Schema generator from Delphi classes/records using RTTI."
     CliHelp = "Delphi2SchemaCLI.exe -t <type_name> [-b <bpl_path>] [-o <output_path>] [--no-enum-names]"
     VclHelp = "Delphi2SchemaVCL.exe"
+  },
+  @{
+    Name    = "Schema2DDL"
+    Desc    = "Relational SQL DDL script generator from JSON Schema."
+    CliHelp = "Schema2DDLCLI.exe -s <schema_path> [-d <dialect>] [-o <output_path>] [-t <table_name>] [--drop] [--no-auto-inc] [-q]"
+    VclHelp = "Schema2DDLVCL.exe"
   }
 )
 

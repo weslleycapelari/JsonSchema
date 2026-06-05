@@ -1,0 +1,48 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{3C8F818D-93D7-44A2-9A63-CEA8526878DF}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="Schema2DDLCLI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="Schema2DDLVCL.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="Schema2DDLCLI">
+        <MSBuild Projects="Schema2DDLCLI.dproj"/>
+    </Target>
+    <Target Name="Schema2DDLCLI:Clean">
+        <MSBuild Projects="Schema2DDLCLI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Schema2DDLCLI:Make">
+        <MSBuild Projects="Schema2DDLCLI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Schema2DDLVCL">
+        <MSBuild Projects="Schema2DDLVCL.dproj"/>
+    </Target>
+    <Target Name="Schema2DDLVCL:Clean">
+        <MSBuild Projects="Schema2DDLVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Schema2DDLVCL:Make">
+        <MSBuild Projects="Schema2DDLVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="Schema2DDLCLI;Schema2DDLVCL"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="Schema2DDLCLI:Clean;Schema2DDLVCL:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="Schema2DDLCLI:Make;Schema2DDLVCL:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
