@@ -22,13 +22,13 @@ To maintain consistency and ensure ease of distribution, every auxiliary tool de
 
 The following tools have been completed, standardized under the architecture above, and compiled successfully with passing tests:
 
-- **[SchemaMockGen](../../tools/SchemaMockGen/)** (Completed):
+- **[SchemaMockGen](../../tools/SchemaMockGen/README.md)** (Completed):
   - Generates valid mock JSON instances based on schema constraints.
   - Linked via `SchemaMockGen.groupproj`, including `SchemaMockGenCLI` and `SchemaMockGenVCL`.
-- **[Schema2Delphi](../../tools/Schema2Delphi/)** (Completed):
+- **[Schema2Delphi](../../tools/Schema2Delphi/README.md)** (Completed):
   - Generates robust Delphi DTO classes and records from JSON schemas.
   - Linked via `Schema2Delphi.groupproj`, including `Schema2DelphiCLI` and `Schema2DelphiVCL`.
-- **[SchemaValidator](../../tools/SchemaValidator/)** (Completed):
+- **[SchemaValidator](../../tools/SchemaValidator/README.md)** (Completed):
   - Validates JSON instance files against schemas using the core engine.
   - Linked via `SchemaValidator.groupproj`, including `SchemaValidatorCLI` and `SchemaValidatorVCL`.
 
