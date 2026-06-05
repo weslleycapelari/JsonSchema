@@ -52,6 +52,12 @@ type
 
     /// <summary>Returns the count of schemas in the tuple (if IsTuple is true).</summary>
     function GetTupleCount: Integer;
+
+    /// <summary>Compiled schema for single schema items validation.</summary>
+    property SingleSchema: ICompiledSchema read FSingleSchema;
+
+    /// <summary>Array of compiled schemas for tuple items validation.</summary>
+    property TupleSchemas: TArray<ICompiledSchema> read FTupleSchemas;
   end;
 
 implementation

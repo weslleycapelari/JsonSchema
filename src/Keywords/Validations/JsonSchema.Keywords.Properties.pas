@@ -40,6 +40,9 @@ type
 
     /// <summary>Technical name of the keyword validator ('properties').</summary>
     property KeywordName: string read GetKeywordName;
+
+    /// <summary>Dictionary of compiled schemas for each property.</summary>
+    property Properties: TDictionary<string, ICompiledSchema> read FProperties;
   end;
 
 implementation

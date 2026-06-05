@@ -45,7 +45,7 @@ object frmMain: TfrmMain
       Lines.Strings = (
         '// O c'#243'digo Delphi gerado aparecer'#225' aqui...')
       ParentFont = False
-      ReadOnly = True
+      CanUndoSelText = True
       ScrollBars = ssVertical
       TabOrder = 1
     end
@@ -77,6 +77,7 @@ object frmMain: TfrmMain
         '    "required": ["productId", "productName"]'
         '}'
         '')
+      CanUndoSelText = True
       ScrollBars = ssVertical
       TabOrder = 0
     end

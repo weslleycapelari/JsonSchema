@@ -67,7 +67,7 @@ var
 
 implementation
 
-uses JsonSchema, System.JSON, Schema2Delphi.Utils;
+uses System.JSON, Schema2Delphi.Utils;
 
 {$R *.dfm}
 
@@ -199,7 +199,7 @@ begin
   try
     LSchemaAbsPath := ExpandFileName(pConfigs.SchemaPath);
     if not FileExists(LSchemaAbsPath) then
-      raise Exception.Create('O arquivo JSON-Schema n?o existe');
+      raise Exception.Create('O arquivo JSON-Schema não existe');
 
     LFileContent := TStringList.Create;
     try
@@ -255,7 +255,7 @@ begin
     end;
   except
     on E: Exception do
-      ShowMessage('N?o foi possivel gerar os arquivos: ' + E.Message);
+      ShowMessage('Não foi possivel gerar os arquivos: ' + E.Message);
   end;
 end;
 

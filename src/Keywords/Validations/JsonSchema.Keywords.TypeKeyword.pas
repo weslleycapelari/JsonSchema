@@ -35,6 +35,9 @@ type
 
     /// <summary>Technical name of the keyword validator ('type').</summary>
     property KeywordName: string read GetKeywordName;
+
+    /// <summary>List of expected types for this keyword.</summary>
+    property ExpectedTypes: TArray<string> read FExpectedTypes;
   end;
 
 implementation

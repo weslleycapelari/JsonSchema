@@ -58,7 +58,7 @@ begin
   try
     lKeyword := TMinimumKeyword.Create(10.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Valor igual ao m?nimo deve ser v?lido');
+    CheckTrue(lResult.IsValid, 'Valor igual ao mínimo deve ser válido');
   finally
     lInstance.Free;
   end;
@@ -67,7 +67,7 @@ begin
   try
     lKeyword := TMinimumKeyword.Create(10.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Valor maior do que o m?nimo deve ser v?lido');
+    CheckTrue(lResult.IsValid, 'Valor maior do que o mínimo deve ser válido');
   finally
     lInstance.Free;
   end;
@@ -83,7 +83,7 @@ begin
   try
     lKeyword := TMinimumKeyword.Create(10.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, 'Valor menor do que o m?nimo deve ser inv?lido');
+    CheckFalse(lResult.IsValid, 'Valor menor do que o mínimo deve ser inválido');
     CheckEquals(KEYWORD_MINIMUM, lResult.Errors[0].Keyword);
     CheckEquals(10.0, lResult.Errors[0].Context.GetValue<Double>('limit'), 0.0001);
     CheckEquals(9.99, lResult.Errors[0].Context.GetValue<Double>('actual'), 0.0001);
@@ -102,7 +102,7 @@ begin
   try
     lKeyword := TMinimumKeyword.Create(10.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Valida??o de m?nimo deve ser ignorada para strings');
+    CheckTrue(lResult.IsValid, 'Validação de mínimo deve ser ignorada para strings');
   finally
     lInstance.Free;
   end;
@@ -118,7 +118,7 @@ begin
   try
     lKeyword := TMaximumKeyword.Create(100.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Valor igual ao m?ximo deve ser v?lido');
+    CheckTrue(lResult.IsValid, 'Valor igual ao máximo deve ser válido');
   finally
     lInstance.Free;
   end;
@@ -127,7 +127,7 @@ begin
   try
     lKeyword := TMaximumKeyword.Create(100.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Valor menor do que o m?ximo deve ser v?lido');
+    CheckTrue(lResult.IsValid, 'Valor menor do que o máximo deve ser válido');
   finally
     lInstance.Free;
   end;
@@ -143,7 +143,7 @@ begin
   try
     lKeyword := TMaximumKeyword.Create(100.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, 'Valor maior do que o m?ximo deve ser inv?lido');
+    CheckFalse(lResult.IsValid, 'Valor maior do que o máximo deve ser inválido');
     CheckEquals(KEYWORD_MAXIMUM, lResult.Errors[0].Keyword);
     CheckEquals(100.0, lResult.Errors[0].Context.GetValue<Double>('limit'), 0.0001);
     CheckEquals(100.01, lResult.Errors[0].Context.GetValue<Double>('actual'), 0.0001);
@@ -162,7 +162,7 @@ begin
   try
     lKeyword := TMaximumKeyword.Create(100.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'Valida??o de m?ximo deve ser ignorada para strings');
+    CheckTrue(lResult.IsValid, 'Validação de máximo deve ser ignorada para strings');
   finally
     lInstance.Free;
   end;
@@ -178,7 +178,7 @@ begin
   try
     lKeyword := TMultipleOfKeyword.Create(5.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, '15.0 deve ser m?ltiplo de 5.0');
+    CheckTrue(lResult.IsValid, '15.0 deve ser múltiplo de 5.0');
   finally
     lInstance.Free;
   end;
@@ -187,7 +187,7 @@ begin
   try
     lKeyword := TMultipleOfKeyword.Create(2.5);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, '0.0 deve ser m?ltiplo de 2.5');
+    CheckTrue(lResult.IsValid, '0.0 deve ser múltiplo de 2.5');
   finally
     lInstance.Free;
   end;
@@ -203,7 +203,7 @@ begin
   try
     lKeyword := TMultipleOfKeyword.Create(3.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, '7.0 n?o deve ser m?ltiplo de 3.0');
+    CheckFalse(lResult.IsValid, '7.0 não deve ser múltiplo de 3.0');
     CheckEquals(KEYWORD_MULTIPLEOF, lResult.Errors[0].Keyword);
     CheckEquals(3.0, lResult.Errors[0].Context.GetValue<Double>('limit'));
     CheckEquals(7.0, lResult.Errors[0].Context.GetValue<Double>('actual'));
@@ -222,7 +222,7 @@ begin
   try
     lKeyword := TMultipleOfKeyword.Create(5.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, 'M?ltiplo de deve ser ignorado para strings');
+    CheckTrue(lResult.IsValid, 'Múltiplo de deve ser ignorado para strings');
   finally
     lInstance.Free;
   end;
@@ -238,7 +238,7 @@ begin
   try
     lKeyword := TExclusiveMinimumKeyword.Create(10.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, '10.01 ? maior do que exclusivo 10.0');
+    CheckTrue(lResult.IsValid, '10.01 é maior do que exclusivo 10.0');
   finally
     lInstance.Free;
   end;
@@ -254,7 +254,7 @@ begin
   try
     lKeyword := TExclusiveMinimumKeyword.Create(10.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, '10.0 n?o ? maior do que exclusivo 10.0');
+    CheckFalse(lResult.IsValid, '10.0 não é maior do que exclusivo 10.0');
     CheckEquals(KEYWORD_EXCLUSIVEMINIMUM, lResult.Errors[0].Keyword);
   finally
     lInstance.Free;
@@ -264,7 +264,7 @@ begin
   try
     lKeyword := TExclusiveMinimumKeyword.Create(10.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, '9.9 n?o ? maior do que exclusivo 10.0');
+    CheckFalse(lResult.IsValid, '9.9 não é maior do que exclusivo 10.0');
   finally
     lInstance.Free;
   end;
@@ -296,7 +296,7 @@ begin
   try
     lKeyword := TExclusiveMaximumKeyword.Create(10.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckTrue(lResult.IsValid, '9.99 ? menor do que exclusivo 10.0');
+    CheckTrue(lResult.IsValid, '9.99 é menor do que exclusivo 10.0');
   finally
     lInstance.Free;
   end;
@@ -312,7 +312,7 @@ begin
   try
     lKeyword := TExclusiveMaximumKeyword.Create(10.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, '10.0 n?o ? menor do que exclusivo 10.0');
+    CheckFalse(lResult.IsValid, '10.0 não é menor do que exclusivo 10.0');
     CheckEquals(KEYWORD_EXCLUSIVEMAXIMUM, lResult.Errors[0].Keyword);
   finally
     lInstance.Free;
@@ -322,7 +322,7 @@ begin
   try
     lKeyword := TExclusiveMaximumKeyword.Create(10.0);
     lResult := lKeyword.Validate(lInstance);
-    CheckFalse(lResult.IsValid, '10.1 n?o ? menor do que exclusivo 10.0');
+    CheckFalse(lResult.IsValid, '10.1 não é menor do que exclusivo 10.0');
   finally
     lInstance.Free;
   end;

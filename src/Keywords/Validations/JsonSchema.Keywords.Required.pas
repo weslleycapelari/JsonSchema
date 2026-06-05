@@ -37,6 +37,9 @@ type
 
     /// <summary>Technical name of the keyword validator ('required').</summary>
     property KeywordName: string read GetKeywordName;
+
+    /// <summary>Array of required property names.</summary>
+    property RequiredProperties: TJSONArray read FRequiredProperties;
   end;
 
 implementation

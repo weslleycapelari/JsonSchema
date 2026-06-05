@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, System.JSON,
-  JsonSchema, Rest.Json, Schema2Delphi.Lote;
+  Schema2Delphi.Lote;
 
 type
   TfrmMain = class(TForm)
@@ -48,13 +48,13 @@ begin
 
   if Trim(mmoSchemaInput.Text) = '' then
   begin
-    LabelStatus.Caption := 'Erro: O JSON Schema n?o pode estar vazio.';
+    LabelStatus.Caption := 'Erro: O JSON Schema não pode estar vazio.';
     Exit;
   end;
 
   if Trim(edtUnitName.Text) = '' then
   begin
-    LabelStatus.Caption := 'Erro: Por favor, forne?a um nome para a unit.';
+    LabelStatus.Caption := 'Erro: Por favor, forneça um nome para a unit.';
     Exit;
   end;
 

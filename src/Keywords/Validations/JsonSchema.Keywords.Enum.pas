@@ -37,6 +37,9 @@ type
 
     /// <summary>Technical name of the keyword validator ('enum').</summary>
     property KeywordName: string read GetKeywordName;
+
+    /// <summary>Array of allowed enum values.</summary>
+    property EnumValues: TJSONArray read FEnumValues;
   end;
 
 implementation

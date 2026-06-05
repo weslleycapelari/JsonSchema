@@ -46,6 +46,12 @@ type
 
     /// <summary>Technical name of the keyword validator ('$ref').</summary>
     property KeywordName: string read GetKeywordName;
+
+    /// <summary>The path/URI of the reference.</summary>
+    property RefPath: string read FRefPath;
+
+    /// <summary>The resolved and compiled sub-schema target.</summary>
+    property ResolvedSchema: ICompiledSchema read FResolvedSchema;
   end;
 
 implementation

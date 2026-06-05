@@ -36,7 +36,7 @@ The `TFormatRegistry` maps standard formats to their introduction draft version 
 
 ### B. Dynamic Supported Verification
 
-At validation time, `IsFormatSupported` verifies draft compatibility using a chronological ordinal comparison of the [TDraftVersion](file:///C:/Users/weslley.capelari/Documents/Projetos/Github/weslleycapelari/JsonSchema/src/Core/JsonSchema.Core.Interfaces.pas#L17) enum:
+At validation time, `IsFormatSupported` verifies draft compatibility using a chronological ordinal comparison of the [TDraftVersion](../../src/Core/JsonSchema.Core.Interfaces.pas#L17) enum:
 
 ```pascal
 class function TFormatRegistry.IsFormatSupported(const pFormatName: string; const pDraft: TDraftVersion): Boolean;
