@@ -20,6 +20,12 @@ The current test entry points are:
 - `test/gui/TestJsonSchema.dpr`
 - `test/console/TestJsonSchemaConsole.dpr`
 
+Each auxiliary developer tool under `tools/` includes a Delphi Project Group (`.groupproj`) uniting its CLI and VCL applications:
+
+- `tools/SchemaMockGen/SchemaMockGen.groupproj`
+- `tools/Schema2Delphi/Schema2Delphi.groupproj`
+- `tools/SchemaValidator/SchemaValidator.groupproj`
+
 The repository also contains the library source under `src/` and supporting fixtures under `test/src/` and `test/schemas/`.
 
 ## Recommended workflow

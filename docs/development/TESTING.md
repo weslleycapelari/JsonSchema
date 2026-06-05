@@ -66,4 +66,18 @@ A total of **6,184 test cases** are automatically loaded, compiled, and executed
 
 ## Running Tests
 
-Tests can be executed using the DUnit console runner (`test/console/TestJsonSchemaConsole.exe` or by compiling `test/console/TestJsonSchemaConsole.dpr`) or via the GUI runner (`test/gui/TestJsonSchema.dpr`).
+Tests can be executed using the DUnit console runner (`test/console/TestJsonSchemaConsole.exe` or by compiling `test/console/TestJsonSchemaConsole.dpr`) or via the VCL runner (`test/gui/TestJsonSchema.dpr`).
+
+### Auxiliary Developer Tools Test Suites
+
+In addition to the core library tests, each developer tool maintains its own console and GUI DUnit test suites:
+
+1. **SchemaMockGen**:
+   - Console: `tools/SchemaMockGen/test/console/TestSchemaMockGenConsole.dpr`
+   - GUI: `tools/SchemaMockGen/test/gui/TestSchemaMockGenGui.dpr`
+2. **Schema2Delphi**:
+   - Console: `tools/Schema2Delphi/test/console/TestSchema2DelphiConsole.dpr`
+   - GUI: `tools/Schema2Delphi/test/gui/TestSchema2DelphiGUI.dpr`
+3. **SchemaValidator**:
+   - Console: `tools/SchemaValidator/test/console/TestSchemaValidatorConsole.dpr`
+   - GUI: `tools/SchemaValidator/test/gui/TestSchemaValidatorGui.dpr`

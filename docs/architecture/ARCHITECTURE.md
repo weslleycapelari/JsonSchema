@@ -220,13 +220,12 @@ The helper keeps keyword code cleaner and reduces duplicated checks across valid
 The repository also contains supporting tools and regression assets:
 
 - `test` for DUnit projects and schema fixtures
-- `tools/Schema2Delphi` for auxiliary generation tasks
+- `tools/` containing auxiliary developer tools (`SchemaMockGen`, `Schema2Delphi`, `SchemaValidator`), each packaging a command-line interface (CLI) and a VCL desktop GUI.
 
 Historical fixtures for Draft 3, Draft 4, and draft-next exist for regression coverage, but they must not be treated as confirmed runtime support.
 
 ## Confirmed boundaries
 
-- There is no evidence of a public CLI in the repository.
 - Compatibility must be maintained draft by draft.
 - Translated messages currently exist only for enUS and ptBR.
 - Visitor-based execution is not the current runtime model.

@@ -1,51 +1,60 @@
 # Developer Setup - Schema2Delphi
 
-This guide helps you set up the development environment to build, edit, and run `Schema2Delphi`.
+This guide helps you set up the development environment to build, edit, and run the `Schema2Delphi` CLI and VCL GUI applications.
 
 ## Requirements
 
 - **Delphi Compiler (DCC32)**: Version 36.0 (Delphi Athens) or higher.
-- **RAD Studio IDE**: (Optional) to edit dfm forms visually.
+- **RAD Studio IDE**: (Optional) to edit VCL design forms visually.
 
 ## Directory Structure
 
 ```text
 tools/Schema2Delphi/
-├── Schema2Delphi.dpr                       # Main GUI program
-├── Schema2Delphi.dproj                     # Delphi IDE project configuration
-├── src/                                    # Tool source code folder
-│   ├── Schema2Delphi.Main.pas              # Main VCL Form logic
-│   ├── Schema2Delphi.Main.dfm              # Main Form design
-│   ├── Schema2Delphi.Lote.pas              # Batch Form logic
-│   ├── Schema2Delphi.Lote.dfm              # Batch Form design
-│   ├── Schema2Delphi.AST.pas               # Delphi Code AST definition
-│   ├── Schema2Delphi.Common.pas            # Shared interfaces & configs
-│   ├── Schema2Delphi.Sanitizer.pas         # Identifiers sanitizers
-│   ├── Schema2Delphi.TypeMapper.pas        # Schema type map engine
-│   ├── Schema2Delphi.AttributeProcessor.pas# Metadata attributes generator
-│   ├── Schema2Delphi.Visitor.pas           # AST builder orchestrator
-│   └── Schema2Delphi.Utils.pas             # High-level API utilities
-└── test/                                   # DUnit tests folder
+├── Schema2Delphi.groupproj          # Delphi Group Project linking VCL and CLI
+├── Schema2DelphiCLI.dpr             # CLI Program entry point
+├── Schema2DelphiCLI.dproj           # CLI IDE project configuration
+├── Schema2DelphiVCL.dpr             # VCL GUI Program entry point
+├── Schema2DelphiVCL.dproj           # VCL GUI IDE project configuration
+├── README.md                        # Tool main overview
+├── docs/                            # Detailed documentation
+├── src/                             # Shared source code folder
+│   ├── Schema2Delphi.Main.pas       # Main VCL Form logic
+│   ├── Schema2Delphi.Main.dfm       # Main VCL Form design layout
+│   ├── Schema2Delphi.Lote.pas       # Batch VCL Form logic
+│   ├── Schema2Delphi.Lote.dfm       # Batch VCL Form design layout
+│   ├── Schema2Delphi.AST.pas        # Delphi Code AST definition
+│   ├── Schema2Delphi.Common.pas     # Shared interfaces & configs
+│   ├── Schema2Delphi.Sanitizer.pas  # Identifier sanitizers
+│   ├── Schema2Delphi.TypeMapper.pas # Schema type mapping engine
+│   ├── Schema2Delphi.Visitor.pas    # AST builder visitor
+│   └── Schema2Delphi.Utils.pas      # High-level helper utilities
+└── test/                            # Test suite
 ```
 
 ---
 
 ## Compiling via Command Line
 
-To compile the `Schema2Delphi` tool executable using the Delphi command-line compiler:
+To compile the `Schema2Delphi` executables using the Delphi command-line compiler:
 
-1. Open a terminal (such as PowerShell).
-2. Navigate to the project root directory.
-3. Run the following compilation command:
+1. Open your terminal in the `tools/Schema2Delphi/` folder.
+2. Compile the **CLI tool**:
 
-```powershell
-dcc32 -U"src;src\Core;src\Core\URI;src\Drafts;src\Keywords\Core;src\Keywords\Format;src\Keywords\Logicals;src\Keywords\Metadata;src\Keywords\Validations;src\Localization;tools\Schema2Delphi\src" -NS"System;System.Win;Winapi;Vcl;Vcl.Imaging;Data;Data.Win" tools\Schema2Delphi\Schema2Delphi.dpr
+```bash
+dcc32 -U"..\..\src;..\..\src\Core;..\..\src\Core\URI;..\..\src\Drafts;..\..\src\Keywords\Core;..\..\src\Keywords\Format;..\..\src\Keywords\Logicals;..\..\src\Keywords\Metadata;..\..\src\Keywords\Validations;..\..\src\Localization;src" -NS"System;System.Win;Winapi;Vcl;Vcl.Imaging;Data;Data.Win" Schema2DelphiCLI.dpr
 ```
 
-The output executable `Schema2Delphi.exe` will be generated directly in the `tools/Schema2Delphi/` folder.
+1. Compile the **VCL GUI application**:
+
+```bash
+dcc32 -U"..\..\src;..\..\src\Core;..\..\src\Core\URI;..\..\src\Drafts;..\..\src\Keywords\Core;..\..\src\Keywords\Format;..\..\src\Keywords\Logicals;..\..\src\Keywords\Metadata;..\..\src\Keywords\Validations;..\..\src\Localization;src" -NS"System;System.Win;Winapi;Vcl;Vcl.Imaging;Data;Data.Win" Schema2DelphiVCL.dpr
+```
+
+The compiled executables (`Schema2DelphiCLI.exe` and `Schema2DelphiVCL.exe`) will be generated directly in the `tools/Schema2Delphi/` folder.
 
 ---
 
-## Editing DFM Form Files
+## Editing GUI Form Files
 
-To edit the graphical forms (`Schema2Delphi.Main.dfm` and `Schema2Delphi.Lote.dfm`), open RAD Studio and load the `Schema2Delphi.dproj` project. The IDE will render form components visually and keep source and design files synchronized.
+To edit the VCL graphical forms, open RAD Studio and load the project group `Schema2Delphi.groupproj`. You can open `Schema2DelphiVCL.dproj` directly in the IDE to design the forms visually.

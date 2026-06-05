@@ -66,14 +66,14 @@ begin
   pStdout := '';
   pStderr := '';
 
-  lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\SchemaMockGen.exe');
+  lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\SchemaMockGenCLI.exe');
   if not FileExists(lExePath) then
-    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\SchemaMockGen.exe');
+    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\SchemaMockGenCLI.exe');
   if not FileExists(lExePath) then
-    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + 'SchemaMockGen.exe');
+    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + 'SchemaMockGenCLI.exe');
 
   if not FileExists(lExePath) then
-    raise Exception.CreateFmt('SchemaMockGen executable not found at: %s', [lExePath]);
+    raise Exception.CreateFmt('SchemaMockGenCLI executable not found at: %s', [lExePath]);
 
   lSecAttributes.nLength := SizeOf(TSecurityAttributes);
   lSecAttributes.bInheritHandle := True;

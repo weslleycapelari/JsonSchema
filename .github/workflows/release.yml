@@ -1,0 +1,25 @@
+name: Upload Release Assets
+
+on:
+  release:
+    types: [published, created]
+
+jobs:
+  upload-assets:
+    name: Upload Tools ZIPs to Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Upload Tool ZIPs to Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            releases/SchemaMockGen.zip
+            releases/Schema2Delphi.zip
+            releases/SchemaValidator.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

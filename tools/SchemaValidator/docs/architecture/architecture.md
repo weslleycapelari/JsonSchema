@@ -10,7 +10,7 @@ This document describes the internal structure, dependencies, and execution flow
 
 ```mermaid
 flowchart TD
-    A[OS Command Line / stdin] --> B[SchemaValidator.dpr]
+    A[OS Command Line / stdin] --> B[SchemaValidatorCLI.dpr]
     B --> C[SchemaValidator.Runner]
     C --> D[SchemaValidator.Config]
     C --> E[SchemaValidator.Utils]
@@ -22,7 +22,7 @@ flowchart TD
 
 ## Component Breakdown
 
-### 1. Main Entry Point (`SchemaValidator.dpr`)
+### 1. Main Entry Point (`SchemaValidatorCLI.dpr`)
 
 - Located at the tool root.
 - Very thin wrapper; its only responsibility is calling `RunSchemaValidator` from the Runner module and catching any unhandled exceptions to return exit code 2.

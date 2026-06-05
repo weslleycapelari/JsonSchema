@@ -12,4 +12,4 @@
 
 ## Usage
 
-Compile and run `Schema2Delphi.dpr` (RAD Studio project) to use the graphical GUI tool or call the compiler routines programmatically.
+Compile and run `Schema2DelphiCLI.dpr` (RAD Studio project) to use the graphical VCL tool or call the compiler routines programmatically.

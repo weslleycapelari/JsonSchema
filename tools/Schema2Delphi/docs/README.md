@@ -8,7 +8,7 @@ This directory collects the documentation for the `Schema2Delphi` tool, a utilit
 2. **[Architecture](architecture/ARCHITECTURE.md)**: Structural overview of the compiled-schema traversal pipeline, Delphi Code AST, and modular concern delegation.
 3. **[Architectural Decisions](decisions/README.md)**: History of design decisions and ADRs (Architectural Decision Records) guiding the codebase.
 4. **[Development Setup](development/SETUP.md)**: Step-by-step guide to configure the workspace and build the graphical form and batch generator.
-5. **[Testing Guide](development/TESTING.md)**: Execution details for the DUnit console and GUI test suites.
+5. **[Testing Guide](development/TESTING.md)**: Execution details for the DUnit console and VCL test suites.
 6. **[Public API](api/PUBLIC-API.md)**: Public interfaces, utility entry points (`GenerateClassFromSchema`), and customization configurations.
 
 ## Notes

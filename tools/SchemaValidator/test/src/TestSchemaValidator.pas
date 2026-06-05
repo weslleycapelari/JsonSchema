@@ -73,14 +73,14 @@ begin
   pStdout := '';
   pStderr := '';
 
-  lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\SchemaValidator.exe');
+  lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\SchemaValidatorCLI.exe');
   if not FileExists(lExePath) then
-    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\SchemaValidator.exe');
+    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\SchemaValidatorCLI.exe');
   if not FileExists(lExePath) then
-    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + 'SchemaValidator.exe');
+    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + 'SchemaValidatorCLI.exe');
 
   if not FileExists(lExePath) then
-    raise Exception.CreateFmt('SchemaValidator executable not found at: %s', [lExePath]);
+    raise Exception.CreateFmt('SchemaValidatorCLI executable not found at: %s', [lExePath]);
 
   lSecAttributes.nLength := SizeOf(TSecurityAttributes);
   lSecAttributes.bInheritHandle := True;

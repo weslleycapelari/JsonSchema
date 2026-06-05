@@ -103,14 +103,14 @@ begin
   pStdout := '';
   pStderr := '';
 
-  lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\Schema2Delphi.exe');
+  lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\Schema2DelphiCLI.exe');
   if not FileExists(lExePath) then
-    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\Schema2Delphi.exe');
+    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\Schema2DelphiCLI.exe');
   if not FileExists(lExePath) then
-    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + 'Schema2Delphi.exe');
+    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + 'Schema2DelphiCLI.exe');
 
   if not FileExists(lExePath) then
-    raise Exception.CreateFmt('Schema2Delphi executable not found at: %s', [lExePath]);
+    raise Exception.CreateFmt('Schema2DelphiCLI executable not found at: %s', [lExePath]);
 
   lSecAttributes.nLength := SizeOf(TSecurityAttributes);
   lSecAttributes.bInheritHandle := True;

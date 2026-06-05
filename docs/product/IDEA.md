@@ -69,7 +69,7 @@ The project should not drift into unrelated product areas such as:
 
 - OpenAPI support as a primary target
 - IDE tooling
-- GUI applications
+- VCL applications
 - code generation as a core requirement
 
 Those can be treated as separate future packages or tools.

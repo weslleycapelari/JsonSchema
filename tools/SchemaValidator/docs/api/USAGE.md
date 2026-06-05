@@ -88,7 +88,7 @@ Generates standard XML suite records for CI/CD test dashboards (e.g. Jenkins, Az
 ### Standard File-to-File Validation
 
 ```bash
-SchemaValidator.exe -s schema.json -i instance.json
+SchemaValidatorCLI.exe -s schema.json -i instance.json
 ```
 
 ### Piping via Stdin
@@ -98,7 +98,7 @@ If the `-i` parameter is omitted, the CLI reads the instance payload from standa
 **PowerShell**:
 
 ```powershell
-Get-Content instance.json | SchemaValidator.exe -s schema.json
+Get-Content instance.json | SchemaValidatorCLI.exe -s schema.json
 ```
 
 **Linux / Bash**:
@@ -112,7 +112,7 @@ cat instance.json | ./SchemaValidator -s schema.json
 **PowerShell**:
 
 ```powershell
-./SchemaValidator.exe -s schema.json -i instance.json
+./SchemaValidatorCLI.exe -s schema.json -i instance.json
 if ($LASTEXITCODE -eq 0) {
     Write-Host "JSON conforms to schema!"
 } else {

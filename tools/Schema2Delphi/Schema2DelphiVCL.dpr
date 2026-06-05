@@ -8,6 +8,7 @@ VCL Desktop Application for generating Delphi DTO units from JSON Schemas.
 
 uses
   Vcl.Forms,
+  Vcl.XPMan,
   Schema2Delphi.Main in 'src\Schema2Delphi.Main.pas' {frmMain},
   Schema2Delphi.Lote in 'src\Schema2Delphi.Lote.pas' {frmLote},
   Schema2Delphi.Common in 'src\Schema2Delphi.Common.pas',
