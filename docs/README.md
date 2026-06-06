@@ -9,7 +9,8 @@ This folder collects the project documentation for JsonSchema Delphi.
 3. [Product vision](product/IDEA.md)
 4. [Development setup](development/SETUP.md)
 5. [Testing guide](development/TESTING.md)
-6. [Public API](api/PUBLIC-API.md)
+6. [Visual and CLI Guidelines](VISUAL_AND_CLI_GUIDELINES.md)
+7. [Public API](api/PUBLIC-API.md)
 
 ## Documentation areas
 
