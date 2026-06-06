@@ -34,6 +34,7 @@ The following tools have been completed, standardized under the architecture tem
 - **[SchemaBundler](../../tools/SchemaBundler/README.md)**: Bundle split multi-file JSON schemas containing external file references into a single, self-contained schema file.
 - **[SchemaMigrator](../../tools/SchemaMigrator/README.md)**: Migrate legacy JSON Schemas (Draft 4/6/7) to modern specifications (Draft 2020-12).
 - **[SchemaOptimizer](../../tools/SchemaOptimizer/README.md)**: Analyze and optimize JSON schemas by pruning unused definitions, merging non-conflicting properties, and flattening logical blocks.
+- **[VisualTestSuiteRunner](../../tools/VisualTestSuiteRunner/README.md)**: Run the official JSON Schema Test Suite and display a visual tree structure of keywords compliance.
 
 ---
 
@@ -41,33 +42,7 @@ The following tools have been completed, standardized under the architecture tem
 
 ### Phase 3: IDE Integration & Testing Support
 
-#### 5. VisualTestSuiteRunner (Visual Test Suite Client)
-
-- **Concept**: A graphical DUnit/FMX test visualizer that loads the official JSON Schema Test Suite and displays a visual tree structure of keywords and their compliance status.
-- **Structure**:
-  - `tools/VisualTestSuiteRunner/VisualTestSuiteRunnerCLI.dpr`
-  - `tools/VisualTestSuiteRunner/VisualTestSuiteRunnerVCL.dpr`
-  - `tools/VisualTestSuiteRunner/VisualTestSuiteRunner.groupproj`
-
 #### 6. RADStudioJsonSchemaWizard (Delphi IDE Extension)
-
-- **Concept**: A Delphi IDE package plugin (`.bpl`) adding visual context-menus in RAD Studio. It allows developers to validate active JSON editor buffers or generate Delphi classes on the fly without leaving the IDE.
-- **Structure**:
-  - `tools/RADStudioJsonSchemaWizard/RADStudioJsonSchemaWizard.dpk` (IDE Package)
-
----
-
-### Phase 4: IDE Integration & Testing Support
-
-#### 10. VisualTestSuiteRunner (Visual Test Suite Client)
-
-- **Concept**: A graphical DUnit/FMX test visualizer that loads the official JSON Schema Test Suite and displays a visual tree structure of keywords and their compliance status.
-- **Structure**:
-  - `tools/VisualTestSuiteRunner/VisualTestSuiteRunnerCLI.dpr`
-  - `tools/VisualTestSuiteRunner/VisualTestSuiteRunnerVCL.dpr`
-  - `tools/VisualTestSuiteRunner/VisualTestSuiteRunner.groupproj`
-
-#### 11. RADStudioJsonSchemaWizard (Delphi IDE Extension)
 
 - **Concept**: A Delphi IDE package plugin (`.bpl`) adding visual context-menus in RAD Studio. It allows developers to validate active JSON editor buffers or generate Delphi classes on the fly without leaving the IDE.
 - **Structure**:

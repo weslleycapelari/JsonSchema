@@ -1,0 +1,48 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{DD594B4E-5CC9-4E6D-A537-827D8CBE7710}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="VisualTestSuiteRunnerCLI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="VisualTestSuiteRunnerVCL.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="VisualTestSuiteRunnerCLI">
+        <MSBuild Projects="VisualTestSuiteRunnerCLI.dproj"/>
+    </Target>
+    <Target Name="VisualTestSuiteRunnerCLI:Clean">
+        <MSBuild Projects="VisualTestSuiteRunnerCLI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="VisualTestSuiteRunnerCLI:Make">
+        <MSBuild Projects="VisualTestSuiteRunnerCLI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="VisualTestSuiteRunnerVCL">
+        <MSBuild Projects="VisualTestSuiteRunnerVCL.dproj"/>
+    </Target>
+    <Target Name="VisualTestSuiteRunnerVCL:Clean">
+        <MSBuild Projects="VisualTestSuiteRunnerVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="VisualTestSuiteRunnerVCL:Make">
+        <MSBuild Projects="VisualTestSuiteRunnerVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="VisualTestSuiteRunnerCLI;VisualTestSuiteRunnerVCL"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="VisualTestSuiteRunnerCLI:Clean;VisualTestSuiteRunnerVCL:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="VisualTestSuiteRunnerCLI:Make;VisualTestSuiteRunnerVCL:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

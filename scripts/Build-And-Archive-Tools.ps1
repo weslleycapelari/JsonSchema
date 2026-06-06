@@ -90,6 +90,12 @@ $tools = @(
     Desc = "JSON Schema simplification and optimization utility."
     CliHelp = "SchemaOptimizerCLI.exe -i <input_path> [-o <output_path>] [options]"
     VclHelp = "SchemaOptimizerVCL.exe"
+  },
+  @{
+    Name = "VisualTestSuiteRunner"
+    Desc = "JSON Schema Test Suite compliance visual runner."
+    CliHelp = "VisualTestSuiteRunnerCLI.exe -i <suite_dir> [-d <draft>] [-o <output_json>] [--quiet]"
+    VclHelp = "VisualTestSuiteRunnerVCL.exe"
   }
 )
 
