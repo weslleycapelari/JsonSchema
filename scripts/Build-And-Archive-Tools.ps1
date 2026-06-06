@@ -84,6 +84,12 @@ $tools = @(
     Desc = "JSON Schema draft version migration utility."
     CliHelp = "SchemaMigratorCLI.exe -i <input_path> [-o <output_path>] [--minify]"
     VclHelp = "SchemaMigratorVCL.exe"
+  },
+  @{
+    Name = "SchemaOptimizer"
+    Desc = "JSON Schema simplification and optimization utility."
+    CliHelp = "SchemaOptimizerCLI.exe -i <input_path> [-o <output_path>] [options]"
+    VclHelp = "SchemaOptimizerVCL.exe"
   }
 )
 

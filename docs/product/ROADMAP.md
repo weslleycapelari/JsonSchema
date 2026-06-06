@@ -33,24 +33,11 @@ The following tools have been completed, standardized under the architecture tem
 - **[SchemaLinter](../../tools/SchemaLinter/README.md)**: Run static analysis checks on JSON Schemas to detect logic conflicts, regex ReDoS risks, deprecated keywords, and documentation gaps.
 - **[SchemaBundler](../../tools/SchemaBundler/README.md)**: Bundle split multi-file JSON schemas containing external file references into a single, self-contained schema file.
 - **[SchemaMigrator](../../tools/SchemaMigrator/README.md)**: Migrate legacy JSON Schemas (Draft 4/6/7) to modern specifications (Draft 2020-12).
+- **[SchemaOptimizer](../../tools/SchemaOptimizer/README.md)**: Analyze and optimize JSON schemas by pruning unused definitions, merging non-conflicting properties, and flattening logical blocks.
 
 ---
 
 ## 3. Remaining Tool Roadmap (Phased Execution)
-
-### Phase 1: Schema Manipulation & Migration
-
-Focuses on utilities for compiling, packaging, and optimizing raw schemas.
-
-#### 3. SchemaOptimizer (Schema Simplification)
-
-- **Concept**: Analyze and optimize JSON schemas by removing unused `$defs` definitions, merging redundant type constraints (e.g., simplifying unnecessary nested `allOf` blocks), and flattening equivalent subschemas.
-- **Structure**:
-  - `tools/SchemaOptimizer/SchemaOptimizerCLI.dpr`
-  - `tools/SchemaOptimizer/SchemaOptimizerVCL.dpr`
-  - `tools/SchemaOptimizer/SchemaOptimizer.groupproj`
-
----
 
 ### Phase 3: IDE Integration & Testing Support
 

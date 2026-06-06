@@ -1,0 +1,48 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{DD594B4E-5CC9-4E6D-A537-827D8CBE7710}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="SchemaOptimizerCLI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="SchemaOptimizerVCL.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="SchemaOptimizerCLI">
+        <MSBuild Projects="SchemaOptimizerCLI.dproj"/>
+    </Target>
+    <Target Name="SchemaOptimizerCLI:Clean">
+        <MSBuild Projects="SchemaOptimizerCLI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaOptimizerCLI:Make">
+        <MSBuild Projects="SchemaOptimizerCLI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SchemaOptimizerVCL">
+        <MSBuild Projects="SchemaOptimizerVCL.dproj"/>
+    </Target>
+    <Target Name="SchemaOptimizerVCL:Clean">
+        <MSBuild Projects="SchemaOptimizerVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaOptimizerVCL:Make">
+        <MSBuild Projects="SchemaOptimizerVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="SchemaOptimizerCLI;SchemaOptimizerVCL"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="SchemaOptimizerCLI:Clean;SchemaOptimizerVCL:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="SchemaOptimizerCLI:Make;SchemaOptimizerVCL:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>
