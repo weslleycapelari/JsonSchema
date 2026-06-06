@@ -24,8 +24,12 @@ jobs:
             releases/Schema2Delphi.zip
             releases/Schema2Doc.zip
             releases/Schema2REST.zip
+            releases/SchemaBundler.zip
             releases/SchemaLinter.zip
+            releases/SchemaMigrator.zip
             releases/SchemaMockGen.zip
+            releases/SchemaOptimizer.zip
             releases/SchemaValidator.zip
+            releases/VisualTestSuiteRunner.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
