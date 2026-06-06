@@ -1,0 +1,48 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{DD594B4E-5CC9-4E6D-A537-827D8CBE7710}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="SchemaMigratorCLI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="SchemaMigratorVCL.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="SchemaMigratorCLI">
+        <MSBuild Projects="SchemaMigratorCLI.dproj"/>
+    </Target>
+    <Target Name="SchemaMigratorCLI:Clean">
+        <MSBuild Projects="SchemaMigratorCLI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaMigratorCLI:Make">
+        <MSBuild Projects="SchemaMigratorCLI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SchemaMigratorVCL">
+        <MSBuild Projects="SchemaMigratorVCL.dproj"/>
+    </Target>
+    <Target Name="SchemaMigratorVCL:Clean">
+        <MSBuild Projects="SchemaMigratorVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaMigratorVCL:Make">
+        <MSBuild Projects="SchemaMigratorVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="SchemaMigratorCLI;SchemaMigratorVCL"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="SchemaMigratorCLI:Clean;SchemaMigratorVCL:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="SchemaMigratorCLI:Make;SchemaMigratorVCL:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

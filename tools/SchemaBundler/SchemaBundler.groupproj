@@ -1,0 +1,48 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{CD594B4E-5CC9-4E6D-A537-827D8CBE7710}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="SchemaBundlerCLI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="SchemaBundlerVCL.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="SchemaBundlerCLI">
+        <MSBuild Projects="SchemaBundlerCLI.dproj"/>
+    </Target>
+    <Target Name="SchemaBundlerCLI:Clean">
+        <MSBuild Projects="SchemaBundlerCLI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaBundlerCLI:Make">
+        <MSBuild Projects="SchemaBundlerCLI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SchemaBundlerVCL">
+        <MSBuild Projects="SchemaBundlerVCL.dproj"/>
+    </Target>
+    <Target Name="SchemaBundlerVCL:Clean">
+        <MSBuild Projects="SchemaBundlerVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaBundlerVCL:Make">
+        <MSBuild Projects="SchemaBundlerVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="SchemaBundlerCLI;SchemaBundlerVCL"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="SchemaBundlerCLI:Clean;SchemaBundlerVCL:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="SchemaBundlerCLI:Make;SchemaBundlerVCL:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

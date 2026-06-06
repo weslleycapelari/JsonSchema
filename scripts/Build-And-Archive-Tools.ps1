@@ -72,6 +72,18 @@ $tools = @(
     Desc = "JSON Schema static quality and security analyzer."
     CliHelp = "SchemaLinterCLI.exe -s <schema_path> [-o <output_path>] [-m <min_severity>]"
     VclHelp = "SchemaLinterVCL.exe"
+  },
+  @{
+    Name = "SchemaBundler"
+    Desc = "JSON Schema packaging utility."
+    CliHelp = "SchemaBundlerCLI.exe -i <input_path> [-o <output_path>] [--legacy] [--minify]"
+    VclHelp = "SchemaBundlerVCL.exe"
+  },
+  @{
+    Name = "SchemaMigrator"
+    Desc = "JSON Schema draft version migration utility."
+    CliHelp = "SchemaMigratorCLI.exe -i <input_path> [-o <output_path>] [--minify]"
+    VclHelp = "SchemaMigratorVCL.exe"
   }
 )
 

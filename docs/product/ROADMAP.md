@@ -31,6 +31,8 @@ The following tools have been completed, standardized under the architecture tem
 - **[JSON2Schema](../../tools/JSON2Schema/README.md)**: Infer an intelligent JSON Schema by scanning JSON examples.
 - **[Schema2Doc](../../tools/Schema2Doc/README.md)**: Generate Markdown or HTML documentation from JSON Schema definitions.
 - **[SchemaLinter](../../tools/SchemaLinter/README.md)**: Run static analysis checks on JSON Schemas to detect logic conflicts, regex ReDoS risks, deprecated keywords, and documentation gaps.
+- **[SchemaBundler](../../tools/SchemaBundler/README.md)**: Bundle split multi-file JSON schemas containing external file references into a single, self-contained schema file.
+- **[SchemaMigrator](../../tools/SchemaMigrator/README.md)**: Migrate legacy JSON Schemas (Draft 4/6/7) to modern specifications (Draft 2020-12).
 
 ---
 
@@ -39,22 +41,6 @@ The following tools have been completed, standardized under the architecture tem
 ### Phase 1: Schema Manipulation & Migration
 
 Focuses on utilities for compiling, packaging, and optimizing raw schemas.
-
-#### 1. SchemaBundler (Schema Packager)
-
-- **Concept**: Bundle large, multi-file JSON schemas containing external references (`$ref` pointing to local files or remote URLs) into a single, self-contained schema file. It does this by collecting resources under a centralized `$defs` block and correcting pointers locally.
-- **Structure**:
-  - `tools/SchemaBundler/SchemaBundlerCLI.dpr`
-  - `tools/SchemaBundler/SchemaBundlerVCL.dpr`
-  - `tools/SchemaBundler/SchemaBundler.groupproj`
-
-#### 2. SchemaMigrator (Draft Version Migration)
-
-- **Concept**: Upgrade legacy JSON schemas to modern draft dialects (e.g. converting Draft 4/7 schemas to Draft 2020-12 by updating `dependencies` to `dependentRequired`/`dependentSchemas`, renaming `definitions` to `$defs`, etc.).
-- **Structure**:
-  - `tools/SchemaMigrator/SchemaMigratorCLI.dpr`
-  - `tools/SchemaMigrator/SchemaMigratorVCL.dpr`
-  - `tools/SchemaMigrator/SchemaMigrator.groupproj`
 
 #### 3. SchemaOptimizer (Schema Simplification)
 

@@ -10,7 +10,7 @@ JsonSchema Delphi is a JSON Schema validation library written in Delphi. It is b
 - Keeps keyword behavior isolated in keyword units.
 - Produces localized validation messages in enUS and ptBR.
 - Resolves references and schema resources through a registry.
-- Includes auxiliary developer tools under `tools/`: SchemaMockGen (data mock generator), Schema2Delphi (Delphi DTO class generator), SchemaValidator (JSON Schema validator), Delphi2Schema (JSON Schema generator from Delphi classes/records using RTTI), Schema2DDL (Relational DDL generator), Schema2REST (Horse/DMVC route and controller generator), JSON2Schema (JSON Schema generator from JSON instance documents), Schema2Doc (Markdown/HTML documentation generator), and SchemaLinter (JSON Schema static quality and security analyzer). Each tool provides both a Command-Line Interface (CLI) and a Desktop VCL GUI application.
+- Includes auxiliary developer tools under `tools/`: SchemaMockGen (data mock generator), Schema2Delphi (Delphi DTO class generator), SchemaValidator (JSON Schema validator), Delphi2Schema (JSON Schema generator from Delphi classes/records using RTTI), Schema2DDL (Relational DDL generator), Schema2REST (Horse/DMVC route and controller generator), JSON2Schema (JSON Schema generator from JSON instance documents), Schema2Doc (Markdown/HTML documentation generator), SchemaLinter (JSON Schema static quality and security analyzer), SchemaBundler (JSON Schema packaging utility), and SchemaMigrator (JSON Schema draft version migration utility). Each tool provides both a Command-Line Interface (CLI) and a Desktop VCL GUI application.
 
 ## Confirmed scope
 
