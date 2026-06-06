@@ -1,0 +1,48 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{BD594B4E-5CC9-4E6D-A537-827D8CBE7710}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="SchemaLinterCLI.dproj">
+            <Dependencies/>
+        </Projects>
+        <Projects Include="SchemaLinterVCL.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="SchemaLinterCLI">
+        <MSBuild Projects="SchemaLinterCLI.dproj"/>
+    </Target>
+    <Target Name="SchemaLinterCLI:Clean">
+        <MSBuild Projects="SchemaLinterCLI.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaLinterCLI:Make">
+        <MSBuild Projects="SchemaLinterCLI.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="SchemaLinterVCL">
+        <MSBuild Projects="SchemaLinterVCL.dproj"/>
+    </Target>
+    <Target Name="SchemaLinterVCL:Clean">
+        <MSBuild Projects="SchemaLinterVCL.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="SchemaLinterVCL:Make">
+        <MSBuild Projects="SchemaLinterVCL.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="SchemaLinterCLI;SchemaLinterVCL"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="SchemaLinterCLI:Clean;SchemaLinterVCL:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="SchemaLinterCLI:Make;SchemaLinterVCL:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

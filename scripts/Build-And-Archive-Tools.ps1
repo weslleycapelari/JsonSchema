@@ -66,6 +66,12 @@ $tools = @(
     Desc = "Markdown/HTML documentation generator from JSON Schema."
     CliHelp = "Schema2DocCLI.exe -s <schema_path> [-o <output_path>] [-f <format>] [-t <title>]"
     VclHelp = "Schema2DocVCL.exe"
+  },
+  @{
+    Name = "SchemaLinter"
+    Desc = "JSON Schema static quality and security analyzer."
+    CliHelp = "SchemaLinterCLI.exe -s <schema_path> [-o <output_path>] [-m <min_severity>]"
+    VclHelp = "SchemaLinterVCL.exe"
   }
 )
 

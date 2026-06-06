@@ -22,7 +22,9 @@ jobs:
             releases/JSON2Schema.zip
             releases/Schema2DDL.zip
             releases/Schema2Delphi.zip
+            releases/Schema2Doc.zip
             releases/Schema2REST.zip
+            releases/SchemaLinter.zip
             releases/SchemaMockGen.zip
             releases/SchemaValidator.zip
         env:
