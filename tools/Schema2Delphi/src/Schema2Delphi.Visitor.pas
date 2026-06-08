@@ -178,7 +178,7 @@ begin
   FProcessedSchemas.Add(lRootCompiled, pRootClassName);
   FGeneratedClassNames.Add(pRootClassName);
 
-  // --- PASSO 4: Processar a Fila de Geração ---
+  // --- PASSO 4: Processar a Fila de Gera??o ---
   while FGenerationQueue.Count > 0 do
   begin
     lCurrentClassInfo := FGenerationQueue.Dequeue;
@@ -189,7 +189,7 @@ begin
     end;
   end;
 
-  // --- PASSO 5: Obter código serializado ---
+  // --- PASSO 5: Obter c?digo serializado ---
   Result := FUnit.GenerateSourceCode;
 end;
 
@@ -230,18 +230,20 @@ procedure TJsonSchemaCodeGenerator.PopulatePropertyAttributes(pDelphiProp: TDelp
 var
   lReqValue: TJSONValue;
   lCompiled: TCompiledSchema;
+  lFound: Boolean;
 begin
   if pDelphiProp.Name <> pPropKey then
     pDelphiProp.Attributes.Add(Format('[JSONName(''%s'')]', [pPropKey]));
 
   if Assigned(pRequiredArray) then
   begin
+    lFound := False;
     for lReqValue in pRequiredArray do
     begin
-      if lReqValue.Value = pPropKey then
+      if not lFound and (lReqValue.Value = pPropKey) then
       begin
         pDelphiProp.Attributes.Add('[JsonSchema_Required]');
-        break;
+        lFound := True;
       end;
     end;
   end;

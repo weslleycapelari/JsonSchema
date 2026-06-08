@@ -100,7 +100,7 @@ begin
     Exit;
   end;
 
-  if not DirectoryExists(edtSuiteDir.Text) then
+  if not TDirectory.Exists(edtSuiteDir.Text) then
   begin
     ShowMessage('Selected directory does not exist.');
     Exit;

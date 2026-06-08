@@ -171,14 +171,16 @@ begin
     // First scan for explicitly defined primary keys
     for lPropPair in lProperties do
     begin
-      if lPropPair.JsonValue is TJSONObject then
+      if not lHasPk then
       begin
-        lPropObj := lPropPair.JsonValue as TJSONObject;
-        if SameText(lPropPair.JsonString.Value, 'id') or GetBoolProp(lPropObj, 'x-pk', False) then
+        if lPropPair.JsonValue is TJSONObject then
         begin
-          lHasPk := True;
-          lPkColumn := lPropPair.JsonString.Value;
-          Break;
+          lPropObj := lPropPair.JsonValue as TJSONObject;
+          if SameText(lPropPair.JsonString.Value, 'id') or GetBoolProp(lPropObj, 'x-pk', False) then
+          begin
+            lHasPk := True;
+            lPkColumn := lPropPair.JsonString.Value;
+          end;
         end;
       end;
     end;
@@ -199,115 +201,114 @@ begin
     // Process all properties
     for lPropPair in lProperties do
     begin
-      if not (lPropPair.JsonValue is TJSONObject) then
-        Continue;
-
-      lPropObj := lPropPair.JsonValue as TJSONObject;
-      lColumnName := lPropPair.JsonString.Value;
-      lPropType := GetStringProp(lPropObj, 'type', 'string');
-      lFormat := GetStringProp(lPropObj, 'format');
-      lMaxLength := GetIntProp(lPropObj, 'maxLength', 0);
-      lRequired := IsPropertyRequired(pSchema, lColumnName) or SameText(lColumnName, lPkColumn);
-
-      // Handle nested Object (Many-to-One / Reference relationship)
-      if SameText(lPropType, 'object') then
+      if lPropPair.JsonValue is TJSONObject then
       begin
-        lChildTableName := lCleanTableName + '_' + lColumnName;
-        // Generate child table DDL first
-        ProcessSchemaObject(lChildTableName, lPropObj, pOutputList);
+        lPropObj := lPropPair.JsonValue as TJSONObject;
+        lColumnName := lPropPair.JsonString.Value;
+        lPropType := GetStringProp(lPropObj, 'type', 'string');
+        lFormat := GetStringProp(lPropObj, 'format');
+        lMaxLength := GetIntProp(lPropObj, 'maxLength', 0);
+        lRequired := IsPropertyRequired(pSchema, lColumnName) or SameText(lColumnName, lPkColumn);
 
-        // Add FK column to parent table referencing child table
-        lSqlType := FDialect.MapType('integer', 0, '', False);
-        lColumnDef := Format('  %s %s', [
-          FDialect.FormatIdentifier(lColumnName + '_id'),
-          lSqlType
-        ]);
-        if lRequired then
-          lColumnDef := lColumnDef + ' NOT NULL';
-
-        lColumnsList.Add(lColumnDef);
-
-        // FK constraint definition
-        lForeignKeys.Add(Format('  CONSTRAINT fk_%s_%s FOREIGN KEY (%s) REFERENCES %s (%s)', [
-          lCleanTableName,
-          lColumnName,
-          FDialect.FormatIdentifier(lColumnName + '_id'),
-          FDialect.FormatIdentifier(lChildTableName),
-          FDialect.FormatIdentifier('id')
-        ]));
-        Continue;
-      end;
-
-      // Handle array of items
-      if SameText(lPropType, 'array') then
-      begin
-        // If items are objects, this represents a One-to-Many relationship.
-        // The child table needs to refer to the parent table.
-        lPropObj := lPropObj.GetValue('items') as TJSONObject;
-        if Assigned(lPropObj) and SameText(GetStringProp(lPropObj, 'type'), 'object') then
+        // Handle nested Object (Many-to-One / Reference relationship)
+        if SameText(lPropType, 'object') then
         begin
           lChildTableName := lCleanTableName + '_' + lColumnName;
-          
-          // Generate child table later. But we need to add the parent's foreign key to the child table!
-          // We can accomplish this by recursively generating the child table.
-          // Wait, let's create a temporary structure where parent id FK is injected.
-          lPropObj := lPropObj.Clone as TJSONObject;
-          try
-            // Inject parent reference properties
-            lProperties := lPropObj.GetValue('properties') as TJSONObject;
-            if Assigned(lProperties) then
-            begin
-              // Add ForeignKey property definition: parent_id
-              lProperties.AddPair(lCleanTableName + '_id', TJSONObject.Create(
-                TJSONPair.Create('type', 'integer')
-              ));
-              
-              // Mark as required
-              lReqArray := lPropObj.GetValue('required') as TJSONArray;
-              if not Assigned(lReqArray) then
+          // Generate child table DDL first
+          ProcessSchemaObject(lChildTableName, lPropObj, pOutputList);
+
+          // Add FK column to parent table referencing child table
+          lSqlType := FDialect.MapType('integer', 0, '', False);
+          lColumnDef := Format('  %s %s', [
+            FDialect.FormatIdentifier(lColumnName + '_id'),
+            lSqlType
+          ]);
+          if lRequired then
+            lColumnDef := lColumnDef + ' NOT NULL';
+
+          lColumnsList.Add(lColumnDef);
+
+          // FK constraint definition
+          lForeignKeys.Add(Format('  CONSTRAINT fk_%s_%s FOREIGN KEY (%s) REFERENCES %s (%s)', [
+            lCleanTableName,
+            lColumnName,
+            FDialect.FormatIdentifier(lColumnName + '_id'),
+            FDialect.FormatIdentifier(lChildTableName),
+            FDialect.FormatIdentifier('id')
+          ]));
+        end
+        else if SameText(lPropType, 'array') then
+        begin
+          // Handle array of items
+          // If items are objects, this represents a One-to-Many relationship.
+          // The child table needs to refer to the parent table.
+          lPropObj := lPropObj.GetValue('items') as TJSONObject;
+          if Assigned(lPropObj) and SameText(GetStringProp(lPropObj, 'type'), 'object') then
+          begin
+            lChildTableName := lCleanTableName + '_' + lColumnName;
+            
+            // Generate child table later. But we need to add the parent's foreign key to the child table!
+            // We can accomplish this by recursively generating the child table.
+            // Wait, let's create a temporary structure where parent id FK is injected.
+            lPropObj := lPropObj.Clone as TJSONObject;
+            try
+              // Inject parent reference properties
+              lProperties := lPropObj.GetValue('properties') as TJSONObject;
+              if Assigned(lProperties) then
               begin
-                lReqArray := TJSONArray.Create;
-                lPropObj.AddPair('required', lReqArray);
+                // Add ForeignKey property definition: parent_id
+                lProperties.AddPair(lCleanTableName + '_id', TJSONObject.Create(
+                  TJSONPair.Create('type', 'integer')
+                ));
+                
+                // Mark as required
+                lReqArray := lPropObj.GetValue('required') as TJSONArray;
+                if not Assigned(lReqArray) then
+                begin
+                  lReqArray := TJSONArray.Create;
+                  lPropObj.AddPair('required', lReqArray);
+                end;
+                lReqArray.Add(lCleanTableName + '_id');
               end;
-              lReqArray.Add(lCleanTableName + '_id');
+
+              ProcessSchemaObject(lChildTableName, lPropObj, pOutputList);
+            finally
+              lPropObj.Free;
+            end;
+          end;
+        end
+        else
+        begin
+          // Regular columns
+          lSqlType := FDialect.MapType(lPropType, lMaxLength, lFormat, SameText(lColumnName, lPkColumn) and FAutoIncPk);
+          
+          lColumnDef := Format('  %s %s', [
+            FDialect.FormatIdentifier(lColumnName),
+            lSqlType
+          ]);
+
+          // If it's a primary key, add primary key clause (if it wasn't added automatically)
+          if SameText(lColumnName, lPkColumn) then
+          begin
+            lColumnDef := lColumnDef + ' ' + FDialect.GetPrimaryKeyClause(FAutoIncPk);
+          end
+          else
+          begin
+            // Apply default value
+            lDefaultVal := lPropObj.GetValue('default');
+            if Assigned(lDefaultVal) then
+            begin
+              lColumnDef := lColumnDef + ' DEFAULT ' + FDialect.GetDefaultValueString(lDefaultVal.Value, lPropType);
             end;
 
-            ProcessSchemaObject(lChildTableName, lPropObj, pOutputList);
-          finally
-            lPropObj.Free;
+            // Apply mandatory constraint
+            if lRequired then
+              lColumnDef := lColumnDef + ' NOT NULL';
           end;
+
+          lColumnsList.Add(lColumnDef);
         end;
-        Continue;
       end;
-
-      // Regular columns
-      lSqlType := FDialect.MapType(lPropType, lMaxLength, lFormat, SameText(lColumnName, lPkColumn) and FAutoIncPk);
-      
-      lColumnDef := Format('  %s %s', [
-        FDialect.FormatIdentifier(lColumnName),
-        lSqlType
-      ]);
-
-      // If it's a primary key, add primary key clause (if it wasn't added automatically)
-      if SameText(lColumnName, lPkColumn) then
-      begin
-        lColumnDef := lColumnDef + ' ' + FDialect.GetPrimaryKeyClause(FAutoIncPk);
-      end
-      else
-      begin
-        // Apply default value
-        lDefaultVal := lPropObj.GetValue('default');
-        if Assigned(lDefaultVal) then
-        begin
-          lColumnDef := lColumnDef + ' DEFAULT ' + FDialect.GetDefaultValueString(lDefaultVal.Value, lPropType);
-        end;
-
-        // Apply mandatory constraint
-        if lRequired then
-          lColumnDef := lColumnDef + ' NOT NULL';
-      end;
-
-      lColumnsList.Add(lColumnDef);
     end;
 
     // Combine columns and foreign keys

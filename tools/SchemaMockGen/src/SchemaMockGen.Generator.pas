@@ -461,12 +461,12 @@ begin
       lPropName := lPair.JsonString.Value;
 
       // Skip if already generated as required
-      if lObj.Values[lPropName] <> nil then
-        Continue;
-
-      // 50% chance to generate optional property
-      if FRandom.NextBool then
-        lObj.AddPair(lPropName, GenerateFromSchema(lPair.JsonValue));
+      if lObj.Values[lPropName] = nil then
+      begin
+        // 50% chance to generate optional property
+        if FRandom.NextBool then
+          lObj.AddPair(lPropName, GenerateFromSchema(lPair.JsonValue));
+      end;
     end;
   end;
 

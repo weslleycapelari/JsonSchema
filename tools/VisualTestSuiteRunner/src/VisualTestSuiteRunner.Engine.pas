@@ -294,7 +294,7 @@ var
   lFileResult: TTestFileResult;
 begin
   FSuiteResults.Clear;
-  if not DirectoryExists(pDirectoryPath) then
+  if not TDirectory.Exists(pDirectoryPath) then
     Exit;
 
   lFiles := TDirectory.GetFiles(pDirectoryPath, '*.json', TSearchOption.soTopDirectoryOnly);

@@ -52,6 +52,8 @@ type
     { Private declarations }
     FLastConfig: TSectionConfig;
     FConfigs: TObjectList<TSectionConfig>;
+    FEncodings: TArray<TEncoding>;
+    FEncodingsNames: TArray<string>;
 
     procedure AtualizarConfigs;
     procedure LoadConfigs;
@@ -62,8 +64,6 @@ type
 
 var
   frmLote: TfrmLote;
-  _Encodings: TArray<TEncoding>;
-  _EncodingsNames: TArray<string>;
 
 implementation
 
@@ -92,26 +92,23 @@ begin
 
     for LSection in LSections do
     begin
-      if LSection.ToLower.Equals('config') then
-        Continue;
-
-      LConfig := TSectionConfig.Create;
-
-      with LConfig do
+      if not LSection.ToLower.Equals('config') then
       begin
-        Name       := LSection;
-        SchemaPath := LIniFile.ReadString(LSection, 'SCHEMA_PATH', edtSchemaPath.Text);
-        OutputPath := LIniFile.ReadString(LSection, 'OUTPUT_PATH', edtOutputPath.Text);
-        UnitName   := LIniFile.ReadString(LSection, 'UNIT_NAME',   edtUnitName.Text);
-        ClassName  := LIniFile.ReadString(LSection, 'CLASS_NAME',  edtClassName.Text);
+        LConfig := TSectionConfig.Create;
+
+        LConfig.Name       := LSection;
+        LConfig.SchemaPath := LIniFile.ReadString(LSection, 'SCHEMA_PATH', edtSchemaPath.Text);
+        LConfig.OutputPath := LIniFile.ReadString(LSection, 'OUTPUT_PATH', edtOutputPath.Text);
+        LConfig.UnitName   := LIniFile.ReadString(LSection, 'UNIT_NAME',   edtUnitName.Text);
+        LConfig.ClassName  := LIniFile.ReadString(LSection, 'CLASS_NAME',  edtClassName.Text);
+
+        if LConfig.Name.Equals(LLastConfig) then
+          LLastIndex := FConfigs.Count;
+
+        FConfigs.Add(LConfig);
+
+        lstHistory.AddItem(LSection, LConfig);
       end;
-
-      if LConfig.Name.Equals(LLastConfig) then
-        LLastIndex := FConfigs.Count;
-
-      FConfigs.Add(LConfig);
-
-      lstHistory.AddItem(LSection, LConfig);
     end;
 
     if LLastIndex > -1 then
@@ -139,14 +136,11 @@ var
   LConfigs: TSectionConfig;
 begin
   LConfigs := TSectionConfig.Create;
-  with LConfigs do
-  begin
-    Name       := edtUnitName.Text;
-    SchemaPath := edtSchemaPath.Text;
-    OutputPath := edtOutputPath.Text;
-    UnitName   := edtUnitName.Text;
-    ClassName  := edtClassName.Text;
-  end;
+  LConfigs.Name       := edtUnitName.Text;
+  LConfigs.SchemaPath := edtSchemaPath.Text;
+  LConfigs.OutputPath := edtOutputPath.Text;
+  LConfigs.UnitName   := edtUnitName.Text;
+  LConfigs.ClassName  := edtClassName.Text;
 
   ConvertSchema(LConfigs);
 
@@ -171,14 +165,13 @@ end;
 procedure TfrmLote.btnSchemaPathClick(Sender: TObject);
 var
   LFileDlg: TFileOpenDialog;
+  LFileType: TFileTypeItem;
 begin
   LFileDlg := TFileOpenDialog.Create(Self);
   try
-    with LFileDlg.FileTypes.Add do
-    begin
-      FileMask    := '*.json';
-      DisplayName := 'Arquivo JSON (*.json)';
-    end;
+    LFileType := LFileDlg.FileTypes.Add;
+    LFileType.FileMask    := '*.json';
+    LFileType.DisplayName := 'Arquivo JSON (*.json)';
 
     if LFileDlg.Execute then
       edtSchemaPath.Text := LFileDlg.FileName;
@@ -199,7 +192,7 @@ begin
   try
     LSchemaAbsPath := ExpandFileName(pConfigs.SchemaPath);
     if not FileExists(LSchemaAbsPath) then
-      raise Exception.Create('O arquivo JSON-Schema não existe');
+      raise Exception.Create('O arquivo JSON-Schema n?o existe');
 
     LFileContent := TStringList.Create;
     try
@@ -218,14 +211,11 @@ begin
       lstHistory.Items.Add(pConfigs.UnitName);
       LConfigs := TSectionConfig.Create;
 
-      with LConfigs do
-      begin
-        Name       := pConfigs.UnitName;
-        SchemaPath := pConfigs.SchemaPath;
-        OutputPath := pConfigs.OutputPath;
-        UnitName   := pConfigs.UnitName;
-        ClassName  := pConfigs.ClassName;
-      end;
+      LConfigs.Name       := pConfigs.UnitName;
+      LConfigs.SchemaPath := pConfigs.SchemaPath;
+      LConfigs.OutputPath := pConfigs.OutputPath;
+      LConfigs.UnitName   := pConfigs.UnitName;
+      LConfigs.ClassName  := pConfigs.ClassName;
 
       FConfigs.Add(LConfigs);
       FLastConfig := LConfigs;
@@ -248,14 +238,14 @@ begin
 
       LFileContent.Text := GenerateClassFromSchema(LContent, pConfigs.ClassName, pConfigs.UnitName);
       LFileContent.SaveToFile(LOutputPath,
-         _Encodings[cbbCodeEncoding.ItemIndex]);
+         FEncodings[cbbCodeEncoding.ItemIndex]);
     finally
       if Assigned(LFileContent) then
         FreeAndNil(LFileContent);
     end;
   except
     on E: Exception do
-      ShowMessage('Não foi possivel gerar os arquivos: ' + E.Message);
+      ShowMessage('N?o foi possivel gerar os arquivos: ' + E.Message);
   end;
 end;
 
@@ -288,18 +278,18 @@ procedure TfrmLote.FormCreate(Sender: TObject);
 var
   LCount: Integer;
 begin
-  _Encodings := [
+  FEncodings := [
     TEncoding.UTF8,
     TEncoding.ANSI,
     TEncoding.ASCII,
     TEncoding.Unicode,
     TEncoding.UTF7
   ];
-  _EncodingsNames := ['UTF8', 'ANSI', 'ASCII', 'Unicode', 'UTF7'];
+  FEncodingsNames := ['UTF8', 'ANSI', 'ASCII', 'Unicode', 'UTF7'];
 
   cbbCodeEncoding.Items.Clear;
-  for LCount := Low(_EncodingsNames) to High(_EncodingsNames) do
-    cbbCodeEncoding.Items.Add(_EncodingsNames[LCount]);
+  for LCount := Low(FEncodingsNames) to High(FEncodingsNames) do
+    cbbCodeEncoding.Items.Add(FEncodingsNames[LCount]);
 
   cbbCodeEncoding.ItemIndex := 1;
 

@@ -22,7 +22,7 @@ type
 
     pnlClient: TPanel;
 
-    spl1: TSplitter;
+    splMain: TSplitter;
 
     mmoPasOutput: TMemo;
 
@@ -30,17 +30,17 @@ type
 
     pnlStatusPanel: TPanel;
 
-    LabelStatus: TLabel;
+    lblStatus: TLabel;
 
     pnlTopPanel: TPanel;
 
-    Label1: TLabel;
+    lblUnitName: TLabel;
 
     edtUnitName: TEdit;
 
     btnGenerate: TButton;
 
-    Label2: TLabel;
+    lblClassName: TLabel;
 
     edtClassName: TEdit;
 
@@ -88,9 +88,9 @@ procedure TfrmMain.FormCreate(Sender: TObject);
 
 begin
 
-  LabelStatus.Font.Color := $00CC6600;
+  lblStatus.Font.Color := $00CC6600;
 
-  LabelStatus.Caption := 'Ready';
+  lblStatus.Caption := 'Ready';
 
 end;
 
@@ -106,7 +106,7 @@ begin
 
   mmoPasOutput.Clear;
 
-  LabelStatus.Caption := '';
+  lblStatus.Caption := '';
 
 
 
@@ -114,9 +114,9 @@ begin
 
   begin
 
-    LabelStatus.Font.Color := clRed;
+    lblStatus.Font.Color := clRed;
 
-    LabelStatus.Caption := 'Erro: O JSON Schema não pode estar vazio.';
+    lblStatus.Caption := 'Erro: O JSON Schema n?o pode estar vazio.';
 
     Exit;
 
@@ -128,9 +128,9 @@ begin
 
   begin
 
-    LabelStatus.Font.Color := clRed;
+    lblStatus.Font.Color := clRed;
 
-    LabelStatus.Caption := 'Erro: Por favor, forneça um nome para a unit.';
+    lblStatus.Caption := 'Erro: Por favor, forne?a um nome para a unit.';
 
     Exit;
 
@@ -148,9 +148,9 @@ begin
 
     begin
 
-      LabelStatus.Font.Color := clRed;
+      lblStatus.Font.Color := clRed;
 
-      LabelStatus.Caption := 'Erro de parsing no JSON Schema: ' + E.Message;
+      lblStatus.Caption := 'Erro de parsing no JSON Schema: ' + E.Message;
 
       Exit;
 
@@ -164,9 +164,9 @@ begin
 
     mmoPasOutput.Text := GenerateClassFromSchema(LSchemaObj, edtClassName.Text, edtUnitName.Text);
 
-    LabelStatus.Font.Color := clGreen;
+    lblStatus.Font.Color := clGreen;
 
-    LabelStatus.Caption := 'Arquivo .pas gerado com sucesso!';
+    lblStatus.Caption := 'Arquivo .pas gerado com sucesso!';
 
   finally
 

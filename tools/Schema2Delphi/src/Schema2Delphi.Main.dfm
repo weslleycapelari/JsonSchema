@@ -34,7 +34,7 @@ object frmMain: TfrmMain
     Caption = 'pnlTopPanel'
     ShowCaption = False
     TabOrder = 0
-    object Label1: TLabel
+    object lblUnitName: TLabel
       Left = 6
       Top = 10
       Width = 77
@@ -48,7 +48,7 @@ object frmMain: TfrmMain
       Font.Style = []
       ParentFont = False
     end
-    object Label2: TLabel
+    object lblClassName: TLabel
       Left = 6
       Top = 39
       Width = 88
@@ -109,7 +109,7 @@ object frmMain: TfrmMain
     Caption = 'pnlStatusPanel'
     ShowCaption = False
     TabOrder = 1
-    object LabelStatus: TLabel
+    object lblStatus: TLabel
       Left = 0
       Top = 0
       Width = 884
@@ -138,7 +138,7 @@ object frmMain: TfrmMain
     Caption = 'pnlClient'
     ShowCaption = False
     TabOrder = 2
-    object spl1: TSplitter
+    object splMain: TSplitter
       Left = 430
       Top = 0
       Width = 5

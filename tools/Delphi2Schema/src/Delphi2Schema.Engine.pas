@@ -255,17 +255,17 @@ begin
     begin
       for lField in pType.GetFields do
       begin
-        if HasIgnoreAttribute(lField) or not Assigned(lField.FieldType) then
-          Continue;
+        if not HasIgnoreAttribute(lField) and Assigned(lField.FieldType) then
+        begin
+          lSub := ProcessType(lField.FieldType);
+          lRequired := False;
+          ApplyAttributes(lField, lSub, lRequired);
 
-        lSub := ProcessType(lField.FieldType);
-        lRequired := False;
-        ApplyAttributes(lField, lSub, lRequired);
+          if lRequired then
+            lReqs.Add(lField.Name);
 
-        if lRequired then
-          lReqs.Add(lField.Name);
-
-        lProps.AddPair(lField.Name, lSub);
+          lProps.AddPair(lField.Name, lSub);
+        end;
       end;
     end;
 
@@ -274,17 +274,17 @@ begin
     begin
       for lProp in pType.GetProperties do
       begin
-        if HasIgnoreAttribute(lProp) or not Assigned(lProp.PropertyType) then
-          Continue;
+        if not HasIgnoreAttribute(lProp) and Assigned(lProp.PropertyType) then
+        begin
+          lSub := ProcessType(lProp.PropertyType);
+          lRequired := False;
+          ApplyAttributes(lProp, lSub, lRequired);
 
-        lSub := ProcessType(lProp.PropertyType);
-        lRequired := False;
-        ApplyAttributes(lProp, lSub, lRequired);
+          if lRequired then
+            lReqs.Add(lProp.Name);
 
-        if lRequired then
-          lReqs.Add(lProp.Name);
-
-        lProps.AddPair(lProp.Name, lSub);
+          lProps.AddPair(lProp.Name, lSub);
+        end;
       end;
     end;
 

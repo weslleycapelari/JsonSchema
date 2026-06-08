@@ -57,7 +57,7 @@ begin
     Exit(0);
   end;
 
-  if not DirectoryExists(lConfig.InputPath) then
+  if not TDirectory.Exists(lConfig.InputPath) then
   begin
     Writeln(ErrOutput, 'Error: Test suite input directory does not exist at: ' + lConfig.InputPath);
     Exit(1);
