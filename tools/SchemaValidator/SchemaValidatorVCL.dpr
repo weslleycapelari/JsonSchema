@@ -15,7 +15,7 @@ uses
   SchemaValidator.Runner in 'src\SchemaValidator.Runner.pas',
   SchemaValidator.Utils in 'src\SchemaValidator.Utils.pas';
 
-// {$R *.res}
+{$R *.res}
 
 begin
   Application.Initialize;

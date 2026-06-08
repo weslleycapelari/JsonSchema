@@ -15,6 +15,8 @@ uses
   SchemaBundler.Engine in 'src\SchemaBundler.Engine.pas',
   SchemaBundler.Runner in 'src\SchemaBundler.Runner.pas';
 
+{$R *.res}
+
 begin
   try
     Halt(RunSchemaBundler);

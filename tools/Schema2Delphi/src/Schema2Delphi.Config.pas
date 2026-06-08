@@ -18,6 +18,7 @@ type
     OutputPath: string;
     ClassName: string;
     UnitName: string;
+    Quiet: Boolean;
     ShowHelp: Boolean;
   end;
 
@@ -36,14 +37,17 @@ function ParseArgumentsEx(const pArgs: TArray<string>): TConfig;
 var
   lI: Integer;
   lArg: string;
+  lPositionalCount: Integer;
 begin
   Result.SchemaPath := '';
   Result.OutputPath := '';
   Result.ClassName := '';
   Result.UnitName := '';
+  Result.Quiet := False;
   Result.ShowHelp := False;
 
   lI := 0;
+  lPositionalCount := 0;
   while lI < Length(pArgs) do
   begin
     lArg := pArgs[lI];
@@ -52,7 +56,7 @@ begin
     begin
       Result.ShowHelp := True;
       Exit;
-    end else if SameText(lArg, '-s') or SameText(lArg, '--schema') then
+    end else if SameText(lArg, '-i') or SameText(lArg, '--input') or SameText(lArg, '-s') or SameText(lArg, '--schema') then
     begin
       Inc(lI);
       if lI < Length(pArgs) then
@@ -72,6 +76,14 @@ begin
       Inc(lI);
       if lI < Length(pArgs) then
         Result.UnitName := pArgs[lI];
+    end else if SameText(lArg, '--quiet') then
+    begin
+      Result.Quiet := True;
+    end else if not lArg.StartsWith('-') then
+    begin
+      if lPositionalCount = 0 then
+        Result.SchemaPath := lArg;
+      Inc(lPositionalCount);
     end;
 
     Inc(lI);

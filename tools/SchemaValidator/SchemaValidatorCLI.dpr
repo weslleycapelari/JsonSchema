@@ -16,6 +16,8 @@ uses
   SchemaValidator.Formatters in 'src\SchemaValidator.Formatters.pas',
   SchemaValidator.Runner in 'src\SchemaValidator.Runner.pas';
 
+{$R *.res}
+
 begin
   try
     Halt(RunSchemaValidator);

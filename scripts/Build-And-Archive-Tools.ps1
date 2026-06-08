@@ -129,7 +129,7 @@ foreach ($tool in $tools) {
 
   # Run MSBuild
   Write-Host "Running MSBuild command..." -ForegroundColor Gray
-  & cmd.exe /c "call `"$rsvarsPath`" && msbuild `"$groupProj`" /p:DCC_UseMSBuildExternally=true /p:Config=Release /p:Platform=Win32"
+  & cmd.exe /c "call `"$rsvarsPath`" && msbuild `"$groupProj`" /p:DCC_UseMSBuildExternally=true /p:Config=Release /p:Platform=Win64"
 
   if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to compile $toolName. Check MSBuild output above."

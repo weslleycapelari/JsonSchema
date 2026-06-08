@@ -15,6 +15,8 @@ uses
   Schema2Doc.Engine in 'src\Schema2Doc.Engine.pas',
   Schema2Doc.Runner in 'src\Schema2Doc.Runner.pas';
 
+{$R *.res}
+
 begin
   try
     Halt(RunSchema2Doc);

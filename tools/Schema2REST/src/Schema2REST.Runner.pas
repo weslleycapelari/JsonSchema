@@ -25,14 +25,16 @@ begin
   Writeln(ErrOutput, 'Schema2REST - JSON Schema REST Router/Controller Generator');
   Writeln(ErrOutput);
   Writeln(ErrOutput, 'Usage:');
-  Writeln(ErrOutput, '  Schema2RESTCLI -s <schema_path> [-f <framework>] [-o <output_path>] [options]');
+  Writeln(ErrOutput, '  Schema2RESTCLI -i <schema_path> -o <output_path> [options]');
+  Writeln(ErrOutput, '  Schema2RESTCLI <schema_path> -o <output_path> [options]');
   Writeln(ErrOutput);
   Writeln(ErrOutput, 'Options:');
-  Writeln(ErrOutput, '  -s, --schema    Path to the input JSON Schema file (Required).');
-  Writeln(ErrOutput, '  -f, --framework Target REST framework: Horse, DMVC (default: Horse).');
-  Writeln(ErrOutput, '  -o, --output    Path to save the generated Delphi unit .pas file (Stdout if omitted).');
-  Writeln(ErrOutput, '  -e, --entity    Custom entity/unit name (defaults to schema title).');
-  Writeln(ErrOutput, '  -h, --help      Display this help manual.');
+  Writeln(ErrOutput, '  -i, --input, -s, --schema   Path to the input JSON Schema file (Required).');
+  Writeln(ErrOutput, '  -f, --framework             Target REST framework: Horse, DMVC (default: Horse).');
+  Writeln(ErrOutput, '  -o, --output                Path to save the generated Delphi unit .pas file (Stdout if omitted).');
+  Writeln(ErrOutput, '  -e, --entity                Custom entity/unit name (defaults to schema title).');
+  Writeln(ErrOutput, '  --quiet                     Modo silencioso. Suprime saídas informativas.');
+  Writeln(ErrOutput, '  -h, --help                  Display this help manual.');
   Writeln(ErrOutput);
 end;
 
@@ -45,12 +47,18 @@ var
   lFrameworkType: TRESTFramework;
   lPascalOutput: string;
 begin
-  Result := 2;
+  Result := 1; // Default to error
   lConfig := ParseCommandLine;
 
   if lConfig.ShowHelp or (lConfig.SchemaPath = '') then
   begin
     PrintUsage;
+    if not lConfig.ShowHelp then
+    begin
+      Writeln(ErrOutput, 'Error: Missing required option: -i/--input or -s/--schema');
+      Exit;
+    end;
+    Result := 0;
     Exit;
   end;
 
@@ -83,7 +91,8 @@ begin
         if lConfig.OutputPath <> '' then
         begin
           TFile.WriteAllText(lConfig.OutputPath, lPascalOutput, TEncoding.UTF8);
-          Writeln(ErrOutput, 'Delphi REST unit written successfully to: ' + lConfig.OutputPath);
+          if not lConfig.Quiet then
+            Writeln(ErrOutput, 'Delphi REST unit written successfully to: ' + lConfig.OutputPath);
         end
         else
         begin
@@ -101,7 +110,7 @@ begin
     on E: Exception do
     begin
       Writeln(ErrOutput, 'Execution failed: ' + E.Message);
-      Result := 2;
+      Result := 1;
     end;
   end;
 end;

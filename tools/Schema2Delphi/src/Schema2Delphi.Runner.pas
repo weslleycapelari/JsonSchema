@@ -19,7 +19,7 @@ uses
 procedure PrintUsage;
 
 /// <summary>Runs the Schema2Delphi CLI generator workflow.</summary>
-/// <returns>Exit code: 0 for success, 2 for errors.</returns>
+/// <returns>Exit code: 0 for success, 1 for errors.</returns>
 function RunSchema2Delphi: Integer;
 
 implementation
@@ -29,14 +29,16 @@ begin
   Writeln(ErrOutput, 'Schema2Delphi - JSON Schema to Delphi DTO Code Generator');
   Writeln(ErrOutput);
   Writeln(ErrOutput, 'Usage:');
-  Writeln(ErrOutput, '  Schema2Delphi -s <schema_path> -o <output_path> [options]');
+  Writeln(ErrOutput, '  Schema2Delphi -i <schema_path> -o <output_path> [options]');
+  Writeln(ErrOutput, '  Schema2Delphi <schema_path> -o <output_path> [options]');
   Writeln(ErrOutput);
   Writeln(ErrOutput, 'Options:');
-  Writeln(ErrOutput, '  -s, --schema      Path to the JSON Schema file (Required).');
-  Writeln(ErrOutput, '  -o, --output      Path to save the generated Delphi unit file (Required).');
-  Writeln(ErrOutput, '  -c, --classname   Name of the generated root class (Optional. Default: inferred).');
-  Writeln(ErrOutput, '  -u, --unitname    Name of the generated Delphi unit (Optional. Default: inferred).');
-  Writeln(ErrOutput, '  -h, --help        Display this help manual.');
+  Writeln(ErrOutput, '  -i, --input, -s, --schema   Path to the JSON Schema file (Required).');
+  Writeln(ErrOutput, '  -o, --output                Path to save the generated Delphi unit file (Required).');
+  Writeln(ErrOutput, '  -c, --classname             Name of the generated root class (Optional. Default: inferred).');
+  Writeln(ErrOutput, '  -u, --unitname              Name of the generated Delphi unit (Optional. Default: inferred).');
+  Writeln(ErrOutput, '  --quiet                     Modo silencioso. Suprime saídas informativas.');
+  Writeln(ErrOutput, '  -h, --help                  Display this help manual.');
   Writeln(ErrOutput);
 end;
 
@@ -50,7 +52,7 @@ var
   lGeneratedCode: string;
   lOutFile: TStringList;
 begin
-  Result := 2; // Default to error
+  Result := 1; // Default to error exit code (1 is used for any failure: parameters, validation, file errors)
   lConfig := ParseArguments;
 
   if lConfig.ShowHelp or lConfig.SchemaPath.IsEmpty or lConfig.OutputPath.IsEmpty then
@@ -59,7 +61,7 @@ begin
     if not lConfig.ShowHelp then
     begin
       if lConfig.SchemaPath.IsEmpty then
-        Writeln(ErrOutput, 'Error: Missing required option: -s/--schema');
+        Writeln(ErrOutput, 'Error: Missing required option: -i/--input or -s/--schema');
       if lConfig.OutputPath.IsEmpty then
         Writeln(ErrOutput, 'Error: Missing required option: -o/--output');
     end;
@@ -92,7 +94,8 @@ begin
   lSchemaObj := TJSONObject.ParseJSONValue(lSchemaStr);
   if not Assigned(lSchemaObj) or not (lSchemaObj is TJSONObject) then
   begin
-    lSchemaObj.Free;
+    if Assigned(lSchemaObj) then
+      lSchemaObj.Free;
     Writeln(ErrOutput, 'Error: Schema is not a valid JSON Object.');
     Exit;
   end;
@@ -140,11 +143,14 @@ begin
     finally
       lOutFile.Free;
     end;
+    if not lConfig.Quiet then
+      Writeln(ErrOutput, 'Delphi DTO unit generated successfully at: ' + lConfig.OutputPath);
     Result := 0;
   except
     on E: Exception do
     begin
       Writeln(ErrOutput, Format('Error saving output file: %s', [E.Message]));
+      Result := 1;
     end;
   end;
 

@@ -2,7 +2,7 @@ object frmMain: TfrmMain
   Left = 0
   Top = 0
   Caption = 'Schema2REST - JSON Schema to Delphi REST Endpoint Generator'
-  ClientHeight = 561
+  ClientHeight = 600
   ClientWidth = 884
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -12,32 +12,47 @@ object frmMain: TfrmMain
   Font.Style = []
   Position = poScreenCenter
   OnCreate = FormCreate
-  PixelsPerInch = 96
   TextHeight = 15
   object splSplitter: TSplitter
     Left = 380
-    Top = 0
+    Top = 4
     Width = 5
-    Height = 531
-    Cursor = crHSplit
+    Height = 566
+  end
+  object pnlBrandBar: TPanel
+    Left = 0
+    Top = 0
+    Width = 884
+    Height = 4
+    Align = alTop
+    BevelOuter = bvNone
+    Color = 13395456
+    ParentBackground = False
+    TabOrder = 3
   end
   object pnlLeft: TPanel
     Left = 0
-    Top = 0
+    Top = 4
     Width = 380
-    Height = 531
+    Height = 566
     Align = alLeft
     BevelOuter = bvNone
     TabOrder = 0
     DesignSize = (
       380
-      531)
+      566)
     object lblFramework: TLabel
       Left = 16
       Top = 16
-      Width = 63
+      Width = 62
       Height = 15
       Caption = 'Framework:'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = 13395456
+      Font.Height = -12
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
     end
     object lblEntityName: TLabel
       Left = 16
@@ -45,13 +60,25 @@ object frmMain: TfrmMain
       Width = 68
       Height = 15
       Caption = 'Entity Name:'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = 13395456
+      Font.Height = -12
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
     end
     object lblSchemaInput: TLabel
       Left = 16
       Top = 88
-      Width = 104
+      Width = 107
       Height = 15
       Caption = 'Input JSON Schema:'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = 13395456
+      Font.Height = -12
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
     end
     object cboFramework: TComboBox
       Left = 120
@@ -75,7 +102,7 @@ object frmMain: TfrmMain
       Left = 16
       Top = 112
       Width = 348
-      Height = 401
+      Height = 436
       Anchors = [akLeft, akTop, akRight, akBottom]
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
@@ -88,26 +115,58 @@ object frmMain: TfrmMain
       WordWrap = False
     end
   end
-  object pnlRight: TPanel
-    Left = 385
-    Top = 0
-    Width = 499
-    Height = 531
-    Align = alClient
+  object pnlStatus: TPanel
+    Left = 0
+    Top = 570
+    Width = 884
+    Height = 30
+    Align = alBottom
+    Alignment = taLeftJustify
     BevelOuter = bvNone
     TabOrder = 1
+    object lblStatus: TLabel
+      Left = 16
+      Top = 8
+      Width = 32
+      Height = 15
+      Caption = 'Ready'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = 13395456
+      Font.Height = -12
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
+    end
+  end
+  object pnlRight: TPanel
+    Left = 385
+    Top = 4
+    Width = 499
+    Height = 566
+    Align = alClient
+    BevelOuter = bvNone
+    TabOrder = 2
+    DesignSize = (
+      499
+      566)
     object lblPascalOutput: TLabel
       Left = 16
       Top = 16
-      Width = 126
+      Width = 124
       Height = 15
       Caption = 'Generated Pascal Code:'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = 13395456
+      Font.Height = -12
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
     end
     object mmoPascalOutput: TMemo
       Left = 16
       Top = 45
       Width = 467
-      Height = 422
+      Height = 457
       Anchors = [akLeft, akTop, akRight, akBottom]
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
@@ -122,15 +181,12 @@ object frmMain: TfrmMain
     end
     object pnlButtons: TPanel
       Left = 0
-      Top = 481
+      Top = 516
       Width = 499
       Height = 50
       Align = alBottom
       BevelOuter = bvNone
       TabOrder = 1
-      DesignSize = (
-        499
-        50)
       object btnGenerate: TButton
         Left = 16
         Top = 10
@@ -164,23 +220,6 @@ object frmMain: TfrmMain
         TabOrder = 2
         OnClick = btnExportClick
       end
-    end
-  end
-  object pnlStatus: TPanel
-    Left = 0
-    Top = 531
-    Width = 884
-    Height = 30
-    Align = alBottom
-    Alignment = taLeftJustify
-    BevelOuter = bvNone
-    TabOrder = 2
-    object lblStatus: TLabel
-      Left = 16
-      Top = 8
-      Width = 32
-      Height = 15
-      Caption = 'Ready'
     end
   end
   object dlgSave: TSaveDialog

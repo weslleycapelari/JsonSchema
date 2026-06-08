@@ -19,19 +19,21 @@ implementation
 
 procedure ShowHelpMessage;
 begin
-  Writeln('Schema2Doc - JSON Schema Documentation Generator');
-  Writeln('Generates clean, human-readable Markdown or HTML tables from JSON Schema.');
-  Writeln;
-  Writeln('Usage:');
-  Writeln('  Schema2DocCLI.exe -s <schema_path> [-o <output_path>] [-f <format>] [-t <title>]');
-  Writeln;
-  Writeln('Options:');
-  Writeln('  -s, --schema     Path to the input JSON Schema file (required)');
-  Writeln('  -o, --output     Path to save the generated documentation (prints to stdout if omitted)');
-  Writeln('  -f, --format     Output format: markdown (default) or html');
-  Writeln('  -t, --title      Override default document title');
-  Writeln('  -h, --help       Display this help documentation');
-  Writeln;
+  Writeln(ErrOutput, 'Schema2Doc - JSON Schema Documentation Generator');
+  Writeln(ErrOutput, 'Generates clean, human-readable Markdown or HTML tables from JSON Schema.');
+  Writeln(ErrOutput);
+  Writeln(ErrOutput, 'Usage:');
+  Writeln(ErrOutput, '  Schema2DocCLI.exe -i <schema_path> -o <output_path> [options]');
+  Writeln(ErrOutput, '  Schema2DocCLI.exe <schema_path> -o <output_path> [options]');
+  Writeln(ErrOutput);
+  Writeln(ErrOutput, 'Options:');
+  Writeln(ErrOutput, '  -i, --input, -s, --schema   Path to the input JSON Schema file (required)');
+  Writeln(ErrOutput, '  -o, --output                Path to save the generated documentation (prints to stdout if omitted)');
+  Writeln(ErrOutput, '  -f, --format                Output format: markdown (default) or html');
+  Writeln(ErrOutput, '  -t, --title                 Override default document title');
+  Writeln(ErrOutput, '  --quiet                     Modo silencioso. Suprime saídas informativas.');
+  Writeln(ErrOutput, '  -h, --help                  Display this help documentation');
+  Writeln(ErrOutput);
 end;
 
 function RunSchema2Doc: Integer;
@@ -44,19 +46,25 @@ var
   lOptions: TSchema2DocOptions;
   lDocOutput: string;
 begin
-  Result := 0;
+  Result := 1; // Default to error
   lConfig := ParseCommandLine;
 
   if lConfig.ShowHelp or (lConfig.SchemaPath = '') then
   begin
     ShowHelpMessage;
-    Exit(0);
+    if not lConfig.ShowHelp then
+    begin
+      Writeln(ErrOutput, 'Error: Missing required option: -i/--input or -s/--schema');
+      Exit;
+    end;
+    Result := 0;
+    Exit;
   end;
 
   if not FileExists(lConfig.SchemaPath) then
   begin
     Writeln(ErrOutput, 'Error: Schema file does not exist at: ' + lConfig.SchemaPath);
-    Exit(1);
+    Exit;
   end;
 
   try
@@ -65,7 +73,7 @@ begin
     on E: Exception do
     begin
       Writeln(ErrOutput, 'Error reading schema file: ' + E.Message);
-      Exit(1);
+      Exit;
     end;
   end;
 
@@ -75,7 +83,7 @@ begin
     if Assigned(lJSONVal) then
       lJSONVal.Free;
     Writeln(ErrOutput, 'Error: Input file is not a valid JSON Object.');
-    Exit(1);
+    Exit;
   end;
 
   lSchemaObj := TJSONObject(lJSONVal);
@@ -94,17 +102,21 @@ begin
       begin
         try
           TFile.WriteAllText(lConfig.OutputPath, lDocOutput, TEncoding.UTF8);
+          if not lConfig.Quiet then
+            Writeln(ErrOutput, 'Documentation generated successfully at: ' + lConfig.OutputPath);
+          Result := 0;
         except
           on E: Exception do
           begin
             Writeln(ErrOutput, 'Error writing documentation output: ' + E.Message);
-            Exit(1);
+            Exit;
           end;
         end;
       end
       else
       begin
         Writeln(lDocOutput);
+        Result := 0;
       end;
     finally
       lGenerator.Free;

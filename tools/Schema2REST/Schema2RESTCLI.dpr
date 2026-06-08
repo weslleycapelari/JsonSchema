@@ -16,6 +16,8 @@ uses
   Schema2REST.Engine in 'src\Schema2REST.Engine.pas',
   Schema2REST.Runner in 'src\Schema2REST.Runner.pas';
 
+{$R *.res}
+
 begin
   try
     Halt(RunSchema2REST);

@@ -14,33 +14,40 @@ uses
   System.Classes,
   JsonSchema.Core.Interfaces;
 
-/// <summary>Outputs validation errors in plain text format.</summary>
+/// <summary>Formats validation errors in plain text format.</summary>
 /// <param name="pResult">The validation result containing errors.</param>
-procedure PrintErrorsText(pResult: IValidationResult);
+function FormatErrorsText(pResult: IValidationResult): string;
 
-/// <summary>Outputs validation errors in structured JSON format.</summary>
+/// <summary>Formats validation errors in structured JSON format.</summary>
 /// <param name="pResult">The validation result containing errors.</param>
-procedure PrintErrorsJson(pResult: IValidationResult);
+function FormatErrorsJson(pResult: IValidationResult): string;
 
-/// <summary>Outputs validation errors in JUnit XML testsuite format.</summary>
+/// <summary>Formats validation errors in JUnit XML testsuite format.</summary>
 /// <param name="pResult">The validation result containing errors.</param>
 /// <param name="pInstanceName">The name/file of the instance validated.</param>
-procedure PrintErrorsJUnit(pResult: IValidationResult; const pInstanceName: string);
+function FormatErrorsJUnit(pResult: IValidationResult; const pInstanceName: string): string;
 
 implementation
 
-procedure PrintErrorsText(pResult: IValidationResult);
+function FormatErrorsText(pResult: IValidationResult): string;
 var
   lError: IValidationError;
+  lSb: TStringBuilder;
 begin
-  Writeln(Format('Validation failed! %d error(s) found:', [Length(pResult.Errors)]));
-  for lError in pResult.Errors do
-  begin
-    Writeln(Format('[Keyword: %s] %s (Resolution: %s)', [lError.Keyword, lError.Message, lError.Resolution]));
+  lSb := TStringBuilder.Create;
+  try
+    lSb.AppendLine(Format('Validation failed! %d error(s) found:', [Length(pResult.Errors)]));
+    for lError in pResult.Errors do
+    begin
+      lSb.AppendLine(Format('[Keyword: %s] %s (Resolution: %s)', [lError.Keyword, lError.Message, lError.Resolution]));
+    end;
+    Result := lSb.ToString;
+  finally
+    lSb.Free;
   end;
 end;
 
-procedure PrintErrorsJson(pResult: IValidationResult);
+function FormatErrorsJson(pResult: IValidationResult): string;
 var
   lArray: TJSONArray;
   lObj: TJSONObject;
@@ -58,40 +65,47 @@ begin
       lObj.AddPair('resolution', lError.Resolution);
       lArray.AddElement(lObj);
     end;
-    Writeln(lArray.ToJSON);
+    Result := lArray.ToJSON;
   finally
     lArray.Free;
   end;
 end;
 
-procedure PrintErrorsJUnit(pResult: IValidationResult; const pInstanceName: string);
+function FormatErrorsJUnit(pResult: IValidationResult; const pInstanceName: string): string;
 var
   lError: IValidationError;
   lFailureMsg: TStringBuilder;
+  lSb: TStringBuilder;
 begin
-  Writeln('<?xml version="1.0" encoding="UTF-8"?>');
-  if pResult.IsValid then
-  begin
-    Writeln('<testsuite name="JSON Schema Validation" tests="1" failures="0" errors="0" time="0.00">');
-    Writeln(Format('  <testcase name="Validate %s" classname="SchemaValidatorCLI" time="0.00"/>', [pInstanceName]));
-    Writeln('</testsuite>');
-  end else
-  begin
-    Writeln(Format('<testsuite name="JSON Schema Validation" tests="1" failures="1" errors="0" time="0.00">', []));
-    Writeln(Format('  <testcase name="Validate %s" classname="SchemaValidatorCLI" time="0.00">', [pInstanceName]));
-    lFailureMsg := TStringBuilder.Create;
-    try
-      lFailureMsg.AppendLine(Format('Validation failed. %d error(s) found:', [Length(pResult.Errors)]));
-      for lError in pResult.Errors do
-      begin
-        lFailureMsg.AppendLine(Format('  - [Keyword: %s] %s', [lError.Keyword, lError.Message]));
+  lSb := TStringBuilder.Create;
+  try
+    lSb.AppendLine('<?xml version="1.0" encoding="UTF-8"?>');
+    if pResult.IsValid then
+    begin
+      lSb.AppendLine('<testsuite name="JSON Schema Validation" tests="1" failures="0" errors="0" time="0.00">');
+      lSb.AppendLine(Format('  <testcase name="Validate %s" classname="SchemaValidatorCLI" time="0.00"/>', [pInstanceName]));
+      lSb.AppendLine('</testsuite>');
+    end else
+    begin
+      lSb.AppendLine('<testsuite name="JSON Schema Validation" tests="1" failures="1" errors="0" time="0.00">');
+      lSb.AppendLine(Format('  <testcase name="Validate %s" classname="SchemaValidatorCLI" time="0.00">', [pInstanceName]));
+      lFailureMsg := TStringBuilder.Create;
+      try
+        lFailureMsg.AppendLine(Format('Validation failed. %d error(s) found:', [Length(pResult.Errors)]));
+        for lError in pResult.Errors do
+        begin
+          lFailureMsg.AppendLine(Format('  - [Keyword: %s] %s', [lError.Keyword, lError.Message]));
+        end;
+        lSb.AppendLine(Format('    <failure message="Validation failed. %d error(s) found."><![CDATA[%s]]></failure>', [Length(pResult.Errors), lFailureMsg.ToString]));
+      finally
+        lFailureMsg.Free;
       end;
-      Writeln(Format('    <failure message="Validation failed. %d error(s) found."><![CDATA[%s]]></failure>', [Length(pResult.Errors), lFailureMsg.ToString]));
-    finally
-      lFailureMsg.Free;
+      lSb.AppendLine('  </testcase>');
+      lSb.AppendLine('</testsuite>');
     end;
-    Writeln('  </testcase>');
-    Writeln('</testsuite>');
+    Result := lSb.ToString;
+  finally
+    lSb.Free;
   end;
 end;
 

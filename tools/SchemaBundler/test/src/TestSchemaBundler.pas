@@ -38,6 +38,9 @@ type
 
     /// <summary>Tests CLI packaging tool execution.</summary>
     procedure TestCLIExecution;
+
+    /// <summary>Tests parser command line configurations.</summary>
+    procedure TestParseArguments;
   end;
 
 implementation
@@ -348,6 +351,39 @@ begin
   finally
     lJSON.Free;
   end;
+end;
+
+procedure TTestSchemaBundler.TestParseArguments;
+var
+  lConfig: TSchemaBundlerConfig;
+begin
+  lConfig := ParseCommandLineEx([]);
+  CheckEquals('', lConfig.InputPath);
+  CheckEquals('', lConfig.OutputPath);
+  CheckFalse(lConfig.UseLegacy);
+  CheckFalse(lConfig.Minify);
+  CheckFalse(lConfig.Quiet);
+  CheckFalse(lConfig.ShowHelp);
+
+  lConfig := ParseCommandLineEx(['-i', 'schema.json', '-o', 'out.json', '--legacy', '--minify', '--quiet']);
+  CheckEquals('schema.json', lConfig.InputPath);
+  CheckEquals('out.json', lConfig.OutputPath);
+  CheckTrue(lConfig.UseLegacy);
+  CheckTrue(lConfig.Minify);
+  CheckTrue(lConfig.Quiet);
+
+  // Synonyms
+  lConfig := ParseCommandLineEx(['-s', 'schema.json', '--output', 'out.json']);
+  CheckEquals('schema.json', lConfig.InputPath);
+  CheckEquals('out.json', lConfig.OutputPath);
+
+  lConfig := ParseCommandLineEx(['--schema', 'schema.json']);
+  CheckEquals('schema.json', lConfig.InputPath);
+
+  // Fallback Positional Parameter
+  lConfig := ParseCommandLineEx(['schema.json', '-o', 'out.json']);
+  CheckEquals('schema.json', lConfig.InputPath);
+  CheckEquals('out.json', lConfig.OutputPath);
 end;
 
 initialization

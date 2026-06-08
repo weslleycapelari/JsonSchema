@@ -31,6 +31,9 @@ type
 
     /// <summary>Tests CLI execution with schema input file.</summary>
     procedure TestCLIExecution;
+
+    /// <summary>Tests parser command line configurations.</summary>
+    procedure TestParseArguments;
   end;
 
 implementation
@@ -248,6 +251,38 @@ begin
   finally
     DeleteTempFile(lTempFile);
   end;
+end;
+
+procedure TTestSchema2Doc.TestParseArguments;
+var
+  lConfig: TSchema2DocConfig;
+begin
+  lConfig := ParseCommandLineEx([]);
+  CheckEquals('', lConfig.SchemaPath);
+  CheckEquals('', lConfig.OutputPath);
+  CheckEquals('markdown', lConfig.Format);
+  CheckEquals('', lConfig.TitleOverride);
+  CheckFalse(lConfig.Quiet);
+  CheckFalse(lConfig.ShowHelp);
+
+  lConfig := ParseCommandLineEx(['-s', 'schema.json', '-o', 'out.md', '-f', 'html', '-t', 'Title', '--quiet']);
+  CheckEquals('schema.json', lConfig.SchemaPath);
+  CheckEquals('out.md', lConfig.OutputPath);
+  CheckEquals('html', lConfig.Format);
+  CheckEquals('Title', lConfig.TitleOverride);
+  CheckTrue(lConfig.Quiet);
+
+  // Synonyms
+  lConfig := ParseCommandLineEx(['-i', 'schema.json', '--output', 'out.md', '--format', 'html', '--title', 'Title']);
+  CheckEquals('schema.json', lConfig.SchemaPath);
+  CheckEquals('out.md', lConfig.OutputPath);
+  CheckEquals('html', lConfig.Format);
+  CheckEquals('Title', lConfig.TitleOverride);
+
+  // Fallback Positional Parameter
+  lConfig := ParseCommandLineEx(['schema.json', '-o', 'out.md']);
+  CheckEquals('schema.json', lConfig.SchemaPath);
+  CheckEquals('out.md', lConfig.OutputPath);
 end;
 
 initialization

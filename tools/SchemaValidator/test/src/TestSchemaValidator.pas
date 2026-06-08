@@ -73,7 +73,11 @@ begin
   pStdout := '';
   pStderr := '';
 
-  lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\SchemaValidatorCLI.exe');
+  lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\..\.bin\SchemaValidatorCLI.exe');
+  if not FileExists(lExePath) then
+    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\..\SchemaValidatorCLI.exe');
+  if not FileExists(lExePath) then
+    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\SchemaValidatorCLI.exe');
   if not FileExists(lExePath) then
     lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\SchemaValidatorCLI.exe');
   if not FileExists(lExePath) then
@@ -193,7 +197,7 @@ begin
   CheckFalse(lConfig.ShowHelp, 'ShowHelp should default to False');
 
   // Custom values check
-  lConfig := ParseArgumentsEx(['-s', 'my_schema.json', '-i', 'my_instance.json', '-d', '7', '-l', 'pt', '-f', 'json', '--no-format']);
+  lConfig := ParseArgumentsEx(['-s', 'my_schema.json', '-j', 'my_instance.json', '-d', '7', '-l', 'pt', '-f', 'json', '--no-format']);
   CheckEquals('my_schema.json', lConfig.SchemaPath);
   CheckEquals('my_instance.json', lConfig.InstancePath);
   Check(lConfig.ForceDraft, 'Should force draft');
@@ -261,7 +265,7 @@ begin
   CreateTempFile('{"type": "object", "properties": {"age": {"type": "integer"}}}', lSchemaPath);
   CreateTempFile('{"age": 30}', lInstancePath);
   try
-    lExitCode := RunCLI(Format('-s "%s" -i "%s"', [lSchemaPath, lInstancePath]), lStdout, lStderr);
+    lExitCode := RunCLI(Format('-s "%s" -j "%s"', [lSchemaPath, lInstancePath]), lStdout, lStderr);
     CheckEquals(0, lExitCode, 'Exit code should be 0 on validation success');
     Check(lStdout.Contains('Validation succeeded'), 'Stdout should report success');
   finally
@@ -280,17 +284,17 @@ begin
   CreateTempFile('{"age": "thirty"}', lInstancePath);
   try
     // Text format test
-    lExitCode := RunCLI(Format('-s "%s" -i "%s"', [lSchemaPath, lInstancePath]), lStdout, lStderr);
+    lExitCode := RunCLI(Format('-s "%s" -j "%s"', [lSchemaPath, lInstancePath]), lStdout, lStderr);
     CheckEquals(1, lExitCode, 'Exit code should be 1 on validation failure');
     Check(lStdout.Contains('Validation failed'), 'Stdout should report failure');
 
     // JSON format test
-    lExitCode := RunCLI(Format('-s "%s" -i "%s" -f json', [lSchemaPath, lInstancePath]), lStdout, lStderr);
+    lExitCode := RunCLI(Format('-s "%s" -j "%s" -f json', [lSchemaPath, lInstancePath]), lStdout, lStderr);
     CheckEquals(1, lExitCode);
     Check(lStdout.StartsWith('['), 'JSON output should be a JSON array');
 
     // JUnit format test
-    lExitCode := RunCLI(Format('-s "%s" -i "%s" -f junit', [lSchemaPath, lInstancePath]), lStdout, lStderr);
+    lExitCode := RunCLI(Format('-s "%s" -j "%s" -f junit', [lSchemaPath, lInstancePath]), lStdout, lStderr);
     CheckEquals(1, lExitCode);
     Check(lStdout.Contains('<testsuite') and lStdout.Contains('<failure'), 'JUnit output should contain tags');
   finally
@@ -305,16 +309,16 @@ var
   lExitCode: Integer;
   lSchemaPath: string;
 begin
-  // Missing parameter schema (exit code 2)
+  // Missing parameter schema (exit code 1)
   lExitCode := RunCLI('', lStdout, lStderr);
-  CheckEquals(2, lExitCode);
+  CheckEquals(1, lExitCode);
   Check(lStderr.Contains('Usage') or lStderr.Contains('Missing required option'), 'Usage error message on stderr');
 
   // Invalid JSON schema file
   CreateTempFile('{invalid_json}', lSchemaPath);
   try
-    lExitCode := RunCLI(Format('-s "%s" -i "%s"', [lSchemaPath, lSchemaPath]), lStdout, lStderr);
-    CheckEquals(2, lExitCode, 'Exit code should be 2 for invalid JSON structure');
+    lExitCode := RunCLI(Format('-s "%s" -j "%s"', [lSchemaPath, lSchemaPath]), lStdout, lStderr);
+    CheckEquals(1, lExitCode, 'Exit code should be 1 for invalid JSON structure');
     Check(lStderr.Contains('Error:'), 'Stderr should contain error message');
   finally
     DeleteTempFile(lSchemaPath);

@@ -11,6 +11,7 @@ interface
 uses
   System.JSON,
   System.SysUtils,
+  System.Classes,
   SchemaValidator.Config,
   SchemaValidator.Formatters,
   SchemaValidator.Utils,
@@ -21,7 +22,7 @@ uses
 procedure PrintUsage;
 
 /// <summary>Runs the schema validator CLI workflow.</summary>
-/// <returns>Exit code: 0 for valid, 1 for invalid, 2 for parsing/runtime errors.</returns>
+/// <returns>Exit code: 0 for valid, 1 for invalid/errors.</returns>
 function RunSchemaValidator: Integer;
 
 implementation
@@ -31,18 +32,45 @@ begin
   Writeln(ErrOutput, 'SchemaValidator - JSON Schema CLI Validation Utility');
   Writeln(ErrOutput);
   Writeln(ErrOutput, 'Usage:');
-  Writeln(ErrOutput, '  SchemaValidator -s <schema_path> [-i <instance_path>] [options]');
+  Writeln(ErrOutput, '  SchemaValidator -i <schema_path> [-j <instance_path>] [options]');
+  Writeln(ErrOutput, '  SchemaValidator <schema_path> [<instance_path>] [options]');
   Writeln(ErrOutput);
   Writeln(ErrOutput, 'Options:');
-  Writeln(ErrOutput, '  -s, --schema      Path to the JSON Schema file (Required).');
-  Writeln(ErrOutput, '  -i, --instance    Path to the JSON Instance file (Optional. Reads from stdin if omitted).');
-  Writeln(ErrOutput, '  -d, --draft       Force schema draft version (6, 7, 2019-09, 2020-12).');
-  Writeln(ErrOutput, '                    Defaults to auto-detection from $schema, or 2020-12.');
-  Writeln(ErrOutput, '  -l, --locale      Locale for translated error messages (en, pt). Default: en.');
-  Writeln(ErrOutput, '  -f, --format      Output report format (text, json, junit). Default: text.');
-  Writeln(ErrOutput, '  --no-format       Disable schema format validation checks.');
-  Writeln(ErrOutput, '  -h, --help        Display this help manual.');
+  Writeln(ErrOutput, '  -i, --input, -s, --schema   Path to the JSON Schema file (Required).');
+  Writeln(ErrOutput, '  -j, --json, --instance      Path to the JSON Instance file (Optional. Reads from stdin if omitted).');
+  Writeln(ErrOutput, '  -o, --output <path>         Path to write the output report instead of stdout (Optional).');
+  Writeln(ErrOutput, '  -d, --draft <version>       Force schema draft version (6, 7, 2019-09, 2020-12).');
+  Writeln(ErrOutput, '                              Defaults to auto-detection from $schema, or 2020-12.');
+  Writeln(ErrOutput, '  -l, --locale <locale>       Locale for translated error messages (en, pt). Default: en.');
+  Writeln(ErrOutput, '  -f, --format <format>       Output report format (text, json, junit). Default: text.');
+  Writeln(ErrOutput, '  --no-format                 Disable schema format validation checks.');
+  Writeln(ErrOutput, '  --quiet                     Modo silencioso. Suprime saídas informativas.');
+  Writeln(ErrOutput, '  -h, --help                  Display this help manual.');
   Writeln(ErrOutput);
+end;
+
+procedure OutputResult(const pContent: string; const pOutputPath: string);
+var
+  lFileStream: TFileStream;
+  lWriter: TStreamWriter;
+begin
+  if pOutputPath.IsEmpty then
+  begin
+    Write(pContent);
+  end else
+  begin
+    lFileStream := TFileStream.Create(pOutputPath, fmCreate);
+    try
+      lWriter := TStreamWriter.Create(lFileStream, TEncoding.UTF8);
+      try
+        lWriter.Write(pContent);
+      finally
+        lWriter.Free;
+      end;
+    finally
+      lFileStream.Free;
+    end;
+  end;
 end;
 
 function RunSchemaValidator: Integer;
@@ -54,15 +82,16 @@ var
   lResult: IValidationResult;
   lDraft: TDraftVersion;
   lInstanceName: string;
+  lOutputText: string;
 begin
-  Result := 2; // Default to error exit code until validation completes
+  Result := 1; // Default to error exit code (1 is used for any failure: validation, missing params, file not found)
   lConfig := ParseArguments;
 
   if lConfig.ShowHelp or lConfig.SchemaPath.IsEmpty then
   begin
     PrintUsage;
     if lConfig.SchemaPath.IsEmpty and not lConfig.ShowHelp then
-      Writeln(ErrOutput, 'Error: Missing required option: -s/--schema');
+      Writeln(ErrOutput, 'Error: Missing required option: -i/--input or -s/--schema');
     Exit;
   end;
 
@@ -146,21 +175,35 @@ begin
     end;
 
     // --- STEP 4: Format Output ---
+    lOutputText := '';
     if lResult.IsValid then
     begin
       if lConfig.OutputFormat = ofJUnit then
-        PrintErrorsJUnit(lResult, lInstanceName)
-      else if lConfig.OutputFormat = ofText then
-        Writeln('Validation succeeded.');
+        lOutputText := FormatErrorsJUnit(lResult, lInstanceName)
+      else if (lConfig.OutputFormat = ofText) and (not lConfig.Quiet) then
+        lOutputText := 'Validation succeeded.' + sLineBreak;
       Result := 0;
     end else
     begin
       case lConfig.OutputFormat of
-        ofText: PrintErrorsText(lResult);
-        ofJson: PrintErrorsJson(lResult);
-        ofJUnit: PrintErrorsJUnit(lResult, lInstanceName);
+        ofText: lOutputText := FormatErrorsText(lResult);
+        ofJson: lOutputText := FormatErrorsJson(lResult);
+        ofJUnit: lOutputText := FormatErrorsJUnit(lResult, lInstanceName);
       end;
       Result := 1;
+    end;
+
+    if not lOutputText.IsEmpty then
+    begin
+      try
+        OutputResult(lOutputText, lConfig.OutputPath);
+      except
+        on E: Exception do
+        begin
+          Writeln(ErrOutput, Format('Error writing output report: %s', [E.Message]));
+          Result := 1;
+        end;
+      end;
     end;
   finally
     lValidator.Free;

@@ -7,11 +7,26 @@
         <Config Condition="'$(Config)'==''">Release</Config>
         <Platform Condition="'$(Platform)'==''">Win64</Platform>
         <ProjectName Condition="'$(ProjectName)'==''">Schema2DelphiCLI</ProjectName>
-        <TargetedPlatforms>3</TargetedPlatforms>
+        <TargetedPlatforms>135299</TargetedPlatforms>
         <AppType>Application</AppType>
         <MainSource>Schema2DelphiCLI.dpr</MainSource>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='Linux64' and '$(Base)'=='true') or '$(Base_Linux64)'!=''">
+        <Base_Linux64>true</Base_Linux64>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='OSX64' and '$(Base)'=='true') or '$(Base_OSX64)'!=''">
+        <Base_OSX64>true</Base_OSX64>
+        <CfgParent>Base</CfgParent>
+        <Base>true</Base>
+    </PropertyGroup>
+    <PropertyGroup Condition="('$(Platform)'=='OSXARM64' and '$(Base)'=='true') or '$(Base_OSXARM64)'!=''">
+        <Base_OSXARM64>true</Base_OSXARM64>
+        <CfgParent>Base</CfgParent>
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
@@ -76,23 +91,47 @@
         <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <DCC_UnitSearchPath>..\..\src;..\..\src\Core;..\..\src\Core\URI;..\..\src\Drafts;..\..\src\Keywords\Core;..\..\src\Keywords\Format;..\..\src\Keywords\Logicals;..\..\src\Keywords\Metadata;..\..\src\Keywords\Validations;..\..\src\Localization;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
     </PropertyGroup>
+    <PropertyGroup Condition="'$(Base_Linux64)'!=''">
+        <Debugger_Launcher>/usr/bin/gnome-terminal -- &quot;%debuggee%&quot;</Debugger_Launcher>
+        <Icon_MainIcon>..\..\images\icon-blue.ico</Icon_MainIcon>
+        <Manifest_File>(None)</Manifest_File>
+        <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base_OSX64)'!=''">
+        <Debugger_Launcher>/usr/X11/bin/xterm -e &quot;%debuggee%&quot;</Debugger_Launcher>
+        <Icon_MainIcon>..\..\images\icon-blue.ico</Icon_MainIcon>
+        <Manifest_File>(None)</Manifest_File>
+        <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
+    </PropertyGroup>
+    <PropertyGroup Condition="'$(Base_OSXARM64)'!=''">
+        <Debugger_Launcher>/usr/X11/bin/xterm -e &quot;%debuggee%&quot;</Debugger_Launcher>
+        <Icon_MainIcon>..\..\images\icon-blue.ico</Icon_MainIcon>
+        <Manifest_File>(None)</Manifest_File>
+        <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
+    </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_UsePackage>ACBr_BPeDabpeESCPOS;ACBr_ONE;rbRTL2229;dxPScxExtCommonRS29;RVMathD12;ReportWorkshopD12;dxRichEditControlCoreRS29;SCPI;RVHunSpellPkgD12;vclie;ACBr_OpenSSL;bindengine;IndyIPCommon;FMX_FlexCel_Components;rbCIDE2229;cxVerticalGridRS29;dbxcds;vcledge;FlexCel_Pdf;dxPSDBTeeChartRS29;cxSchedulerWebServiceStorageRS29;dxRichEditControlRS29;dxPsPrVwAdvRS29;rbBDE2229;ACBr_NFCeECFVirtual;GMLib_D_Athens;EDBImage2010;dxPSdxGaugeControlLnkRS29;rbUSERDesign2229;dxRibbonCustomizationFormRS29;gtFontD29;ACBr_NF3eDANF3eESCPOS;ACBr_PagFor;dbexpress;RvXmlFMXD12;dxEMFRS29;inet;vcltouch;uniGUI29VCL;dxPSdxFCLnkRS29;FMX_FlexCel_Core;RVPkgD12;FireDACDBXDriver;dxSpreadSheetCoreConditionalFormattingDialogsRS29;VCL_FlexCel_Core;CustomIPTransport;FireDACMSSQLDriver;ACBr_NFe;uniGUI29;dxPScxTLLnkRS29;ACBr_SAT;RW_IB_D12;vclFireDAC;ACBr_SATWS;DigitalPersona;dxSpreadSheetRS29;FireDACODBCDriver;emsserverresource;ACBr_SEF2;dxPScxVGridLnkRS29;rtl;dxServerModeRS29;gtCryptD29;ACBr_BPe;DBXSqliteDriver;dxBarDBNavRS29;ACBr_Sintegra;DBXSybaseASEDriver;ACBr_Comum;ACBr_MDFe;ACBr_NFeDanfeESCPOS;inetdbxpress;FireDAC;gtDocEngD29;xmlrtl;ibxpress;dsnap;FireDACDb2Driver;dxPSdxLCLnkRS29;DBXOracleDriver;vclib;ACBr_SATECFVirtual;CEF4Delphi;DatasnapConnectorsFreePascal;dxPSLnksRS29;gtFiltersD29;dxPSdxOCLnkRS29;cxSchedulerGridRS29;uniGUI29Core;ACBr_NF3e;ACBr_PAF;ACBr_OpenDelivery;dxPSdxDBTVLnkRS29;dxGaugeControlRS29;bindcompvclwinx;dxOrgChartAdvancedCustomizeFormRS29;bindcompfmx;dclRBDBE2229;SRVDBControlsD12;dxFlowChartLayoutsRS29;dxdborRS29;ibmonitor;FireDACASADriver;ACBr_LFD;Tee;dxPScxGridLnkRS29;vclactnband;FrameViewer;FireDACInfxDriver;dxRichEditCoreRS29;DBXMySQLDriver;dxFlowChartAdvancedCustomizeFormRS29;VclSmp;ACBr_Ponto;DataSnapCommon;GMLibEdit_D_Athens;dxPSTeeChartRS29;fmxase;dxFlowChartRS29;ACBr_NFSe;ACBre_Social;FlexCel_XlsAdapter;cxGridRS29;dxSpellCheckerRS29;DataSnapIndy10ServerTransport;dxMapControlRS29;ACBr_ANe;vcldsnap;DBXInterBaseDriver;SevenZipVcl_D29;rbDIDE2229;uniGUI29Chart;vcldb;ACBr_PIXCD;DBSRVPkgD12;RW_DX_D12;rbRIDE2229;cxSchedulerTreeBrowserRS29;SRVPkgD12;dxTabbedMDIRS29;dclRBE2229;inetstn;dxHttpIndyRequestRS29;rbFireDAC2229;cxPivotGridOLAPRS29;RaizeComponentsVclDb;rbIBE2229;uIndy29;vcl;DataSnapClient;dxCoreRS29;rbDB2229;dxSkinsCoreRS29;ACBr_Boleto;emsclientfiredac;FireDACPgDriver;FireDACDSDriver;gtRtlD29;ACBr_BlocoX;ACBr_SATExtratoESCPOS;tethering;uniTools29;bindcompvcl;CloudService;ACBr_OFX;cxSchedulerRS29;soapserver;dxPScxCommonRS29;FireDACIBDriver;RaizeComponentsVcl;dxRibbonRS29;vclwinx;DataSnapServer;ACBr_TCP;rbTC2229;frReportFiles;fmx;dxSpreadSheetReportDesignerRS29;DbxCommonDriver;VCLRESTComponents;FireDACCommonODBC;DBXMSSQLDriver;dxComnRS29;emsclient;dxFlowChartDesignerRS29;appanalytics;IndyProtocols;vclx;Skia.Package.RTL;dxBarExtDBItemsRS29;FmxTeeUI;cxFireDACAdaptersRS29;UniGMapAthens;RichViewActionsD12;DBXFirebirdDriver;FireDACSqliteDriver;DbxClientDriver;soapmidas;RVDBPkgD12;TeeUI;ACBr_Reinf;rbDAD2229;dxDockingRS29;dxorgcRS29;fmxdae;dxPSRichEditControlLnkRS29;dxPSdxSpreadSheetLnkRS29;ACBr_NFSeX;RvRbD12;frDBXFiles;dclRBFireDAC2229;RW_FD_D12;cxADOAdaptersRS29;dxPSPrVwRibbonRS29;IndySystem;ACBr_Diversos;RVPkgFMXD12;frTeeChartFiles;dxPSdxDBOCLnkRS29;RvHtmlFMXD12;dxGDIPlusRS29;ibxbindings;ACBr_CIOT;ACBr_TEFD;dclRBIBE2229;ACBr_SPED;ACBr_CTe;dxPSCoreRS29;FlexCel_Render;FireDACCommon;DataSnapServerMidas;dxPSdxMapControlLnkRS29;ACBr_LCDPR;cxGridEMFRS29;RW_FDMongo_D12;dxGanttControlRS29;RW_ADO_D12;dxPScxPivotGridLnkRS29;dxADOServerModeRS29;dxWizardControlRS29;bindcompdbx;FireDACMySQLDriver;dxCloudServiceLibraryRS29;cxIBXAdaptersRS29;VCL_FlexCel_Components;rbUSER2229;dxSpreadSheetCoreRS29;gtCompressionD29;ACBr_Serial;dxNavBarRS29;vclimg;DataSnapFireDAC;rvHtmlViewImportD12;dxFireDACEMFRS29;DBXInformixDriver;dclRBADO2229;fmxobj;bindcompvclsmp;DataSnapNativeClient;dxmdsRS29;dxPScxSchedulerLnkRS29;ACBr_SPEDImportar;emshosting;dxADOEMFRS29;dxChartControlRS29;GMLib_D_Athens_VCL;FireDACCommonDriver;ACBr_ADRCST;ACBr_MTER;IndyIPClient;dxPDFViewerRS29;ACBr_Convenio115;PKFiorilliUnigui_D12;emsedge;dxBarExtItemsRS29;uSynEdit_R2025;RW_DBX_D12;inetdb;cxPivotGridChartRS29;rbDBE2229;fmxFireDAC;cxTreeListdxBarPopupMenuRS29;rbTCUI2229;cxSchedulerRibbonStyleEventEditorRS29;dxtrmdRS29;DBXOdbcDriver;dbrtl;dxPScxPCProdRS29;FireDACOracleDriver;Skia.Package.FMX;TeeDB;FireDACMSAccDriver;dxRichEditDocumentModelRS29;DataSnapConnectors;FireDACMongoDBDriver;ACBR_DeSTDA;ACBr_GNRE;rbIDE2229;ACBr_EDI;FireDACTDataDriver;cxLibraryRS29;Skia.Package.VCL;ACBr_Integrador;SynEditDR;FlexCel_Core;dxPSdxPDFViewerLnkRS29;rbRAP2229;bindcomp;cxExportRS29;SRVControlsD12;RvHtmlD12;IndyCore;RESTBackendComponents;rbRest2229;inetwinsockets;dxTileControlRS29;dxFireDACServerModeRS29;RVASpellPkgD12;rbCloudSC2229;FireDACADSDriver;RESTComponents;IndyIPServer;dsnapxml;adortl;dxdbtrRS29;dsnapcon;cxPivotGridRS29;DataSnapProviderClient;DBXDb2Driver;dxBarRS29;RVIndyD12;ACBr_GTIN;RvXmlD12;DBXSybaseASADriver;dxSpreadSheetConditionalFormattingDialogsRS29;cxTreeListRS29;ACBr_PAFNFCe;FMXTee;ACBr_DebitoAutomatico;rbRCL2229;rbADO2229;frIBXFiles;soaprtl;dxDBXServerModeRS29;$(DCC_UsePackage)</DCC_UsePackage>
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;Bde;$(DCC_Namespace)</DCC_Namespace>
         <BT_BuildType>Debug</BT_BuildType>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
+        <Icon_MainIcon>..\..\images\icon-blue.ico</Icon_MainIcon>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
+        <UWP_DelphiLogo44>..\..\images\icon-blue-44.png</UWP_DelphiLogo44>
+        <UWP_DelphiLogo150>..\..\images\icon-blue-150.png</UWP_DelphiLogo150>
+        <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
         <DCC_UsePackage>rbRTL2229;dxPScxExtCommonRS29;dxRichEditControlCoreRS29;vclie;bindengine;IndyIPCommon;FMX_FlexCel_Components;rbCIDE2229;cxVerticalGridRS29;dbxcds;vcledge;FlexCel_Pdf;dxPSDBTeeChartRS29;cxSchedulerWebServiceStorageRS29;dxRichEditControlRS29;dxPsPrVwAdvRS29;rbBDE2229;GMLib_D_Athens;dxPSdxGaugeControlLnkRS29;rbUSERDesign2229;dxRibbonCustomizationFormRS29;dbexpress;dxEMFRS29;inet;vcltouch;uniGUI29VCL;dxPSdxFCLnkRS29;FMX_FlexCel_Core;FireDACDBXDriver;dxSpreadSheetCoreConditionalFormattingDialogsRS29;VCL_FlexCel_Core;CustomIPTransport;FireDACMSSQLDriver;uniGUI29;dxPScxTLLnkRS29;vclFireDAC;dxSpreadSheetRS29;FireDACODBCDriver;emsserverresource;dxPScxVGridLnkRS29;rtl;dxServerModeRS29;DBXSqliteDriver;dxBarDBNavRS29;DBXSybaseASEDriver;inetdbxpress;FireDAC;xmlrtl;ibxpress;dsnap;FireDACDb2Driver;dxPSdxLCLnkRS29;DBXOracleDriver;vclib;DatasnapConnectorsFreePascal;dxPSLnksRS29;dxPSdxOCLnkRS29;cxSchedulerGridRS29;uniGUI29Core;dxPSdxDBTVLnkRS29;dxGaugeControlRS29;bindcompvclwinx;dxOrgChartAdvancedCustomizeFormRS29;bindcompfmx;dclRBDBE2229;dxFlowChartLayoutsRS29;dxdborRS29;ibmonitor;FireDACASADriver;Tee;dxPScxGridLnkRS29;vclactnband;FireDACInfxDriver;dxRichEditCoreRS29;DBXMySQLDriver;dxFlowChartAdvancedCustomizeFormRS29;VclSmp;DataSnapCommon;dxPSTeeChartRS29;fmxase;dxFlowChartRS29;FlexCel_XlsAdapter;cxGridRS29;dxSpellCheckerRS29;DataSnapIndy10ServerTransport;dxMapControlRS29;vcldsnap;DBXInterBaseDriver;rbDIDE2229;uniGUI29Chart;vcldb;rbRIDE2229;cxSchedulerTreeBrowserRS29;dxTabbedMDIRS29;inetstn;dxHttpIndyRequestRS29;rbFireDAC2229;cxPivotGridOLAPRS29;RaizeComponentsVclDb;rbIBE2229;uIndy29;vcl;DataSnapClient;dxCoreRS29;rbDB2229;dxSkinsCoreRS29;emsclientfiredac;FireDACPgDriver;FireDACDSDriver;tethering;uniTools29;bindcompvcl;CloudService;cxSchedulerRS29;soapserver;dxPScxCommonRS29;FireDACIBDriver;RaizeComponentsVcl;dxRibbonRS29;vclwinx;DataSnapServer;frReportFiles;fmx;dxSpreadSheetReportDesignerRS29;DbxCommonDriver;VCLRESTComponents;FireDACCommonODBC;DBXMSSQLDriver;dxComnRS29;emsclient;dxFlowChartDesignerRS29;appanalytics;IndyProtocols;vclx;dxBarExtDBItemsRS29;FmxTeeUI;cxFireDACAdaptersRS29;DBXFirebirdDriver;FireDACSqliteDriver;DbxClientDriver;soapmidas;TeeUI;rbDAD2229;dxDockingRS29;dxorgcRS29;fmxdae;dxPSRichEditControlLnkRS29;dxPSdxSpreadSheetLnkRS29;frDBXFiles;cxADOAdaptersRS29;dxPSPrVwRibbonRS29;IndySystem;frTeeChartFiles;dxPSdxDBOCLnkRS29;dxGDIPlusRS29;ibxbindings;dclRBIBE2229;dxPSCoreRS29;FlexCel_Render;FireDACCommon;DataSnapServerMidas;dxPSdxMapControlLnkRS29;cxGridEMFRS29;dxGanttControlRS29;dxPScxPivotGridLnkRS29;dxADOServerModeRS29;dxWizardControlRS29;bindcompdbx;FireDACMySQLDriver;dxCloudServiceLibraryRS29;cxIBXAdaptersRS29;VCL_FlexCel_Components;rbUSER2229;dxSpreadSheetCoreRS29;dxNavBarRS29;vclimg;DataSnapFireDAC;dxFireDACEMFRS29;DBXInformixDriver;dclRBADO2229;fmxobj;bindcompvclsmp;DataSnapNativeClient;dxmdsRS29;dxPScxSchedulerLnkRS29;emshosting;dxADOEMFRS29;dxChartControlRS29;GMLib_D_Athens_VCL;FireDACCommonDriver;IndyIPClient;dxPDFViewerRS29;emsedge;dxBarExtItemsRS29;uSynEdit_R2025;inetdb;cxPivotGridChartRS29;rbDBE2229;fmxFireDAC;cxTreeListdxBarPopupMenuRS29;cxSchedulerRibbonStyleEventEditorRS29;dxtrmdRS29;DBXOdbcDriver;dbrtl;dxPScxPCProdRS29;FireDACOracleDriver;TeeDB;FireDACMSAccDriver;dxRichEditDocumentModelRS29;DataSnapConnectors;FireDACMongoDBDriver;rbIDE2229;FireDACTDataDriver;cxLibraryRS29;Skia.Package.VCL;SynEditDR;FlexCel_Core;dxPSdxPDFViewerLnkRS29;rbRAP2229;bindcomp;cxExportRS29;IndyCore;RESTBackendComponents;rbRest2229;dxTileControlRS29;dxFireDACServerModeRS29;rbCloudSC2229;FireDACADSDriver;RESTComponents;IndyIPServer;dsnapxml;adortl;dxdbtrRS29;dsnapcon;cxPivotGridRS29;DataSnapProviderClient;DBXDb2Driver;dxBarRS29;DBXSybaseASADriver;dxSpreadSheetConditionalFormattingDialogsRS29;cxTreeListRS29;FMXTee;rbRCL2229;rbADO2229;frIBXFiles;soaprtl;dxDBXServerModeRS29;$(DCC_UsePackage)</DCC_UsePackage>
         <DCC_Namespace>Winapi;System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
         <BT_BuildType>Debug</BT_BuildType>
         <VerInfo_IncludeVerInfo>true</VerInfo_IncludeVerInfo>
-        <VerInfo_Keys>CompanyName=;FileDescription=$(MSBuildProjectName);FileVersion=1.0.0.0;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProgramID=com.embarcadero.$(MSBuildProjectName);ProductName=$(MSBuildProjectName);ProductVersion=1.0.0.0;Comments=</VerInfo_Keys>
         <VerInfo_Locale>1033</VerInfo_Locale>
+        <Icon_MainIcon>..\..\images\icon-blue.ico</Icon_MainIcon>
         <Manifest_File>$(BDS)\bin\default_app.manifest</Manifest_File>
+        <UWP_DelphiLogo44>..\..\images\icon-blue-44.png</UWP_DelphiLogo44>
+        <UWP_DelphiLogo150>..\..\images\icon-blue-150.png</UWP_DelphiLogo150>
+        <AppDPIAwarenessMode>none</AppDPIAwarenessMode>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_1)'!=''">
         <DCC_Define>DEBUG;$(DCC_Define)</DCC_Define>
@@ -169,6 +208,34 @@
                 </Excluded_Packages>
             </Delphi.Personality>
             <Deployment Version="5">
+                <DeployFile LocalName="..\..\images\icon-blue-150.png" Configuration="Release" Class="UWP_DelphiLogo150">
+                    <Platform Name="Win32">
+                        <RemoteDir>Assets\</RemoteDir>
+                        <RemoteName>Logo150x150.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\icon-blue-150.png" Configuration="Release" Class="UWP_DelphiLogo150">
+                    <Platform Name="Win64">
+                        <RemoteDir>Assets\</RemoteDir>
+                        <RemoteName>Logo150x150.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\icon-blue-44.png" Configuration="Release" Class="UWP_DelphiLogo44">
+                    <Platform Name="Win32">
+                        <RemoteDir>Assets\</RemoteDir>
+                        <RemoteName>Logo44x44.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
+                <DeployFile LocalName="..\..\images\icon-blue-44.png" Configuration="Release" Class="UWP_DelphiLogo44">
+                    <Platform Name="Win64">
+                        <RemoteDir>Assets\</RemoteDir>
+                        <RemoteName>Logo44x44.png</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployFile LocalName=".bin\Schema2DelphiCLI.exe" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>Schema2DelphiCLI.exe</RemoteName>
@@ -1139,6 +1206,9 @@
                 <ProjectRoot Platform="Win64x" Name="$(PROJECTNAME)"/>
             </Deployment>
             <Platforms>
+                <Platform value="Linux64">True</Platform>
+                <Platform value="OSX64">True</Platform>
+                <Platform value="OSXARM64">True</Platform>
                 <Platform value="Win32">True</Platform>
                 <Platform value="Win64">True</Platform>
             </Platforms>

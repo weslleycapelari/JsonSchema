@@ -15,6 +15,7 @@ uses
 
 type
   TfrmMain = class(TForm)
+    pnlBrandBar: TPanel;
     pnlLeft: TPanel;
     lblDialect: TLabel;
     cboDialect: TComboBox;
@@ -68,7 +69,7 @@ begin
   chkQuote.Checked := False;
 
   lblStatus.Caption := 'Ready';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Font.Color := $00CC6600; // Brand Classic Blue
 
   // Insert a simple default schema snippet for the user
   mmoSchemaInput.Lines.Clear;

@@ -18,63 +18,91 @@ type
     Framework: string;
     OutputPath: string;
     EntityName: string;
+    Quiet: Boolean;
     ShowHelp: Boolean;
   end;
 
 /// <summary>Parses command line arguments into a config record.</summary>
 function ParseCommandLine: TSchema2RESTConfig;
 
+/// <summary>Parses a custom array of command line arguments into a config record.</summary>
+function ParseCommandLineEx(const pArgs: TArray<string>): TSchema2RESTConfig;
+
 implementation
 
-function ParseCommandLine: TSchema2RESTConfig;
+function ParseCommandLineEx(const pArgs: TArray<string>): TSchema2RESTConfig;
 var
   lI: Integer;
   lArg: string;
+  lPositionalCount: Integer;
 begin
   // Default values
   Result.SchemaPath := '';
   Result.Framework := 'Horse';
   Result.OutputPath := '';
   Result.EntityName := '';
+  Result.Quiet := False;
   Result.ShowHelp := False;
 
-  lI := 1;
-  while lI <= ParamCount do
+  lI := 0;
+  lPositionalCount := 0;
+  while lI < Length(pArgs) do
   begin
-    lArg := ParamStr(lI);
+    lArg := pArgs[lI];
 
     if SameText(lArg, '-h') or SameText(lArg, '--help') then
     begin
       Result.ShowHelp := True;
+      Exit;
+    end
+    else if (SameText(lArg, '-i') or SameText(lArg, '--input') or SameText(lArg, '-s') or SameText(lArg, '--schema')) then
+    begin
       Inc(lI);
+      if lI < Length(pArgs) then
+        Result.SchemaPath := pArgs[lI];
     end
-    else if (SameText(lArg, '-s') or SameText(lArg, '--schema')) and (lI < ParamCount) then
+    else if (SameText(lArg, '-f') or SameText(lArg, '--framework')) then
     begin
-      Result.SchemaPath := ParamStr(lI + 1);
-      Inc(lI, 2);
+      Inc(lI);
+      if lI < Length(pArgs) then
+        Result.Framework := pArgs[lI];
     end
-    else if (SameText(lArg, '-f') or SameText(lArg, '--framework')) and (lI < ParamCount) then
+    else if (SameText(lArg, '-o') or SameText(lArg, '--output')) then
     begin
-      Result.Framework := ParamStr(lI + 1);
-      Inc(lI, 2);
+      Inc(lI);
+      if lI < Length(pArgs) then
+        Result.OutputPath := pArgs[lI];
     end
-    else if (SameText(lArg, '-o') or SameText(lArg, '--output')) and (lI < ParamCount) then
+    else if (SameText(lArg, '-e') or SameText(lArg, '--entity')) then
     begin
-      Result.OutputPath := ParamStr(lI + 1);
-      Inc(lI, 2);
+      Inc(lI);
+      if lI < Length(pArgs) then
+        Result.EntityName := pArgs[lI];
     end
-    else if (SameText(lArg, '-e') or SameText(lArg, '--entity')) and (lI < ParamCount) then
+    else if SameText(lArg, '--quiet') then
     begin
-      Result.EntityName := ParamStr(lI + 1);
-      Inc(lI, 2);
+      Result.Quiet := True;
     end
-    else
+    else if not lArg.StartsWith('-') then
     begin
-      if Result.SchemaPath = '' then
+      if lPositionalCount = 0 then
         Result.SchemaPath := lArg;
-      Inc(lI);
+      Inc(lPositionalCount);
     end;
+
+    Inc(lI);
   end;
+end;
+
+function ParseCommandLine: TSchema2RESTConfig;
+var
+  lArgs: TArray<string>;
+  lI: Integer;
+begin
+  SetLength(lArgs, ParamCount);
+  for lI := 1 to ParamCount do
+    lArgs[lI - 1] := ParamStr(lI);
+  Result := ParseCommandLineEx(lArgs);
 end;
 
 end.

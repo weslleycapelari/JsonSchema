@@ -16,6 +16,8 @@ uses
   Schema2DDL.Engine in 'src\Schema2DDL.Engine.pas',
   Schema2DDL.Runner in 'src\Schema2DDL.Runner.pas';
 
+{$R *.res}
+
 begin
   try
     Halt(RunSchema2DDL);

@@ -34,6 +34,9 @@ type
 
     /// <summary>Tests CLI execution with schema file input.</summary>
     procedure TestCLIExecution;
+
+    /// <summary>Tests command line config parser logic.</summary>
+    procedure TestParseCommandLine;
   end;
 
 implementation
@@ -288,6 +291,39 @@ begin
   finally
     DeleteTempFile(lTempFile);
   end;
+end;
+
+procedure TTestSchema2DDL.TestParseCommandLine;
+var
+  lConfig: TSchema2DDLConfig;
+begin
+  // Default values check
+  lConfig := ParseCommandLineEx([]);
+  CheckEquals('', lConfig.SchemaPath);
+  CheckEquals('PostgreSQL', lConfig.Dialect);
+  CheckEquals('', lConfig.OutputPath);
+  CheckEquals('', lConfig.TableName);
+  CheckFalse(lConfig.GenerateDrop);
+  CheckTrue(lConfig.AutoIncPk);
+  CheckFalse(lConfig.QuoteIdentifiers);
+  CheckFalse(lConfig.Quiet);
+  CheckFalse(lConfig.ShowHelp);
+
+  // Custom values check with standard flags and synonyms
+  lConfig := ParseCommandLineEx(['-i', 'my_schema.json', '-d', 'SQLite', '-o', 'my_output.sql', '-t', 'my_table', '--drop', '--no-auto-inc', '-q', '--quiet']);
+  CheckEquals('my_schema.json', lConfig.SchemaPath);
+  CheckEquals('SQLite', lConfig.Dialect);
+  CheckEquals('my_output.sql', lConfig.OutputPath);
+  CheckEquals('my_table', lConfig.TableName);
+  CheckTrue(lConfig.GenerateDrop);
+  CheckFalse(lConfig.AutoIncPk);
+  CheckTrue(lConfig.QuoteIdentifiers);
+  CheckTrue(lConfig.Quiet);
+  CheckFalse(lConfig.ShowHelp);
+
+  // Positional fallback check
+  lConfig := ParseCommandLineEx(['positional_schema.json']);
+  CheckEquals('positional_schema.json', lConfig.SchemaPath);
 end;
 
 initialization

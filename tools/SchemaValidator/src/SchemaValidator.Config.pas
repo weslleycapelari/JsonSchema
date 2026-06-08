@@ -21,11 +21,13 @@ type
   TConfig = record
     SchemaPath: string;
     InstancePath: string;
+    OutputPath: string;
     Locale: TLocale;
     OutputFormat: TOutputFormat;
     ForceDraft: Boolean;
     DraftVersion: TDraftVersion;
     EnforceFormats: Boolean;
+    Quiet: Boolean;
     ShowHelp: Boolean;
   end;
 
@@ -44,17 +46,21 @@ function ParseArgumentsEx(const pArgs: TArray<string>): TConfig;
 var
   lI: Integer;
   lArg, lVal: string;
+  lPositionalCount: Integer;
 begin
   Result.SchemaPath := '';
   Result.InstancePath := '';
+  Result.OutputPath := '';
   Result.Locale := TLocale.EnUS;
   Result.OutputFormat := ofText;
   Result.ForceDraft := False;
   Result.DraftVersion := TDraftVersion.dvDraft2020_12;
   Result.EnforceFormats := True;
+  Result.Quiet := False;
   Result.ShowHelp := False;
 
   lI := 0;
+  lPositionalCount := 0;
   while lI < Length(pArgs) do
   begin
     lArg := pArgs[lI];
@@ -63,16 +69,21 @@ begin
     begin
       Result.ShowHelp := True;
       Exit;
-    end else if SameText(lArg, '-s') or SameText(lArg, '--schema') then
+    end else if SameText(lArg, '-i') or SameText(lArg, '--input') or SameText(lArg, '-s') or SameText(lArg, '--schema') then
     begin
       Inc(lI);
       if lI < Length(pArgs) then
         Result.SchemaPath := pArgs[lI];
-    end else if SameText(lArg, '-i') or SameText(lArg, '--instance') then
+    end else if SameText(lArg, '-j') or SameText(lArg, '--json') or SameText(lArg, '--instance') then
     begin
       Inc(lI);
       if lI < Length(pArgs) then
         Result.InstancePath := pArgs[lI];
+    end else if SameText(lArg, '-o') or SameText(lArg, '--output') then
+    begin
+      Inc(lI);
+      if lI < Length(pArgs) then
+        Result.OutputPath := pArgs[lI];
     end else if SameText(lArg, '-d') or SameText(lArg, '--draft') then
     begin
       Inc(lI);
@@ -121,6 +132,16 @@ begin
     end else if SameText(lArg, '--no-format') then
     begin
       Result.EnforceFormats := False;
+    end else if SameText(lArg, '--quiet') then
+    begin
+      Result.Quiet := True;
+    end else if not lArg.StartsWith('-') then
+    begin
+      if lPositionalCount = 0 then
+        Result.SchemaPath := lArg
+      else if lPositionalCount = 1 then
+        Result.InstancePath := lArg;
+      Inc(lPositionalCount);
     end;
 
     Inc(lI);

@@ -11,11 +11,12 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.ComCtrls,
-  System.JSON, JsonSchema.Core.Interfaces, JsonSchema.Validator, JsonSchema.Localization.Enums,
+  System.JSON, System.TypInfo, JsonSchema.Core.Interfaces, JsonSchema.Validator, JsonSchema.Localization.Enums,
   SchemaValidator.Utils;
 
 type
   TfrmMain = class(TForm)
+    pnlBrandBar: TPanel;
     pnlTop: TPanel;
     lblDraft: TLabel;
     cboDraft: TComboBox;
@@ -32,6 +33,8 @@ type
     lblInstance: TLabel;
     mmoInstance: TMemo;
     pnlBottom: TPanel;
+    splBottom: TSplitter;
+    pnlStatus: TPanel;
     lblStatus: TLabel;
     lstErrors: TListView;
     pnlSchemaActions: TPanel;
@@ -56,24 +59,47 @@ implementation
 
 {$R *.dfm}
 
+function DraftToDisplayName(const pDraft: TDraftVersion): string;
+begin
+  case pDraft of
+    TDraftVersion.dvDraft6: Result := 'Draft 6';
+    TDraftVersion.dvDraft7: Result := 'Draft 7';
+    TDraftVersion.dvDraft2019_09: Result := 'Draft 2019-09';
+    TDraftVersion.dvDraft2020_12: Result := 'Draft 2020-12';
+  else
+    Result := GetEnumName(TypeInfo(TDraftVersion), Ord(pDraft));
+  end;
+end;
+
+function LocaleToDisplayName(const pLocale: TLocale): string;
+begin
+  case pLocale of
+    TLocale.EnUS: Result := 'English (en-US)';
+    TLocale.PtBR: Result := 'Português (pt-BR)';
+  else
+    Result := GetEnumName(TypeInfo(TLocale), Ord(pLocale));
+  end;
+end;
+
 procedure TfrmMain.FormCreate(Sender: TObject);
+var
+  lDraft: TDraftVersion;
+  lLocale: TLocale;
 begin
   cboDraft.Items.Clear;
-  cboDraft.Items.Add('Auto-detect');
-  cboDraft.Items.Add('Draft 6');
-  cboDraft.Items.Add('Draft 7');
-  cboDraft.Items.Add('Draft 2019-09');
-  cboDraft.Items.Add('Draft 2020-12');
+  cboDraft.Items.AddObject('Auto-detect', TObject(-1));
+  for lDraft := Low(TDraftVersion) to High(TDraftVersion) do
+    cboDraft.Items.AddObject(DraftToDisplayName(lDraft), TObject(lDraft));
   cboDraft.ItemIndex := 0;
 
   cboLocale.Items.Clear;
-  cboLocale.Items.Add('English (en)');
-  cboLocale.Items.Add('Portuguese (pt)');
+  for lLocale := Low(TLocale) to High(TLocale) do
+    cboLocale.Items.AddObject(LocaleToDisplayName(lLocale), TObject(lLocale));
   cboLocale.ItemIndex := 0;
 
   chkEnforceFormats.Checked := True;
   lblStatus.Caption := 'Ready';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Font.Color := $00CC6600; // Brand Classic Blue
 end;
 
 procedure TfrmMain.btnLoadSchemaClick(Sender: TObject);
@@ -126,6 +152,7 @@ var
   lLocale: TLocale;
   lError: IValidationError;
   lItem: TListItem;
+  lDraftVal: NativeInt;
 begin
   lstErrors.Items.Clear;
   lblStatus.Caption := 'Validating...';
@@ -186,19 +213,13 @@ begin
   end;
 
   // 3. Setup Validator Options
-  if cboLocale.ItemIndex = 1 then
-    lLocale := TLocale.PtBR
-  else
-    lLocale := TLocale.EnUS;
+  lLocale := TLocale(NativeInt(cboLocale.Items.Objects[cboLocale.ItemIndex]));
 
-  case cboDraft.ItemIndex of
-    1: lDraft := TDraftVersion.dvDraft6;
-    2: lDraft := TDraftVersion.dvDraft7;
-    3: lDraft := TDraftVersion.dvDraft2019_09;
-    4: lDraft := TDraftVersion.dvDraft2020_12;
+  lDraftVal := NativeInt(cboDraft.Items.Objects[cboDraft.ItemIndex]);
+  if lDraftVal = -1 then
+    lDraft := AutoDetectDraft(lSchemaVal)
   else
-    lDraft := AutoDetectDraft(lSchemaVal);
-  end;
+    lDraft := TDraftVersion(lDraftVal);
 
   lValidator := TJsonSchemaValidator.Create(lLocale);
   try

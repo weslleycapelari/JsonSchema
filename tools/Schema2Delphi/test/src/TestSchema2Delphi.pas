@@ -103,7 +103,9 @@ begin
   pStdout := '';
   pStderr := '';
 
-  lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\Schema2DelphiCLI.exe');
+  lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\..\.bin\Schema2DelphiCLI.exe');
+  if not FileExists(lExePath) then
+    lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\..\Schema2DelphiCLI.exe');
   if not FileExists(lExePath) then
     lExePath := ExpandFileName(ExtractFilePath(ParamStr(0)) + '..\Schema2DelphiCLI.exe');
   if not FileExists(lExePath) then
@@ -288,6 +290,7 @@ begin
   CheckEquals('', lConfig.OutputPath);
   CheckEquals('', lConfig.ClassName);
   CheckEquals('', lConfig.UnitName);
+  CheckFalse(lConfig.Quiet);
   CheckFalse(lConfig.ShowHelp);
 
   lConfig := ParseArgumentsEx(['-s', 'schema.json', '-o', 'out.pas', '-c', 'Customer', '-u', 'CustUnit']);
@@ -295,6 +298,24 @@ begin
   CheckEquals('out.pas', lConfig.OutputPath);
   CheckEquals('Customer', lConfig.ClassName);
   CheckEquals('CustUnit', lConfig.UnitName);
+  CheckFalse(lConfig.Quiet);
+
+  // Synonyms and Quiet
+  lConfig := ParseArgumentsEx(['-i', 'schema.json', '-o', 'out.pas', '--quiet']);
+  CheckEquals('schema.json', lConfig.SchemaPath);
+  CheckEquals('out.pas', lConfig.OutputPath);
+  CheckTrue(lConfig.Quiet);
+
+  lConfig := ParseArgumentsEx(['--schema', 'schema.json', '-o', 'out.pas']);
+  CheckEquals('schema.json', lConfig.SchemaPath);
+
+  lConfig := ParseArgumentsEx(['--input', 'schema.json', '-o', 'out.pas']);
+  CheckEquals('schema.json', lConfig.SchemaPath);
+
+  // Fallback Positional Parameter
+  lConfig := ParseArgumentsEx(['schema.json', '-o', 'out.pas']);
+  CheckEquals('schema.json', lConfig.SchemaPath);
+  CheckEquals('out.pas', lConfig.OutputPath);
 end;
 
 procedure TTestSchema2Delphi.TestCLIExecution;

@@ -19,7 +19,7 @@ uses
   Schema2Delphi.Utils in 'src\Schema2Delphi.Utils.pas',
   Schema2Delphi.AST in 'src\Schema2Delphi.AST.pas';
 
-// {$R *.res}
+{$R *.res}
 
 begin
   Application.Initialize;

@@ -2,7 +2,7 @@ object frmMain: TfrmMain
   Left = 0
   Top = 0
   Caption = 'SchemaBundler - JSON Schema Packaging Utility'
-  ClientHeight = 561
+  ClientHeight = 600
   ClientWidth = 884
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -12,39 +12,60 @@ object frmMain: TfrmMain
   Font.Style = []
   Position = poScreenCenter
   OnCreate = FormCreate
-  PixelsPerInch = 96
   TextHeight = 15
   object splSplitter: TSplitter
     Left = 380
-    Top = 0
+    Top = 4
     Width = 5
-    Height = 531
-    Cursor = crHSplit
+    Height = 566
+  end
+  object pnlBrandBar: TPanel
+    Left = 0
+    Top = 0
+    Width = 884
+    Height = 4
+    Align = alTop
+    BevelOuter = bvNone
+    Color = 13395456
+    ParentBackground = False
+    TabOrder = 3
   end
   object pnlLeft: TPanel
     Left = 0
-    Top = 0
+    Top = 4
     Width = 380
-    Height = 531
+    Height = 566
     Align = alLeft
     BevelOuter = bvNone
     TabOrder = 0
     DesignSize = (
       380
-      531)
+      566)
     object lblFilePath: TLabel
       Left = 16
       Top = 16
-      Width = 50
+      Width = 49
       Height = 15
       Caption = 'Root File:'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = 13395456
+      Font.Height = -12
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
     end
     object lblSchemaInput: TLabel
       Left = 16
       Top = 56
-      Width = 126
+      Width = 124
       Height = 15
       Caption = 'Root Schema Contents:'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = 13395456
+      Font.Height = -12
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
     end
     object edtFilePath: TEdit
       Left = 80
@@ -69,7 +90,7 @@ object frmMain: TfrmMain
       Left = 16
       Top = 80
       Width = 348
-      Height = 400
+      Height = 435
       Anchors = [akLeft, akTop, akRight, akBottom]
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
@@ -83,7 +104,7 @@ object frmMain: TfrmMain
     end
     object chkLegacy: TCheckBox
       Left = 16
-      Top = 495
+      Top = 530
       Width = 150
       Height = 17
       Anchors = [akLeft, akBottom]
@@ -92,7 +113,7 @@ object frmMain: TfrmMain
     end
     object chkIndent: TCheckBox
       Left = 200
-      Top = 495
+      Top = 530
       Width = 150
       Height = 17
       Anchors = [akLeft, akBottom]
@@ -100,29 +121,58 @@ object frmMain: TfrmMain
       TabOrder = 4
     end
   end
-  object pnlRight: TPanel
-    Left = 385
-    Top = 0
-    Width = 499
-    Height = 531
-    Align = alClient
+  object pnlStatus: TPanel
+    Left = 0
+    Top = 570
+    Width = 884
+    Height = 30
+    Align = alBottom
+    Alignment = taLeftJustify
     BevelOuter = bvNone
     TabOrder = 1
+    object lblStatus: TLabel
+      Left = 16
+      Top = 8
+      Width = 32
+      Height = 15
+      Caption = 'Status'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = 13395456
+      Font.Height = -12
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
+    end
+  end
+  object pnlRight: TPanel
+    Left = 385
+    Top = 4
+    Width = 499
+    Height = 566
+    Align = alClient
+    BevelOuter = bvNone
+    TabOrder = 2
     DesignSize = (
       499
-      531)
+      566)
     object lblBundledOutput: TLabel
       Left = 16
       Top = 16
       Width = 92
       Height = 15
       Caption = 'Bundled Schema:'
+      Font.Charset = DEFAULT_CHARSET
+      Font.Color = 13395456
+      Font.Height = -12
+      Font.Name = 'Segoe UI'
+      Font.Style = []
+      ParentFont = False
     end
     object mmoBundledOutput: TMemo
       Left = 16
       Top = 40
       Width = 467
-      Height = 425
+      Height = 460
       Anchors = [akLeft, akTop, akRight, akBottom]
       Font.Charset = ANSI_CHARSET
       Font.Color = clWindowText
@@ -137,7 +187,7 @@ object frmMain: TfrmMain
     end
     object pnlButtons: TPanel
       Left = 16
-      Top = 480
+      Top = 515
       Width = 467
       Height = 35
       Anchors = [akLeft, akRight, akBottom]
@@ -175,23 +225,6 @@ object frmMain: TfrmMain
         TabOrder = 2
         OnClick = btnExportClick
       end
-    end
-  end
-  object pnlStatus: TPanel
-    Left = 0
-    Top = 531
-    Width = 884
-    Height = 30
-    Align = alBottom
-    Alignment = taLeftJustify
-    BevelOuter = bvNone
-    TabOrder = 2
-    object lblStatus: TLabel
-      Left = 16
-      Top = 8
-      Width = 32
-      Height = 15
-      Caption = 'Status'
     end
   end
   object dlgSave: TSaveDialog

@@ -35,6 +35,7 @@ type
     dlgSave: TSaveDialog;
     dlgOpen: TOpenDialog;
     splSplitter: TSplitter;
+    pnlBrandBar: TPanel;
     procedure FormCreate(Sender: TObject);
     procedure btnSelectFileClick(Sender: TObject);
     procedure btnGenerateClick(Sender: TObject);
@@ -60,7 +61,7 @@ begin
   edtFilePath.Text := '';
 
   lblStatus.Caption := 'Ready. Select a root schema file from disk to start.';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Font.Color := $00CC6600;
 
   mmoSchemaInput.Lines.Clear;
   mmoBundledOutput.Lines.Clear;
@@ -69,6 +70,7 @@ end;
 procedure TfrmMain.btnSelectFileClick(Sender: TObject);
 begin
   dlgOpen.Filter := 'JSON Schema Files (*.json)|*.json|All Files (*.*)|*.*';
+
   if dlgOpen.Execute then
   begin
     edtFilePath.Text := dlgOpen.FileName;
@@ -95,7 +97,7 @@ var
 begin
   mmoBundledOutput.Clear;
   lblStatus.Caption := 'Consolidating schema...';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Font.Color := $00CC6600;
 
   if edtFilePath.Text = '' then
   begin
@@ -155,8 +157,7 @@ begin
     Clipboard.SetTextBuf(PChar(mmoBundledOutput.Text));
     lblStatus.Caption := 'Bundled schema copied to clipboard.';
     lblStatus.Font.Color := clGreen;
-  end
-  else
+  end else
   begin
     lblStatus.Caption := 'Nothing to copy. Run bundling first.';
     lblStatus.Font.Color := clRed;
@@ -192,3 +193,4 @@ begin
 end;
 
 end.
+

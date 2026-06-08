@@ -28,17 +28,19 @@ begin
   Writeln(ErrOutput, 'Schema2DDL - JSON Schema Relational DDL Exporter');
   Writeln(ErrOutput);
   Writeln(ErrOutput, 'Usage:');
-  Writeln(ErrOutput, '  Schema2DDLCLI -s <schema_path> [-d <dialect>] [-o <output_path>] [options]');
+  Writeln(ErrOutput, '  Schema2DDLCLI -i <schema_path> [-d <dialect>] [-o <output_path>] [options]');
+  Writeln(ErrOutput, '  Schema2DDLCLI <schema_path> [options]');
   Writeln(ErrOutput);
   Writeln(ErrOutput, 'Options:');
-  Writeln(ErrOutput, '  -s, --schema    Path to the input JSON Schema file (Required).');
-  Writeln(ErrOutput, '  -d, --dialect   Target SQL database: PostgreSQL, Firebird, SQLite, SQLServer (default: PostgreSQL).');
-  Writeln(ErrOutput, '  -o, --output    Path to save the generated SQL DDL script (Stdout if omitted).');
-  Writeln(ErrOutput, '  -t, --table     Custom main table name (defaults to schema title).');
-  Writeln(ErrOutput, '  --drop          Prepend DROP TABLE IF EXISTS statement.');
-  Writeln(ErrOutput, '  --no-auto-inc   Disable auto-increment columns on primary keys.');
-  Writeln(ErrOutput, '  -q, --quote     Enclose identifiers in double quotes (or dialect brackets).');
-  Writeln(ErrOutput, '  -h, --help      Display this help manual.');
+  Writeln(ErrOutput, '  -i, --input, -s, --schema   Path to the input JSON Schema file (Required).');
+  Writeln(ErrOutput, '  -d, --dialect <dialect>     Target SQL database: PostgreSQL, Firebird, SQLite, SQLServer (default: PostgreSQL).');
+  Writeln(ErrOutput, '  -o, --output <path>         Path to save the generated SQL DDL script (Stdout if omitted).');
+  Writeln(ErrOutput, '  -t, --table <name>          Custom main table name (defaults to schema title).');
+  Writeln(ErrOutput, '  --drop                      Prepend DROP TABLE IF EXISTS statement.');
+  Writeln(ErrOutput, '  --no-auto-inc               Disable auto-increment columns on primary keys.');
+  Writeln(ErrOutput, '  -q, --quote                 Enclose identifiers in double quotes (or dialect brackets).');
+  Writeln(ErrOutput, '  --quiet                     Modo silencioso. Suprime saídas informativas.');
+  Writeln(ErrOutput, '  -h, --help                  Display this help manual.');
   Writeln(ErrOutput);
 end;
 
@@ -51,7 +53,7 @@ var
   lDialectObj: ISQLDialect;
   lDdlOutput: string;
 begin
-  Result := 2;
+  Result := 1; // Default to error exit code (1 is used for any failure: parameters, validation, file errors)
   lConfig := ParseCommandLine;
 
   if lConfig.ShowHelp or (lConfig.SchemaPath = '') then
@@ -91,7 +93,8 @@ begin
         if lConfig.OutputPath <> '' then
         begin
           TFile.WriteAllText(lConfig.OutputPath, lDdlOutput, TEncoding.UTF8);
-          Writeln(ErrOutput, 'DDL script written successfully to: ' + lConfig.OutputPath);
+          if not lConfig.Quiet then
+            Writeln(ErrOutput, 'DDL script written successfully to: ' + lConfig.OutputPath);
         end
         else
         begin
@@ -109,7 +112,7 @@ begin
     on E: Exception do
     begin
       Writeln(ErrOutput, 'Execution failed: ' + E.Message);
-      Result := 2;
+      Result := 1;
     end;
   end;
 end;

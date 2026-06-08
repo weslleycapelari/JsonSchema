@@ -21,18 +21,23 @@ type
     GenerateDrop: Boolean;
     AutoIncPk: Boolean;
     QuoteIdentifiers: Boolean;
+    Quiet: Boolean;
     ShowHelp: Boolean;
   end;
 
 /// <summary>Parses command line parameters into a configuration record.</summary>
 function ParseCommandLine: TSchema2DDLConfig;
 
+/// <summary>Parses custom array of parameters into a configuration record.</summary>
+function ParseCommandLineEx(const pArgs: TArray<string>): TSchema2DDLConfig;
+
 implementation
 
-function ParseCommandLine: TSchema2DDLConfig;
+function ParseCommandLineEx(const pArgs: TArray<string>): TSchema2DDLConfig;
 var
   lI: Integer;
   lArg: string;
+  lPositionalCount: Integer;
 begin
   // Default values
   Result.SchemaPath := '';
@@ -42,61 +47,80 @@ begin
   Result.GenerateDrop := False;
   Result.AutoIncPk := True;
   Result.QuoteIdentifiers := False;
+  Result.Quiet := False;
   Result.ShowHelp := False;
 
-  lI := 1;
-  while lI <= ParamCount do
+  lI := 0;
+  lPositionalCount := 0;
+  while lI < Length(pArgs) do
   begin
-    lArg := ParamStr(lI);
+    lArg := pArgs[lI];
 
     if SameText(lArg, '-h') or SameText(lArg, '--help') then
     begin
       Result.ShowHelp := True;
+      Exit;
+    end
+    else if SameText(lArg, '-i') or SameText(lArg, '--input') or SameText(lArg, '-s') or SameText(lArg, '--schema') then
+    begin
       Inc(lI);
+      if lI < Length(pArgs) then
+        Result.SchemaPath := pArgs[lI];
     end
-    else if (SameText(lArg, '-s') or SameText(lArg, '--schema')) and (lI < ParamCount) then
+    else if SameText(lArg, '-d') or SameText(lArg, '--dialect') then
     begin
-      Result.SchemaPath := ParamStr(lI + 1);
-      Inc(lI, 2);
+      Inc(lI);
+      if lI < Length(pArgs) then
+        Result.Dialect := pArgs[lI];
     end
-    else if (SameText(lArg, '-d') or SameText(lArg, '--dialect')) and (lI < ParamCount) then
+    else if SameText(lArg, '-o') or SameText(lArg, '--output') then
     begin
-      Result.Dialect := ParamStr(lI + 1);
-      Inc(lI, 2);
+      Inc(lI);
+      if lI < Length(pArgs) then
+        Result.OutputPath := pArgs[lI];
     end
-    else if (SameText(lArg, '-o') or SameText(lArg, '--output')) and (lI < ParamCount) then
+    else if SameText(lArg, '-t') or SameText(lArg, '--table') then
     begin
-      Result.OutputPath := ParamStr(lI + 1);
-      Inc(lI, 2);
-    end
-    else if (SameText(lArg, '-t') or SameText(lArg, '--table')) and (lI < ParamCount) then
-    begin
-      Result.TableName := ParamStr(lI + 1);
-      Inc(lI, 2);
+      Inc(lI);
+      if lI < Length(pArgs) then
+        Result.TableName := pArgs[lI];
     end
     else if SameText(lArg, '--drop') then
     begin
       Result.GenerateDrop := True;
-      Inc(lI);
     end
     else if SameText(lArg, '--no-auto-inc') then
     begin
       Result.AutoIncPk := False;
-      Inc(lI);
     end
     else if SameText(lArg, '-q') or SameText(lArg, '--quote') then
     begin
       Result.QuoteIdentifiers := True;
-      Inc(lI);
     end
-    else
+    else if SameText(lArg, '--quiet') then
     begin
-      // Ignore unknown parameters or treat first free as schema path
-      if Result.SchemaPath = '' then
+      Result.Quiet := True;
+    end
+    else if not lArg.StartsWith('-') then
+    begin
+      if lPositionalCount = 0 then
         Result.SchemaPath := lArg;
-      Inc(lI);
+      Inc(lPositionalCount);
     end;
+
+    Inc(lI);
   end;
+end;
+
+function ParseCommandLine: TSchema2DDLConfig;
+var
+  lArgs: TArray<string>;
+  lI: Integer;
+begin
+  SetLength(lArgs, ParamCount);
+  for lI := 1 to ParamCount do
+    lArgs[lI - 1] := ParamStr(lI);
+  Result := ParseCommandLineEx(lArgs);
 end;
 
 end.

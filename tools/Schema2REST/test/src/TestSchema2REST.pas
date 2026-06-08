@@ -31,6 +31,9 @@ type
 
     /// <summary>Tests CLI execution with schema file input.</summary>
     procedure TestCLIExecution;
+
+    /// <summary>Tests parser command line configurations.</summary>
+    procedure TestParseArguments;
   end;
 
 implementation
@@ -243,6 +246,38 @@ begin
   finally
     DeleteTempFile(lTempFile);
   end;
+end;
+
+procedure TTestSchema2REST.TestParseArguments;
+var
+  lConfig: TSchema2RESTConfig;
+begin
+  lConfig := ParseCommandLineEx([]);
+  CheckEquals('', lConfig.SchemaPath);
+  CheckEquals('Horse', lConfig.Framework);
+  CheckEquals('', lConfig.OutputPath);
+  CheckEquals('', lConfig.EntityName);
+  CheckFalse(lConfig.Quiet);
+  CheckFalse(lConfig.ShowHelp);
+
+  lConfig := ParseCommandLineEx(['-s', 'schema.json', '-f', 'DMVC', '-o', 'out.pas', '-e', 'Client', '--quiet']);
+  CheckEquals('schema.json', lConfig.SchemaPath);
+  CheckEquals('DMVC', lConfig.Framework);
+  CheckEquals('out.pas', lConfig.OutputPath);
+  CheckEquals('Client', lConfig.EntityName);
+  CheckTrue(lConfig.Quiet);
+
+  // Synonyms
+  lConfig := ParseCommandLineEx(['-i', 'schema.json', '--framework', 'DMVC', '--output', 'out.pas', '--entity', 'Client']);
+  CheckEquals('schema.json', lConfig.SchemaPath);
+  CheckEquals('DMVC', lConfig.Framework);
+  CheckEquals('out.pas', lConfig.OutputPath);
+  CheckEquals('Client', lConfig.EntityName);
+
+  // Fallback Positional Parameter
+  lConfig := ParseCommandLineEx(['schema.json', '-o', 'out.pas']);
+  CheckEquals('schema.json', lConfig.SchemaPath);
+  CheckEquals('out.pas', lConfig.OutputPath);
 end;
 
 initialization

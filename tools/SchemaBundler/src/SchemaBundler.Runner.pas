@@ -19,19 +19,21 @@ implementation
 
 procedure ShowHelpMessage;
 begin
-  Writeln('SchemaBundler - JSON Schema Packaging Utility');
-  Writeln('Consolidates split multi-file JSON schemas into a single self-contained document.');
-  Writeln;
-  Writeln('Usage:');
-  Writeln('  SchemaBundlerCLI.exe -i <input_path> [-o <output_path>] [--legacy] [--minify]');
-  Writeln;
-  Writeln('Options:');
-  Writeln('  -i, --input     Path to the root JSON Schema file (required)');
-  Writeln('  -o, --output    Path to save the bundled schema (prints to stdout if omitted)');
-  Writeln('  --legacy        Consolidate definitions under "definitions" instead of "$defs"');
-  Writeln('  --minify        Minify output JSON schema instead of prettifying');
-  Writeln('  -h, --help      Display this help documentation');
-  Writeln;
+  Writeln(ErrOutput, 'SchemaBundler - JSON Schema Packaging Utility');
+  Writeln(ErrOutput, 'Consolidates split multi-file JSON schemas into a single self-contained document.');
+  Writeln(ErrOutput);
+  Writeln(ErrOutput, 'Usage:');
+  Writeln(ErrOutput, '  SchemaBundlerCLI.exe -i <input_path> -o <output_path> [options]');
+  Writeln(ErrOutput, '  SchemaBundlerCLI.exe <input_path> -o <output_path> [options]');
+  Writeln(ErrOutput);
+  Writeln(ErrOutput, 'Options:');
+  Writeln(ErrOutput, '  -i, --input, -s, --schema   Path to the root JSON Schema file (required)');
+  Writeln(ErrOutput, '  -o, --output                Path to save the bundled schema (prints to stdout if omitted)');
+  Writeln(ErrOutput, '  --legacy                    Consolidate definitions under "definitions" instead of "$defs"');
+  Writeln(ErrOutput, '  --minify                    Minify output JSON schema instead of prettifying');
+  Writeln(ErrOutput, '  --quiet                     Modo silencioso. Suprime saídas informativas.');
+  Writeln(ErrOutput, '  -h, --help                  Display this help documentation');
+  Writeln(ErrOutput);
 end;
 
 function RunSchemaBundler: Integer;
@@ -41,18 +43,25 @@ var
   lOptions: TSchemaBundlerOptions;
   lOutputText: string;
 begin
+  Result := 1; // Default to error
   lConfig := ParseCommandLine;
 
   if lConfig.ShowHelp or (lConfig.InputPath = '') then
   begin
     ShowHelpMessage;
-    Exit(0);
+    if not lConfig.ShowHelp then
+    begin
+      Writeln(ErrOutput, 'Error: Missing required option: -i/--input or -s/--schema');
+      Exit;
+    end;
+    Result := 0;
+    Exit;
   end;
 
   if not FileExists(lConfig.InputPath) then
   begin
     Writeln(ErrOutput, 'Error: Root schema file does not exist at: ' + lConfig.InputPath);
-    Exit(1);
+    Exit;
   end;
 
   try
@@ -68,11 +77,13 @@ begin
       begin
         try
           TFile.WriteAllText(lConfig.OutputPath, lOutputText, TEncoding.UTF8);
+          if not lConfig.Quiet then
+            Writeln(ErrOutput, 'Schema bundled successfully at: ' + lConfig.OutputPath);
         except
           on E: Exception do
           begin
             Writeln(ErrOutput, 'Error writing output file: ' + E.Message);
-            Exit(1);
+            Exit;
           end;
         end;
       end else
