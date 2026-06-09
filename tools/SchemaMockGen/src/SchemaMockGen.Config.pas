@@ -18,6 +18,8 @@ type
     OutputPath: string;
     Seed: Int64;
     Count: Integer;
+    Minify: Boolean;
+    Quiet: Boolean;
     ShowHelp: Boolean;
   end;
 
@@ -41,6 +43,8 @@ begin
   Result.OutputPath := '';
   Result.Seed := -1; // -1 indicates random seed if not specified
   Result.Count := 1;
+  Result.Minify := False;
+  Result.Quiet := False;
   Result.ShowHelp := False;
 
   lI := 0;
@@ -52,7 +56,7 @@ begin
     begin
       Result.ShowHelp := True;
       Exit;
-    end else if SameText(lArg, '-s') or SameText(lArg, '--schema') then
+    end else if SameText(lArg, '-s') or SameText(lArg, '--schema') or SameText(lArg, '-i') or SameText(lArg, '--input') then
     begin
       Inc(lI);
       if lI < Length(pArgs) then
@@ -80,6 +84,16 @@ begin
         if not TryStrToInt(lVal, Result.Count) or (Result.Count < 1) then
           Result.Count := 1;
       end;
+    end else if SameText(lArg, '--minify') then
+    begin
+      Result.Minify := True;
+    end else if SameText(lArg, '-q') or SameText(lArg, '--quiet') then
+    begin
+      Result.Quiet := True;
+    end else
+    begin
+      if Result.SchemaPath = '' then
+        Result.SchemaPath := lArg;
     end;
 
     Inc(lI);

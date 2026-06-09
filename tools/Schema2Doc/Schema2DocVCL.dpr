@@ -9,7 +9,6 @@ JSON Schema definitions.
 
 uses
   Vcl.Forms,
-  Vcl.XPMan, // Modern VCL native styling and themes (Windows 11)
   Schema2Doc.Main in 'src\Schema2Doc.Main.pas' {frmMain},
   Schema2Doc.Engine in 'src\Schema2Doc.Engine.pas';
 

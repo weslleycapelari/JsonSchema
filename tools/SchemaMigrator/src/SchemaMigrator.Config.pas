@@ -17,6 +17,7 @@ type
     InputPath: string;
     OutputPath: string;
     Minify: Boolean;
+    Quiet: Boolean;
     ShowHelp: Boolean;
   end;
 
@@ -34,6 +35,7 @@ begin
   Result.InputPath := '';
   Result.OutputPath := '';
   Result.Minify := False;
+  Result.Quiet := False;
   Result.ShowHelp := False;
 
   lI := 1;
@@ -59,6 +61,11 @@ begin
     else if SameText(lArg, '--minify') then
     begin
       Result.Minify := True;
+      Inc(lI);
+    end
+    else if SameText(lArg, '-q') or SameText(lArg, '--quiet') then
+    begin
+      Result.Quiet := True;
       Inc(lI);
     end
     else

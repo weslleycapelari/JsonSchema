@@ -14,7 +14,7 @@ object frmMain: TfrmMain
   OnCreate = FormCreate
   PixelsPerInch = 96
   TextHeight = 15
-  object splSplitter: TSplitter
+  object splMain: TSplitter
     Left = 380
     Top = 0
     Width = 5

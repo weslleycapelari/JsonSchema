@@ -19,20 +19,22 @@ implementation
 
 procedure ShowHelpMessage;
 begin
-  Writeln('JSON2Schema CLI Converter');
-  Writeln('Generates JSON Schema from arbitrary JSON instances.');
-  Writeln;
-  Writeln('Usage:');
-  Writeln('  JSON2SchemaCLI.exe -i <input_path> [-o <output_path>] [-d <draft>] [--required] [--no-format]');
-  Writeln;
-  Writeln('Options:');
-  Writeln('  -i, --input      Path to the input JSON file (required)');
-  Writeln('  -o, --output     Path to save the generated schema.json (prints to stdout if omitted)');
-  Writeln('  -d, --draft      Schema draft identifier URL (default: Draft 7)');
-  Writeln('  --required       Include all object properties in the required array');
-  Writeln('  --no-format      Disable string format inference (date, email, uuid)');
-  Writeln('  -h, --help       Display this help documentation');
-  Writeln;
+  Writeln(ErrOutput, 'JSON2Schema CLI Converter');
+  Writeln(ErrOutput, 'Generates JSON Schema from arbitrary JSON instances.');
+  Writeln(ErrOutput);
+  Writeln(ErrOutput, 'Usage:');
+  Writeln(ErrOutput, '  JSON2SchemaCLI.exe -i <input_path> [-o <output_path>] [options]');
+  Writeln(ErrOutput);
+  Writeln(ErrOutput, 'Options:');
+  Writeln(ErrOutput, '  -i, --input      Path to the input JSON file (required)');
+  Writeln(ErrOutput, '  -o, --output     Path to save the generated schema.json (prints to stdout if omitted)');
+  Writeln(ErrOutput, '  -d, --draft      Schema draft identifier URL (default: Draft 7)');
+  Writeln(ErrOutput, '  --required       Include all object properties in the required array');
+  Writeln(ErrOutput, '  --no-format      Disable string format inference (date, email, uuid)');
+  Writeln(ErrOutput, '  --minify         Minify output JSON schema instead of prettifying');
+  Writeln(ErrOutput, '  -q, --quiet      Suppress informational output');
+  Writeln(ErrOutput, '  -h, --help       Display this help documentation');
+  Writeln(ErrOutput);
 end;
 
 function RunJSON2Schema: Integer;
@@ -43,9 +45,9 @@ var
   lGenerator: TJSON2SchemaGenerator;
   lSchemaObj: TJSONObject;
   lOptions: TJSON2SchemaOptions;
-  lPrettySchema: string;
+  lOutputText: string;
 begin
-  Result := 0;
+  Result := 1; // Default to error
   lConfig := ParseCommandLine;
 
   if lConfig.ShowHelp or (lConfig.InputPath = '') then
@@ -57,7 +59,7 @@ begin
   if not FileExists(lConfig.InputPath) then
   begin
     Writeln(ErrOutput, 'Error: Input file does not exist at: ' + lConfig.InputPath);
-    Exit(1);
+    Exit;
   end;
 
   try
@@ -67,7 +69,7 @@ begin
     on E: Exception do
     begin
       Writeln(ErrOutput, 'Error reading input file: ' + E.Message);
-      Exit(1);
+      Exit;
     end;
   end;
 
@@ -75,7 +77,7 @@ begin
   if not Assigned(lJSONValue) then
   begin
     Writeln(ErrOutput, 'Error: Failed to parse input file as valid JSON.');
-    Exit(1);
+    Exit;
   end;
 
   try
@@ -91,28 +93,34 @@ begin
       if not Assigned(lSchemaObj) then
       begin
         Writeln(ErrOutput, 'Error: Inference produced no output.');
-        Exit(1);
+        Exit;
       end;
 
       try
-        lPrettySchema := lSchemaObj.Format(2);
+        if lConfig.Minify then
+          lOutputText := lSchemaObj.ToJSON
+        else
+          lOutputText := lSchemaObj.Format(2);
 
         if lConfig.OutputPath <> '' then
         begin
           try
-            TFile.WriteAllText(lConfig.OutputPath, lPrettySchema, TEncoding.UTF8);
+            TFile.WriteAllText(lConfig.OutputPath, lOutputText, TEncoding.UTF8);
+            if not lConfig.Quiet then
+              Writeln(ErrOutput, 'JSON Schema generated successfully.');
           except
             on E: Exception do
             begin
               Writeln(ErrOutput, 'Error writing schema to file: ' + E.Message);
-              Exit(1);
+              Exit;
             end;
           end;
         end
         else
         begin
-          Writeln(lPrettySchema);
+          Writeln(lOutputText);
         end;
+        Result := 0; // Success
       finally
         lSchemaObj.Free;
       end;

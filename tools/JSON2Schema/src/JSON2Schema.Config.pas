@@ -19,6 +19,8 @@ type
     Draft: string;
     MakeRequired: Boolean;
     InferFormats: Boolean;
+    Minify: Boolean;
+    Quiet: Boolean;
     ShowHelp: Boolean;
   end;
 
@@ -38,6 +40,8 @@ begin
   Result.Draft := 'http://json-schema.org/draft-07/schema#';
   Result.MakeRequired := False;
   Result.InferFormats := True;
+  Result.Minify := False;
+  Result.Quiet := False;
   Result.ShowHelp := False;
 
   lI := 1;
@@ -73,6 +77,16 @@ begin
     else if SameText(lArg, '--no-format') then
     begin
       Result.InferFormats := False;
+      Inc(lI);
+    end
+    else if SameText(lArg, '--minify') then
+    begin
+      Result.Minify := True;
+      Inc(lI);
+    end
+    else if SameText(lArg, '-q') or SameText(lArg, '--quiet') then
+    begin
+      Result.Quiet := True;
       Inc(lI);
     end
     else

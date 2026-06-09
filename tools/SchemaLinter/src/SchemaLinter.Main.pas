@@ -30,7 +30,7 @@ type
     pnlStatus: TPanel;
     lblStatus: TLabel;
     dlgSave: TSaveDialog;
-    splSplitter: TSplitter;
+    splMain: TSplitter;
     procedure FormCreate(Sender: TObject);
     procedure btnAnalyzeClick(Sender: TObject);
     procedure btnCopyClick(Sender: TObject);
@@ -59,7 +59,7 @@ begin
   cboMinSeverity.ItemIndex := 0; // Info default
 
   lblStatus.Caption := 'Ready';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Font.Color := clGreen;
 
   // Set default schema with some conflicts to demonstrate
   mmoSchemaInput.Lines.Clear;
@@ -95,7 +95,8 @@ var
 begin
   lvwFindings.Items.Clear;
   lblStatus.Caption := 'Analyzing schema...';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Font.Color := $000288D1;
+  lblStatus.Update;
 
   if Trim(mmoSchemaInput.Text) = '' then
   begin
@@ -117,13 +118,7 @@ begin
   try
     lLinter := TSchemaLinter.Create;
     try
-      case cboMinSeverity.ItemIndex of
-        1: lLinter.MinSeverity := TSeverity.Warning;
-        2: lLinter.MinSeverity := TSeverity.Error;
-      else
-        lLinter.MinSeverity := TSeverity.Info;
-      end;
-
+      lLinter.MinSeverity := TSeverity(cboMinSeverity.ItemIndex);
       lFindings := lLinter.Analyze(lSchemaJson as TJSONObject);
 
       lHasErrors := False;
@@ -148,7 +143,7 @@ begin
         if lHasErrors then
           lblStatus.Font.Color := clRed
         else
-          lblStatus.Font.Color := clWindowText;
+          lblStatus.Font.Color := clGreen;
       end;
     finally
       lLinter.Free;
@@ -230,7 +225,7 @@ var
 begin
   lSb := TStringBuilder.Create;
   try
-    lSb.AppendLine('# SchemaLinter VCL Analysis Report');
+    lSb.AppendLine('# SchemaLinter Analysis Report');
     lSb.AppendLine;
     lSb.AppendLine(Format('- **Total Findings**: %d', [lvwFindings.Items.Count]));
     lSb.AppendLine(Format('- **Analysis Date**: %s', [DateTimeToStr(Now)]));

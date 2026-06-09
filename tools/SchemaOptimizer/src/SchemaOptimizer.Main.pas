@@ -10,19 +10,19 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Clipbrd,
-  System.JSON, System.IOUtils, SchemaOptimizer.Engine;
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Clipbrd, System.JSON,
+  System.IOUtils, SchemaOptimizer.Engine;
 
 type
   TfrmMain = class(TForm)
     pnlLeft: TPanel;
     lblSchemaInput: TLabel;
+    btnLoadFile: TButton;
     mmoSchemaInput: TMemo;
     chkRemoveUnused: TCheckBox;
     chkMergeAllOf: TCheckBox;
     chkPruneEmpty: TCheckBox;
     chkMinify: TCheckBox;
-    btnLoadFile: TButton;
     pnlRight: TPanel;
     lblOutputSchema: TLabel;
     mmoOutputSchema: TMemo;
@@ -34,7 +34,7 @@ type
     lblStatus: TLabel;
     dlgSave: TSaveDialog;
     dlgOpen: TOpenDialog;
-    splSplitter: TSplitter;
+    splMain: TSplitter;
     procedure FormCreate(Sender: TObject);
     procedure btnLoadFileClick(Sender: TObject);
     procedure btnOptimizeClick(Sender: TObject);
@@ -55,36 +55,24 @@ implementation
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
+  lblStatus.Caption := 'Ready';
+  lblStatus.Font.Color := clGreen;
+
   chkRemoveUnused.Checked := True;
   chkMergeAllOf.Checked := True;
   chkPruneEmpty.Checked := True;
   chkMinify.Checked := False;
 
-  lblStatus.Caption := 'Ready';
-  lblStatus.Font.Color := clWindowText;
-
   mmoSchemaInput.Lines.Clear;
-  mmoOutputSchema.Lines.Clear;
-
-  // Pre-load a demo schema that illustrates all optimization modes
   mmoSchemaInput.Lines.Add('{');
-  mmoSchemaInput.Lines.Add('  "type": "object",');
-  mmoSchemaInput.Lines.Add('  "properties": {');
-  mmoSchemaInput.Lines.Add('    "name": { "$ref": "#/$defs/Used" }');
-  mmoSchemaInput.Lines.Add('  },');
-  mmoSchemaInput.Lines.Add('  "$defs": {');
-  mmoSchemaInput.Lines.Add('    "Used": { "type": "string" },');
-  mmoSchemaInput.Lines.Add('    "Unused": { "type": "integer" }');
-  mmoSchemaInput.Lines.Add('  },');
+  mmoSchemaInput.Lines.Add('  "title": "Optimizable Schema",');
   mmoSchemaInput.Lines.Add('  "allOf": [');
-  mmoSchemaInput.Lines.Add('    {');
-  mmoSchemaInput.Lines.Add('      "properties": {');
-  mmoSchemaInput.Lines.Add('        "age": { "type": "integer" }');
-  mmoSchemaInput.Lines.Add('      }');
-  mmoSchemaInput.Lines.Add('    },');
-  mmoSchemaInput.Lines.Add('    {}');
+  mmoSchemaInput.Lines.Add('    { "type": "object" },');
+  mmoSchemaInput.Lines.Add('    { "properties": { "name": { "type": "string" } } }');
   mmoSchemaInput.Lines.Add('  ],');
-  mmoSchemaInput.Lines.Add('  "required": ["name"]');
+  mmoSchemaInput.Lines.Add('  "$defs": {');
+  mmoSchemaInput.Lines.Add('    "unused": { "type": "integer" }');
+  mmoSchemaInput.Lines.Add('  }');
   mmoSchemaInput.Lines.Add('}');
 end;
 
@@ -94,10 +82,9 @@ begin
   if dlgOpen.Execute then
   begin
     try
-      mmoSchemaInput.Text := TFile.ReadAllText(dlgOpen.FileName, TEncoding.UTF8);
-      lblStatus.Caption := 'Loaded: ' + ExtractFileName(dlgOpen.FileName);
+      mmoSchemaInput.Lines.LoadFromFile(dlgOpen.FileName, TEncoding.UTF8);
+      lblStatus.Caption := 'File loaded: ' + ExtractFileName(dlgOpen.FileName);
       lblStatus.Font.Color := clGreen;
-      mmoOutputSchema.Clear;
     except
       on E: Exception do
       begin
@@ -110,20 +97,21 @@ end;
 
 procedure TfrmMain.btnOptimizeClick(Sender: TObject);
 var
+  lSchemaJson: TJSONValue;
   lOptions: TOptimizerOptions;
   lOptimizer: TSchemaOptimizer;
-  lSchemaJson: TJSONValue;
   lOutputText: string;
   lBytesSaved: Int64;
   lDefsRemoved: Integer;
 begin
   mmoOutputSchema.Clear;
-  lblStatus.Caption := 'Optimizing JSON schema...';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Caption := 'Optimizing...';
+  lblStatus.Font.Color := $000288D1;
+  lblStatus.Update;
 
   if Trim(mmoSchemaInput.Text) = '' then
   begin
-    lblStatus.Caption := 'Error: Input JSON Schema is empty.';
+    lblStatus.Caption := 'Error: Input schema is empty.';
     lblStatus.Font.Color := clRed;
     Exit;
   end;

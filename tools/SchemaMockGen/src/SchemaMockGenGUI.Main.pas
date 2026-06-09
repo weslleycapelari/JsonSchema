@@ -38,6 +38,8 @@ type
     btnGenerate: TButton;
     btnSave: TButton;
     mmoOutput: TMemo;
+    pnlStatus: TPanel;
+    lblStatus: TLabel;
     dlgOpenSchema: TOpenDialog;
     dlgSaveOutput: TSaveDialog;
     procedure btnBrowseSchemaClick(Sender: TObject);
@@ -63,22 +65,25 @@ begin
   edtSeed.Text := '-1';
   edtCount.Text := '1';
   mmoOutput.Clear;
-end;
+  lblStatus.Caption := 'Ready';
+  lblStatus.Font.Color := clGreen;
+  lblStatus.Update;
+  end;
 
-procedure TfrmMain.btnBrowseSchemaClick(Sender: TObject);
-begin
+  procedure TfrmMain.btnBrowseSchemaClick(Sender: TObject);
+  begin
   if dlgOpenSchema.Execute then
     edtSchemaPath.Text := dlgOpenSchema.FileName;
-end;
+  end;
 
-procedure TfrmMain.btnRandomSeedClick(Sender: TObject);
-begin
+  procedure TfrmMain.btnRandomSeedClick(Sender: TObject);
+  begin
   Randomize;
   edtSeed.Text := IntToStr(Random(2147483647));
-end;
+  end;
 
-procedure TfrmMain.btnGenerateClick(Sender: TObject);
-var
+  procedure TfrmMain.btnGenerateClick(Sender: TObject);
+  var
   lSchemaPath: string;
   lSchemaStr, lOutputStr: string;
   lSchemaVal: TJSONValue;
@@ -88,10 +93,15 @@ var
   lResultVal: TJSONValue;
   lResultArray: TJSONArray;
   lI: Integer;
-begin
+  begin
+  lblStatus.Caption := 'Generating...';
+  lblStatus.Font.Color := $000288D1;
+  lblStatus.Update;
   lSchemaPath := edtSchemaPath.Text;
   if (lSchemaPath = '') or not FileExists(lSchemaPath) then
   begin
+    lblStatus.Caption := 'Error: Invalid schema file.';
+    lblStatus.Font.Color := clRed;
     ShowMessage('Please select a valid JSON Schema file first.');
     Exit;
   end;
@@ -101,6 +111,8 @@ begin
   except
     on E: Exception do
     begin
+      lblStatus.Caption := 'Error reading file.';
+      lblStatus.Font.Color := clRed;
       ShowMessage('Error reading schema file: ' + E.Message);
       Exit;
     end;
@@ -109,6 +121,8 @@ begin
   lSchemaVal := TJSONObject.ParseJSONValue(lSchemaStr);
   if not Assigned(lSchemaVal) then
   begin
+    lblStatus.Caption := 'Error: Invalid JSON.';
+    lblStatus.Font.Color := clRed;
     ShowMessage('Schema is not a valid JSON document.');
     Exit;
   end;
@@ -150,6 +164,8 @@ begin
 
       // Prettify output JSON if possible
       mmoOutput.Text := lOutputStr;
+      lblStatus.Caption := 'Mock data generated successfully.';
+      lblStatus.Font.Color := clGreen;
     finally
       lGenerator.Free;
     end;
@@ -162,6 +178,8 @@ procedure TfrmMain.btnSaveClick(Sender: TObject);
 begin
   if mmoOutput.Text = '' then
   begin
+    lblStatus.Caption := 'Error: Nothing to save.';
+    lblStatus.Font.Color := clRed;
     ShowMessage('No generated mock data to save.');
     Exit;
   end;
@@ -170,10 +188,16 @@ begin
   begin
     try
       WriteFileContent(dlgSaveOutput.FileName, mmoOutput.Text);
+      lblStatus.Caption := 'File saved: ' + ExtractFileName(dlgSaveOutput.FileName);
+      lblStatus.Font.Color := clGreen;
       ShowMessage('File saved successfully.');
     except
       on E: Exception do
+      begin
+        lblStatus.Caption := 'Error saving file.';
+        lblStatus.Font.Color := clRed;
         ShowMessage('Error saving file: ' + E.Message);
+      end;
     end;
   end;
 end;

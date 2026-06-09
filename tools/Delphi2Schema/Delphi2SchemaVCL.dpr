@@ -9,7 +9,6 @@ compiled Delphi types using RTTI reflection.
 
 uses
   Vcl.Forms,
-  Vcl.XPMan, // Ensures modern VCL rendering with OS styles (Windows 11 support)
   Delphi2Schema.Main in 'src\Delphi2Schema.Main.pas' {frmMain},
   Delphi2Schema.Attributes in 'src\Delphi2Schema.Attributes.pas',
   Delphi2Schema.Engine in 'src\Delphi2Schema.Engine.pas',

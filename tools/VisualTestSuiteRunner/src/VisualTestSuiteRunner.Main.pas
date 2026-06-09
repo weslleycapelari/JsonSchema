@@ -22,14 +22,14 @@ type
     lblDraft: TLabel;
     cmbDraft: TComboBox;
     btnRun: TButton;
-    pnlBottom: TPanel;
+    pnlStatus: TPanel;
     pbProgress: TProgressBar;
     lblSummary: TLabel;
     lblCompliance: TLabel;
     pnlMain: TPanel;
     pnlLeft: TPanel;
     tvTestTree: TTreeView;
-    splSplitter: TSplitter;
+    splMain: TSplitter;
     pnlRight: TPanel;
     lblInspection: TLabel;
     mmoSchema: TMemo;
@@ -63,6 +63,7 @@ implementation
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
+  cmbDraft.Items.Clear;
   cmbDraft.Items.Add('2020-12');
   cmbDraft.Items.Add('2019-09');
   cmbDraft.Items.Add('draft7');
@@ -71,6 +72,7 @@ begin
 
   ClearInspection;
   lblSummary.Caption := 'Ready to run test suite';
+  lblSummary.Font.Color := clGreen;
   lblCompliance.Caption := 'Compliance: 0.0%';
   lblCompliance.Font.Color := clWindowText;
 end;
@@ -96,24 +98,29 @@ procedure TfrmMain.btnRunClick(Sender: TObject);
 begin
   if edtSuiteDir.Text = '' then
   begin
+    lblSummary.Caption := 'Error: Select directory.';
+    lblSummary.Font.Color := clRed;
     ShowMessage('Please select the test suite directory first.');
     Exit;
   end;
 
   if not TDirectory.Exists(edtSuiteDir.Text) then
   begin
+    lblSummary.Caption := 'Error: Invalid directory.';
+    lblSummary.Font.Color := clRed;
     ShowMessage('Selected directory does not exist.');
     Exit;
   end;
 
   lblSummary.Caption := 'Running validations...';
+  lblSummary.Font.Color := $000288D1;
   lblSummary.Update;
 
   if Assigned(FRunner) then
     FreeAndNil(FRunner);
 
-  FRunner := TTestSuiteRunner.Create(cmbDraft.Text);
   try
+    FRunner := TTestSuiteRunner.Create(cmbDraft.Text);
     FRunner.RunTestSuite(edtSuiteDir.Text);
     PopulateTree;
   except
@@ -121,6 +128,7 @@ begin
     begin
       ShowMessage('Error running test suite: ' + E.Message);
       lblSummary.Caption := 'Run failed';
+      lblSummary.Font.Color := clRed;
     end;
   end;
 end;
@@ -192,6 +200,7 @@ begin
     lblSummary.Caption := Format('Total: %d | Passed: %d | Failed: %d', [
       lTotalTests, lTotalPassed, lTotalTests - lTotalPassed
     ]);
+    lblSummary.Font.Color := clGreen;
 
     lblCompliance.Caption := Format('Compliance: %.2f%%', [lCompliance]);
     if lCompliance >= 95.0 then

@@ -99,7 +99,7 @@ begin
 
   chkEnforceFormats.Checked := True;
   lblStatus.Caption := 'Ready';
-  lblStatus.Font.Color := $00CC6600; // Brand Classic Blue
+  lblStatus.Font.Color := clGreen;
 end;
 
 procedure TfrmMain.btnLoadSchemaClick(Sender: TObject);
@@ -156,7 +156,8 @@ var
 begin
   lstErrors.Items.Clear;
   lblStatus.Caption := 'Validating...';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Font.Color := $000288D1;
+  lblStatus.Update;
 
   if Trim(mmoSchema.Text) = '' then
   begin

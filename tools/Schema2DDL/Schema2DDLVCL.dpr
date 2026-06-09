@@ -9,7 +9,6 @@ JSON Schema definitions.
 
 uses
   Vcl.Forms,
-  Vcl.XPMan, // Modern VCL native styling and themes (Windows 11)
   Schema2DDL.Main in 'src\Schema2DDL.Main.pas' {frmMain},
   Schema2DDL.Dialects in 'src\Schema2DDL.Dialects.pas',
   Schema2DDL.Engine in 'src\Schema2DDL.Engine.pas';

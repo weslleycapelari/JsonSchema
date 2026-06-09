@@ -32,7 +32,7 @@ type
     pnlStatus: TPanel;
     lblStatus: TLabel;
     dlgSave: TSaveDialog;
-    splSplitter: TSplitter;
+    splMain: TSplitter;
     procedure FormCreate(Sender: TObject);
     procedure btnGenerateClick(Sender: TObject);
     procedure btnCopyClick(Sender: TObject);
@@ -54,13 +54,14 @@ procedure TfrmMain.FormCreate(Sender: TObject);
 begin
   cboDraft.Items.Clear;
   cboDraft.Items.Add('http://json-schema.org/draft-07/schema#');
+  cboDraft.Items.Add('https://json-schema.org/draft/2019-09/schema');
   cboDraft.Items.Add('https://json-schema.org/draft/2020-12/schema');
   cboDraft.ItemIndex := 0; // Default Draft 7
 
   chkRequired.Checked := False;
   chkInferFormats.Checked := True;
   lblStatus.Caption := 'Ready';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Font.Color := clGreen;
 
   // Set default raw JSON
   mmoInputJSON.Lines.Clear;
@@ -83,7 +84,8 @@ var
 begin
   mmoOutputSchema.Clear;
   lblStatus.Caption := 'Generating Schema...';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Font.Color := $000288D1;
+  lblStatus.Update;
 
   if Trim(mmoInputJSON.Text) = '' then
   begin

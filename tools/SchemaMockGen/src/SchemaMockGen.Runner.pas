@@ -30,14 +30,16 @@ begin
   Writeln(ErrOutput, 'SchemaMockGen - JSON Schema Mock Instance Generator');
   Writeln(ErrOutput);
   Writeln(ErrOutput, 'Usage:');
-  Writeln(ErrOutput, '  SchemaMockGen -s <schema_path> [options]');
+  Writeln(ErrOutput, '  SchemaMockGen -i <schema_path> [options]');
   Writeln(ErrOutput);
   Writeln(ErrOutput, 'Options:');
-  Writeln(ErrOutput, '  -s, --schema    Path to the JSON Schema file (Required).');
-  Writeln(ErrOutput, '  -o, --output    Path to save the generated mock JSON file (Optional. Prints to stdout if omitted).');
-  Writeln(ErrOutput, '  -e, --seed      Deterministic generation seed (Optional. Seed >= 0).');
-  Writeln(ErrOutput, '  -n, --count     Number of mock instances to generate (Optional. Default: 1).');
-  Writeln(ErrOutput, '  -h, --help      Display this help manual.');
+  Writeln(ErrOutput, '  -i, --input, -s, --schema   Path to the JSON Schema file (Required).');
+  Writeln(ErrOutput, '  -o, --output                Path to save the generated mock JSON file (Optional. Prints to stdout if omitted).');
+  Writeln(ErrOutput, '  -e, --seed                  Deterministic generation seed (Optional. Seed >= 0).');
+  Writeln(ErrOutput, '  -n, --count                 Number of mock instances to generate (Optional. Default: 1).');
+  Writeln(ErrOutput, '  --minify                    Minify generated mock JSON.');
+  Writeln(ErrOutput, '  -q, --quiet                 Suppress informational output.');
+  Writeln(ErrOutput, '  -h, --help                  Display this help manual.');
   Writeln(ErrOutput);
 end;
 
@@ -53,15 +55,15 @@ var
   lI: Integer;
   lOutputStr: string;
 begin
-  Result := 2; // Default to error exit code
+  Result := 1; // Default to error exit code
   lConfig := ParseArguments;
 
   if lConfig.ShowHelp or lConfig.SchemaPath.IsEmpty then
   begin
     PrintUsage;
     if lConfig.SchemaPath.IsEmpty and not lConfig.ShowHelp then
-      Writeln(ErrOutput, 'Error: Missing required option: -s/--schema');
-    Exit;
+      Writeln(ErrOutput, 'Error: Missing required option: -i/--input or -s/--schema');
+    Exit(0);
   end;
 
   // --- STEP 1: Load Schema ---
@@ -94,7 +96,8 @@ begin
     // Generate a random seed if none was specified (or was negative)
     Randomize;
     lSeed := Random(2147483647);
-    Writeln(ErrOutput, Format('Note: Seed omitted. Generated random seed: %d', [lSeed]));
+    if not lConfig.Quiet then
+      Writeln(ErrOutput, Format('Note: Seed omitted. Generated random seed: %d', [lSeed]));
   end else
     lSeed := lConfig.Seed;
 
@@ -105,15 +108,25 @@ begin
       if lConfig.Count = 1 then
       begin
         lResultVal := lGenerator.Generate(lSchemaVal);
-        lOutputStr := lResultVal.ToString; // Use ToJSON if format is preferred, ToString provides standard compact JSON representation
+        if lConfig.Minify then
+          lOutputStr := lResultVal.ToJSON
+        else
+          lOutputStr := lResultVal.Format(2);
         lResultVal.Free;
       end else
       begin
         lResultArray := TJSONArray.Create;
-        for lI := 1 to lConfig.Count do
-          lResultArray.AddElement(lGenerator.Generate(lSchemaVal));
-        lOutputStr := lResultArray.ToString;
-        lResultArray.Free;
+        try
+          for lI := 1 to lConfig.Count do
+            lResultArray.AddElement(lGenerator.Generate(lSchemaVal));
+          
+          if lConfig.Minify then
+            lOutputStr := lResultArray.ToJSON
+          else
+            lOutputStr := lResultArray.Format(2);
+        finally
+          lResultArray.Free;
+        end;
       end;
     except
       on E: Exception do
@@ -128,6 +141,8 @@ begin
     begin
       try
         WriteFileContent(lConfig.OutputPath, lOutputStr);
+        if not lConfig.Quiet then
+          Writeln(ErrOutput, 'Mock data generated successfully.');
       except
         on E: Exception do
         begin

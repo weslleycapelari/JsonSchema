@@ -20,6 +20,7 @@ type
     MergeAllOf: Boolean;
     PruneEmpty: Boolean;
     Minify: Boolean;
+    Quiet: Boolean;
     ShowHelp: Boolean;
   end;
 
@@ -40,6 +41,7 @@ begin
   Result.MergeAllOf := True;
   Result.PruneEmpty := True;
   Result.Minify := False;
+  Result.Quiet := False;
   Result.ShowHelp := False;
 
   lI := 1;
@@ -52,7 +54,7 @@ begin
       Result.ShowHelp := True;
       Inc(lI);
     end
-    else if (SameText(lArg, '-i') or SameText(lArg, '--input')) and (lI < ParamCount) then
+    else if (SameText(lArg, '-i') or SameText(lArg, '--input') or SameText(lArg, '-s') or SameText(lArg, '--schema')) and (lI < ParamCount) then
     begin
       Result.InputPath := ParamStr(lI + 1);
       Inc(lI, 2);
@@ -80,6 +82,11 @@ begin
     else if SameText(lArg, '--minify') then
     begin
       Result.Minify := True;
+      Inc(lI);
+    end
+    else if SameText(lArg, '-q') or SameText(lArg, '--quiet') then
+    begin
+      Result.Quiet := True;
       Inc(lI);
     end
     else

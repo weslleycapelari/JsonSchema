@@ -19,18 +19,19 @@ implementation
 
 procedure ShowHelpMessage;
 begin
-  Writeln('SchemaLinter - JSON Schema Static Quality & Security Analyzer');
-  Writeln('Analyzes JSON Schema files for logical conflicts, ReDoS patterns, and documentation gaps.');
-  Writeln;
-  Writeln('Usage:');
-  Writeln('  SchemaLinterCLI.exe -s <schema_path> [-o <output_path>] [-m <min_severity>]');
-  Writeln;
-  Writeln('Options:');
-  Writeln('  -s, --schema         Path to the input JSON Schema file (required)');
-  Writeln('  -o, --output         Path to save the generated report (Markdown, JSON or text)');
-  Writeln('  -m, --min-severity   Minimum severity level to report: info, warning, error (default: info)');
-  Writeln('  -h, --help           Display this help documentation');
-  Writeln;
+  Writeln(ErrOutput, 'SchemaLinter - JSON Schema Static Quality & Security Analyzer');
+  Writeln(ErrOutput, 'Analyzes JSON Schema files for logical conflicts, ReDoS patterns, and documentation gaps.');
+  Writeln(ErrOutput);
+  Writeln(ErrOutput, 'Usage:');
+  Writeln(ErrOutput, '  SchemaLinterCLI.exe -i <schema_path> [-o <output_path>] [options]');
+  Writeln(ErrOutput);
+  Writeln(ErrOutput, 'Options:');
+  Writeln(ErrOutput, '  -i, --input, -s, --schema  Path to the input JSON Schema file (required)');
+  Writeln(ErrOutput, '  -o, --output               Path to save the generated report (Markdown, JSON or text)');
+  Writeln(ErrOutput, '  -m, --min-severity         Minimum severity level to report: info, warning, error (default: info)');
+  Writeln(ErrOutput, '  -q, --quiet                Suppress informational output');
+  Writeln(ErrOutput, '  -h, --help                 Display this help documentation');
+  Writeln(ErrOutput);
 end;
 
 function SeverityToString(pSeverity: TSeverity): string;
@@ -112,6 +113,7 @@ var
   lHasErrors: Boolean;
   lLine: string;
 begin
+  Result := 1; // Default to error
   lConfig := ParseCommandLine;
 
   if lConfig.ShowHelp or (lConfig.SchemaPath = '') then
@@ -123,7 +125,7 @@ begin
   if not FileExists(lConfig.SchemaPath) then
   begin
     Writeln(ErrOutput, 'Error: Schema file does not exist at: ' + lConfig.SchemaPath);
-    Exit(1);
+    Exit;
   end;
 
   try
@@ -132,7 +134,7 @@ begin
     on E: Exception do
     begin
       Writeln(ErrOutput, 'Error reading schema file: ' + E.Message);
-      Exit(1);
+      Exit;
     end;
   end;
 
@@ -142,7 +144,7 @@ begin
     if Assigned(lJSONVal) then
       lJSONVal.Free;
     Writeln(ErrOutput, 'Error: Input file is not a valid JSON Object.');
-    Exit(1);
+    Exit;
   end;
 
   lSchemaObj := TJSONObject(lJSONVal);
@@ -154,8 +156,12 @@ begin
     lHasErrors := False;
     if Length(lFindings) > 0 then
     begin
-      Writeln(Format('Analysis completed. Found %d issues:', [Length(lFindings)]));
-      Writeln;
+      if not lConfig.Quiet then
+      begin
+        Writeln(Format('Analysis completed. Found %d issues:', [Length(lFindings)]));
+        Writeln;
+      end;
+
       for lFinding in lFindings do
       begin
         lLine := Format('[%s] %s at %s: %s', [
@@ -164,13 +170,15 @@ begin
           lFinding.Path,
           lFinding.Message
         ]);
-        Writeln(lLine);
+        if not lConfig.Quiet then
+          Writeln(lLine);
         if lFinding.Severity = TSeverity.Error then
           lHasErrors := True;
       end;
     end else
     begin
-      Writeln('Analysis completed. No issues found.');
+      if not lConfig.Quiet then
+        Writeln('Analysis completed. No issues found.');
     end;
 
     // Handle output reporting
@@ -196,11 +204,13 @@ begin
 
       try
         TFile.WriteAllText(lConfig.OutputPath, lOutputText, TEncoding.UTF8);
+        if not lConfig.Quiet then
+          Writeln(ErrOutput, 'Report generated successfully.');
       except
         on E: Exception do
         begin
           Writeln(ErrOutput, 'Error writing report: ' + E.Message);
-          Exit(1);
+          Exit;
         end;
       end;
     end;

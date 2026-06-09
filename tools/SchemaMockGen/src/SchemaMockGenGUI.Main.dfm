@@ -104,7 +104,7 @@ object frmMain: TfrmMain
     Left = 0
     Top = 95
     Width = 800
-    Height = 405
+    Height = 375
     Align = alClient
     Font.Charset = ANSI_CHARSET
     Font.Color = clWindowText
@@ -114,6 +114,23 @@ object frmMain: TfrmMain
     ParentFont = False
     ScrollBars = ssVertical
     TabOrder = 1
+  end
+  object pnlStatus: TPanel
+    Left = 0
+    Top = 470
+    Width = 800
+    Height = 30
+    Align = alBottom
+    Alignment = taLeftJustify
+    BevelOuter = bvNone
+    TabOrder = 2
+    object lblStatus: TLabel
+      Left = 16
+      Top = 8
+      Width = 32
+      Height = 15
+      Caption = 'Ready'
+    end
   end
   object dlgOpenSchema: TOpenDialog
     Filter = 'JSON Files (*.json)|*.json|All Files (*.*)|*.*'

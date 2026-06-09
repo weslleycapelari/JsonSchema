@@ -44,7 +44,8 @@ begin
   Writeln(ErrOutput, '  -l, --locale <locale>       Locale for translated error messages (en, pt). Default: en.');
   Writeln(ErrOutput, '  -f, --format <format>       Output report format (text, json, junit). Default: text.');
   Writeln(ErrOutput, '  --no-format                 Disable schema format validation checks.');
-  Writeln(ErrOutput, '  --quiet                     Modo silencioso. Suprime saídas informativas.');
+  Writeln(ErrOutput, '  --minify                    Minify JSON output report.');
+  Writeln(ErrOutput, '  -q, --quiet                 Suppress informational output.');
   Writeln(ErrOutput, '  -h, --help                  Display this help manual.');
   Writeln(ErrOutput);
 end;
@@ -83,6 +84,7 @@ var
   lDraft: TDraftVersion;
   lInstanceName: string;
   lOutputText: string;
+  lJsonObj: TJSONValue;
 begin
   Result := 1; // Default to error exit code (1 is used for any failure: validation, missing params, file not found)
   lConfig := ParseArguments;
@@ -191,6 +193,20 @@ begin
         ofJUnit: lOutputText := FormatErrorsJUnit(lResult, lInstanceName);
       end;
       Result := 1;
+    end;
+
+    // Apply Minify if JSON and requested
+    if lConfig.Minify and (lConfig.OutputFormat = ofJson) and not lOutputText.IsEmpty then
+    begin
+      lJsonObj := TJSONObject.ParseJSONValue(lOutputText);
+      if Assigned(lJsonObj) then
+      begin
+        try
+          lOutputText := lJsonObj.ToJSON;
+        finally
+          lJsonObj.Free;
+        end;
+      end;
     end;
 
     if not lOutputText.IsEmpty then

@@ -27,6 +27,7 @@ type
     ForceDraft: Boolean;
     DraftVersion: TDraftVersion;
     EnforceFormats: Boolean;
+    Minify: Boolean;
     Quiet: Boolean;
     ShowHelp: Boolean;
   end;
@@ -56,6 +57,7 @@ begin
   Result.ForceDraft := False;
   Result.DraftVersion := TDraftVersion.dvDraft2020_12;
   Result.EnforceFormats := True;
+  Result.Minify := False;
   Result.Quiet := False;
   Result.ShowHelp := False;
 
@@ -132,7 +134,10 @@ begin
     end else if SameText(lArg, '--no-format') then
     begin
       Result.EnforceFormats := False;
-    end else if SameText(lArg, '--quiet') then
+    end else if SameText(lArg, '--minify') then
+    begin
+      Result.Minify := True;
+    end else if SameText(lArg, '-q') or SameText(lArg, '--quiet') then
     begin
       Result.Quiet := True;
     end else if not lArg.StartsWith('-') then

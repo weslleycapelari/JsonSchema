@@ -34,7 +34,7 @@ type
     lblStatus: TLabel;
     dlgSave: TSaveDialog;
     dlgOpen: TOpenDialog;
-    splSplitter: TSplitter;
+    splMain: TSplitter;
     pnlBrandBar: TPanel;
     procedure FormCreate(Sender: TObject);
     procedure btnSelectFileClick(Sender: TObject);
@@ -61,7 +61,7 @@ begin
   edtFilePath.Text := '';
 
   lblStatus.Caption := 'Ready. Select a root schema file from disk to start.';
-  lblStatus.Font.Color := $00CC6600;
+  lblStatus.Font.Color := clGreen;
 
   mmoSchemaInput.Lines.Clear;
   mmoBundledOutput.Lines.Clear;
@@ -97,7 +97,8 @@ var
 begin
   mmoBundledOutput.Clear;
   lblStatus.Caption := 'Consolidating schema...';
-  lblStatus.Font.Color := $00CC6600;
+  lblStatus.Font.Color := $000288D1;
+  lblStatus.Update;
 
   if edtFilePath.Text = '' then
   begin
@@ -193,4 +194,3 @@ begin
 end;
 
 end.
-

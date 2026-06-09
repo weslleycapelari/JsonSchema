@@ -19,18 +19,19 @@ implementation
 
 procedure ShowHelpMessage;
 begin
-  Writeln('SchemaMigrator - JSON Schema Draft Migration Utility');
-  Writeln('Converts older schemas (Draft 4/6/7) to modern Draft 2020-12 dialect.');
-  Writeln;
-  Writeln('Usage:');
-  Writeln('  SchemaMigratorCLI.exe -i <input_path> [-o <output_path>] [--minify]');
-  Writeln;
-  Writeln('Options:');
-  Writeln('  -i, --input     Path to the root legacy JSON Schema file (required)');
-  Writeln('  -o, --output    Path to save the migrated schema (prints to stdout if omitted)');
-  Writeln('  --minify        Minify output JSON schema instead of prettifying');
-  Writeln('  -h, --help      Display this help documentation');
-  Writeln;
+  Writeln(ErrOutput, 'SchemaMigrator - JSON Schema Draft Migration Utility');
+  Writeln(ErrOutput, 'Converts older schemas (Draft 4/6/7) to modern Draft 2020-12 dialect.');
+  Writeln(ErrOutput);
+  Writeln(ErrOutput, 'Usage:');
+  Writeln(ErrOutput, '  SchemaMigratorCLI.exe -i <input_path> [-o <output_path>] [options]');
+  Writeln(ErrOutput);
+  Writeln(ErrOutput, 'Options:');
+  Writeln(ErrOutput, '  -i, --input     Path to the root legacy JSON Schema file (required)');
+  Writeln(ErrOutput, '  -o, --output    Path to save the migrated schema (prints to stdout if omitted)');
+  Writeln(ErrOutput, '  --minify        Minify output JSON schema instead of prettifying');
+  Writeln(ErrOutput, '  -q, --quiet     Suppress informational output');
+  Writeln(ErrOutput, '  -h, --help      Display this help documentation');
+  Writeln(ErrOutput);
 end;
 
 function RunSchemaMigrator: Integer;
@@ -42,6 +43,7 @@ var
   lSchemaObj: TJSONObject;
   lOutputText: string;
 begin
+  Result := 1; // Default to error
   lConfig := ParseCommandLine;
 
   if lConfig.ShowHelp or (lConfig.InputPath = '') then
@@ -53,7 +55,7 @@ begin
   if not FileExists(lConfig.InputPath) then
   begin
     Writeln(ErrOutput, 'Error: Root schema file does not exist at: ' + lConfig.InputPath);
-    Exit(1);
+    Exit;
   end;
 
   try
@@ -62,7 +64,7 @@ begin
     on E: Exception do
     begin
       Writeln(ErrOutput, 'Error reading schema file: ' + E.Message);
-      Exit(1);
+      Exit;
     end;
   end;
 
@@ -72,7 +74,7 @@ begin
     if Assigned(lJSONVal) then
       lJSONVal.Free;
     Writeln(ErrOutput, 'Error: Input file is not a valid JSON Object.');
-    Exit(1);
+    Exit;
   end;
 
   lSchemaObj := TJSONObject(lJSONVal);
@@ -97,11 +99,13 @@ begin
       begin
         try
           TFile.WriteAllText(lConfig.OutputPath, lOutputText, TEncoding.UTF8);
+          if not lConfig.Quiet then
+            Writeln(ErrOutput, 'Schema migrated successfully to Draft 2020-12.');
         except
           on E: Exception do
           begin
             Writeln(ErrOutput, 'Error writing output file: ' + E.Message);
-            Exit(1);
+            Exit;
           end;
         end;
       end else

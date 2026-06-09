@@ -9,7 +9,6 @@ instance documents.
 
 uses
   Vcl.Forms,
-  Vcl.XPMan, // Modern VCL native styling and themes (Windows 11)
   JSON2Schema.Main in 'src\JSON2Schema.Main.pas' {frmMain},
   JSON2Schema.Engine in 'src\JSON2Schema.Engine.pas';
 

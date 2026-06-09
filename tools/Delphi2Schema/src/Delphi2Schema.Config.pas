@@ -20,6 +20,8 @@ type
     ScanFields: Boolean;
     ScanProperties: Boolean;
     UseEnumNames: Boolean;
+    Minify: Boolean;
+    Quiet: Boolean;
     ShowHelp: Boolean;
   end;
 
@@ -42,6 +44,8 @@ begin
   Result.ScanFields := False;
   Result.ScanProperties := True;
   Result.UseEnumNames := True;
+  Result.Minify := False;
+  Result.Quiet := False;
   Result.ShowHelp := False;
 
   lI := 0;
@@ -53,7 +57,7 @@ begin
     begin
       Result.ShowHelp := True;
       Exit;
-    end else if SameText(lArg, '-t') or SameText(lArg, '--type') then
+    end else if SameText(lArg, '-t') or SameText(lArg, '--type') or SameText(lArg, '-i') or SameText(lArg, '--input') then
     begin
       Inc(lI);
       if lI < Length(pArgs) then
@@ -75,9 +79,19 @@ begin
     end else if SameText(lArg, '-p') or SameText(lArg, '--properties') then
     begin
       Result.ScanProperties := True;
+    end else if SameText(lArg, '--minify') then
+    begin
+      Result.Minify := True;
+    end else if SameText(lArg, '-q') or SameText(lArg, '--quiet') then
+    begin
+      Result.Quiet := True;
     end else if SameText(lArg, '--no-enum-names') then
     begin
       Result.UseEnumNames := False;
+    end else
+    begin
+      if Result.TypeName = '' then
+        Result.TypeName := lArg;
     end;
 
     Inc(lI);

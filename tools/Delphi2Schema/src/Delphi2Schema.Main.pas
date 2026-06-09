@@ -58,7 +58,7 @@ begin
   chkScanProperties.Checked := True;
   chkUseEnumNames.Checked := True;
   lblStatus.Caption := 'Ready';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Font.Color := clGreen;
   RefreshClassList;
 end;
 
@@ -170,7 +170,8 @@ var
 begin
   mmoSchema.Clear;
   lblStatus.Caption := 'Generating...';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Font.Color := $000288D1;
+  lblStatus.Update;
 
   if cboClass.Text = '' then
   begin

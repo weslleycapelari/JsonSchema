@@ -17,6 +17,7 @@ type
     SchemaPath: string;
     OutputPath: string;
     MinSeverity: TSeverity;
+    Quiet: Boolean;
     ShowHelp: Boolean;
   end;
 
@@ -35,6 +36,7 @@ begin
   Result.SchemaPath := '';
   Result.OutputPath := '';
   Result.MinSeverity := TSeverity.Info;
+  Result.Quiet := False;
   Result.ShowHelp := False;
 
   lI := 1;
@@ -47,7 +49,7 @@ begin
       Result.ShowHelp := True;
       Inc(lI);
     end
-    else if (SameText(lArg, '-s') or SameText(lArg, '--schema')) and (lI < ParamCount) then
+    else if (SameText(lArg, '-s') or SameText(lArg, '--schema') or SameText(lArg, '-i') or SameText(lArg, '--input')) and (lI < ParamCount) then
     begin
       Result.SchemaPath := ParamStr(lI + 1);
       Inc(lI, 2);
@@ -67,6 +69,11 @@ begin
       else
         Result.MinSeverity := TSeverity.Info;
       Inc(lI, 2);
+    end
+    else if SameText(lArg, '-q') or SameText(lArg, '--quiet') then
+    begin
+      Result.Quiet := True;
+      Inc(lI);
     end
     else
     begin

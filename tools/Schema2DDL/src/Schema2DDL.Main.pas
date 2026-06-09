@@ -34,7 +34,7 @@ type
     pnlStatus: TPanel;
     lblStatus: TLabel;
     dlgSave: TSaveDialog;
-    splSplitter: TSplitter;
+    splMain: TSplitter;
     procedure FormCreate(Sender: TObject);
     procedure btnGenerateClick(Sender: TObject);
     procedure btnCopyClick(Sender: TObject);
@@ -69,7 +69,7 @@ begin
   chkQuote.Checked := False;
 
   lblStatus.Caption := 'Ready';
-  lblStatus.Font.Color := $00CC6600; // Brand Classic Blue
+  lblStatus.Font.Color := clGreen;
 
   // Insert a simple default schema snippet for the user
   mmoSchemaInput.Lines.Clear;
@@ -96,7 +96,8 @@ var
 begin
   mmoDdlOutput.Clear;
   lblStatus.Caption := 'Generating...';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Font.Color := $000288D1;
+  lblStatus.Update;
 
   if Trim(mmoSchemaInput.Text) = '' then
   begin

@@ -15,6 +15,7 @@ uses
   System.JSON,
   System.Classes,
   System.TypInfo,
+  System.IOUtils,
   Delphi2Schema.Config,
   Delphi2Schema.Engine,
   Delphi2Schema.Samples;
@@ -33,16 +34,18 @@ begin
   Writeln(ErrOutput, 'Delphi2Schema - JSON Schema Code-to-Schema Generation Utility');
   Writeln(ErrOutput);
   Writeln(ErrOutput, 'Usage:');
-  Writeln(ErrOutput, '  Delphi2SchemaCLI -t <type_name> [-b <bpl_path>] [-o <output_path>] [options]');
+  Writeln(ErrOutput, '  Delphi2SchemaCLI -i <type_name> [-b <bpl_path>] [-o <output_path>] [options]');
   Writeln(ErrOutput);
   Writeln(ErrOutput, 'Options:');
-  Writeln(ErrOutput, '  -t, --type        Name of the Delphi class or record to scan (Required).');
-  Writeln(ErrOutput, '  -b, --bpl         Path to a compiled Delphi package (.bpl) to load dynamically.');
-  Writeln(ErrOutput, '  -o, --output      Path to output the generated JSON Schema file (Stdout if omitted).');
-  Writeln(ErrOutput, '  -f, --fields      Scan only member fields (default: scans properties).');
-  Writeln(ErrOutput, '  -p, --properties  Scan member properties (default behavior).');
-  Writeln(ErrOutput, '  --no-enum-names   Represent enum items as integer indexes instead of names.');
-  Writeln(ErrOutput, '  -h, --help        Display this help manual.');
+  Writeln(ErrOutput, '  -i, --input, -t, --type  Name of the Delphi class or record to scan (Required).');
+  Writeln(ErrOutput, '  -b, --bpl                Path to a compiled Delphi package (.bpl) to load dynamically.');
+  Writeln(ErrOutput, '  -o, --output             Path to output the generated JSON Schema file (Stdout if omitted).');
+  Writeln(ErrOutput, '  -f, --fields             Scan only member fields (default: scans properties).');
+  Writeln(ErrOutput, '  -p, --properties         Scan member properties (default behavior).');
+  Writeln(ErrOutput, '  --minify                 Minify output JSON schema instead of prettifying.');
+  Writeln(ErrOutput, '  -q, --quiet              Suppress informational output.');
+  Writeln(ErrOutput, '  --no-enum-names          Represent enum items as integer indexes instead of names.');
+  Writeln(ErrOutput, '  -h, --help               Display this help manual.');
   Writeln(ErrOutput);
 end;
 
@@ -74,9 +77,9 @@ var
   lPackageHandle: HMODULE;
   lGenerator: TDelphi2SchemaGenerator;
   lSchemaJson: TJSONObject;
-  lOutFile: TStringList;
+  lOutputText: string;
 begin
-  Result := 2; // Default to error
+  Result := 1; // Default to error
   lConfig := ParseArguments;
 
   if lConfig.ShowHelp or lConfig.TypeName.IsEmpty then
@@ -84,7 +87,7 @@ begin
     PrintUsage;
     if lConfig.TypeName.IsEmpty and not lConfig.ShowHelp then
       Writeln(ErrOutput, 'Error: Missing required option: -t/--type');
-    Exit;
+    Exit(0);
   end;
 
   lPackageHandle := 0;
@@ -130,18 +133,27 @@ begin
 
         lSchemaJson := lGenerator.GenerateSchema(lType.Handle);
         try
+          if lConfig.Minify then
+            lOutputText := lSchemaJson.ToJSON
+          else
+            lOutputText := lSchemaJson.Format(2);
+
           if not lConfig.OutputPath.IsEmpty then
           begin
-            lOutFile := TStringList.Create;
             try
-              lOutFile.Text := lSchemaJson.Format(2);
-              lOutFile.SaveToFile(lConfig.OutputPath, TEncoding.UTF8);
-            finally
-              lOutFile.Free;
+              TFile.WriteAllText(lConfig.OutputPath, lOutputText, TEncoding.UTF8);
+              if not lConfig.Quiet then
+                Writeln(ErrOutput, 'JSON Schema generated successfully.');
+            except
+              on E: Exception do
+              begin
+                Writeln(ErrOutput, 'Error writing output file: ' + E.Message);
+                Exit;
+              end;
             end;
           end else
           begin
-            Writeln(lSchemaJson.Format(2));
+            Writeln(lOutputText);
           end;
           Result := 0; // Success
         finally

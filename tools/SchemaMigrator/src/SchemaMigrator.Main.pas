@@ -10,16 +10,16 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Clipbrd,
-  System.JSON, System.IOUtils, SchemaMigrator.Engine;
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Clipbrd, System.JSON,
+  System.IOUtils, SchemaMigrator.Engine;
 
 type
   TfrmMain = class(TForm)
     pnlLeft: TPanel;
     lblSchemaInput: TLabel;
+    btnLoadFile: TButton;
     mmoSchemaInput: TMemo;
     chkIndent: TCheckBox;
-    btnLoadFile: TButton;
     pnlRight: TPanel;
     lblMigratedOutput: TLabel;
     mmoMigratedOutput: TMemo;
@@ -31,7 +31,7 @@ type
     lblStatus: TLabel;
     dlgSave: TSaveDialog;
     dlgOpen: TOpenDialog;
-    splSplitter: TSplitter;
+    splMain: TSplitter;
     procedure FormCreate(Sender: TObject);
     procedure btnLoadFileClick(Sender: TObject);
     procedure btnMigrateClick(Sender: TObject);
@@ -52,29 +52,9 @@ implementation
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
-  chkIndent.Checked := True;
   lblStatus.Caption := 'Ready';
-  lblStatus.Font.Color := clWindowText;
-
-  mmoSchemaInput.Lines.Clear;
-  mmoMigratedOutput.Lines.Clear;
-
-  // Pre-load a small Draft 4 schema for demo
-  mmoSchemaInput.Lines.Add('{');
-  mmoSchemaInput.Lines.Add('  "$schema": "http://json-schema.org/draft-04/schema#",');
-  mmoSchemaInput.Lines.Add('  "id": "http://example.com/legacy.json",');
-  mmoSchemaInput.Lines.Add('  "title": "Legacy Schema",');
-  mmoSchemaInput.Lines.Add('  "type": "object",');
-  mmoSchemaInput.Lines.Add('  "definitions": {');
-  mmoSchemaInput.Lines.Add('    "userId": { "type": "integer" }');
-  mmoSchemaInput.Lines.Add('  },');
-  mmoSchemaInput.Lines.Add('  "properties": {');
-  mmoSchemaInput.Lines.Add('    "user_id": { "$ref": "#/definitions/userId" }');
-  mmoSchemaInput.Lines.Add('  },');
-  mmoSchemaInput.Lines.Add('  "dependencies": {');
-  mmoSchemaInput.Lines.Add('    "user_id": ["session_token"]');
-  mmoSchemaInput.Lines.Add('  }');
-  mmoSchemaInput.Lines.Add('}');
+  lblStatus.Font.Color := clGreen;
+  chkIndent.Checked := True;
 end;
 
 procedure TfrmMain.btnLoadFileClick(Sender: TObject);
@@ -83,10 +63,9 @@ begin
   if dlgOpen.Execute then
   begin
     try
-      mmoSchemaInput.Text := TFile.ReadAllText(dlgOpen.FileName, TEncoding.UTF8);
-      lblStatus.Caption := 'Loaded: ' + ExtractFileName(dlgOpen.FileName);
+      mmoSchemaInput.Lines.LoadFromFile(dlgOpen.FileName, TEncoding.UTF8);
+      lblStatus.Caption := 'File loaded: ' + ExtractFileName(dlgOpen.FileName);
       lblStatus.Font.Color := clGreen;
-      mmoMigratedOutput.Clear;
     except
       on E: Exception do
       begin
@@ -99,18 +78,19 @@ end;
 
 procedure TfrmMain.btnMigrateClick(Sender: TObject);
 var
-  lMigrator: TSchemaMigrator;
   lSchemaJson: TJSONValue;
+  lMigrator: TSchemaMigrator;
   lOutputText: string;
   lTempObj: TJSONObject;
 begin
   mmoMigratedOutput.Clear;
-  lblStatus.Caption := 'Migrating schema to Draft 2020-12...';
-  lblStatus.Font.Color := clWindowText;
+  lblStatus.Caption := 'Migrating...';
+  lblStatus.Font.Color := $000288D1;
+  lblStatus.Update;
 
   if Trim(mmoSchemaInput.Text) = '' then
   begin
-    lblStatus.Caption := 'Error: Input JSON Schema is empty.';
+    lblStatus.Caption := 'Error: Input schema is empty.';
     lblStatus.Font.Color := clRed;
     Exit;
   end;
