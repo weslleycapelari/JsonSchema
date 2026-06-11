@@ -17,6 +17,8 @@ uses
   Delphi2Schema.Runner in 'src\Delphi2Schema.Runner.pas',
   Delphi2Schema.Samples in 'src\Delphi2Schema.Samples.pas';
 
+{$R *.res}
+
 begin
   try
     Halt(RunDelphi2Schema);

@@ -15,6 +15,8 @@ uses
   JSON2Schema.Engine in 'src\JSON2Schema.Engine.pas',
   JSON2Schema.Runner in 'src\JSON2Schema.Runner.pas';
 
+{$R *.res}
+
 begin
   try
     Halt(RunJSON2Schema);

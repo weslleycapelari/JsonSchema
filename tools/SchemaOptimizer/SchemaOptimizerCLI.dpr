@@ -14,6 +14,8 @@ uses
   SchemaOptimizer.Engine in 'src\SchemaOptimizer.Engine.pas',
   SchemaOptimizer.Runner in 'src\SchemaOptimizer.Runner.pas';
 
+{$R *.res}
+
 var
   lExitCode: Integer;
 begin

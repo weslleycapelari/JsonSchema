@@ -15,6 +15,8 @@ uses
   SchemaMigrator.Engine in 'src\SchemaMigrator.Engine.pas',
   SchemaMigrator.Runner in 'src\SchemaMigrator.Runner.pas';
 
+{$R *.res}
+
 begin
   try
     Halt(RunSchemaMigrator);

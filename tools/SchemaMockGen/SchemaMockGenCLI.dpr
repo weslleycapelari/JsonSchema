@@ -16,6 +16,8 @@ uses
   SchemaMockGen.Generator in 'src\SchemaMockGen.Generator.pas',
   SchemaMockGen.Runner in 'src\SchemaMockGen.Runner.pas';
 
+{$R *.res}
+
 begin
   try
     Halt(RunSchemaMockGen);

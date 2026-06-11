@@ -15,6 +15,8 @@ uses
   SchemaLinter.Engine in 'src\SchemaLinter.Engine.pas',
   SchemaLinter.Runner in 'src\SchemaLinter.Runner.pas';
 
+{$R *.res}
+
 begin
   try
     Halt(RunSchemaLinter);
